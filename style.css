@@ -132,7 +132,7 @@
     color: #ffffff !important;
 }
 
-/* File Uploader Button & Layout */
+/* File Uploader */
 [data-testid="stFileUploader"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px dashed #9fb3c8 !important;
@@ -153,19 +153,26 @@
     display: none !important;
 }
 
-/* Popover Columns Button (Completely removes 'expand_more' text string) */
-[data-testid="stPopover"] {
+/* =========================================================
+   POPOVER COLUMNS BUTTON FIX (Completely Removes 'expand_more')
+   ========================================================= */
+[data-testid="stPopover"],
+div[data-testid="stPopover"] {
     width: auto !important;
+    display: inline-block !important;
 }
 
-[data-testid="stPopover"] > button {
+[data-testid="stPopover"] > button,
+div[data-testid="stPopover"] button {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    position: relative !important;
     width: auto !important;
-    min-width: 120px !important;
-    padding: 0.45rem 0.95rem !important;
+    min-width: 130px !important;
+    padding: 0.45rem 1rem !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
     border-radius: 9px !important;
     background: #ffffff !important;
     color: #334155 !important;
@@ -173,8 +180,28 @@
     font-weight: 600 !important;
 }
 
-[data-testid="stPopover"] > button [data-testid="stIconMaterial"] {
-    display: none !important; /* Strips the 'expand_more' text string completely */
+/* Hides ALL secondary icon spans, SVGs, and material text elements */
+[data-testid="stPopover"] button span:not(:first-child),
+[data-testid="stPopover"] button [data-testid="stIconMaterial"],
+[data-testid="stPopover"] button i,
+[data-testid="stPopover"] button svg {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    font-size: 0px !important;
+    opacity: 0 !important;
+}
+
+/* Keeps primary text visible and centered */
+[data-testid="stPopover"] button p,
+[data-testid="stPopover"] button span:first-child {
+    font-size: 0.95rem !important;
+    font-weight: 650 !important;
+    color: #334155 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
 }
 
 /* Metric Cards */
@@ -194,7 +221,7 @@
     overflow: visible !important;
 }
 
-/* Segmented Navigation Radio Controls */
+/* Segmented Radio Navigation */
 [data-testid="stRadio"] > div[role="radiogroup"] {
     gap: 0.35rem !important;
     padding: 0.3rem !important;
