@@ -45,7 +45,7 @@ SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
-    """Extracts machine size tonnage class with typo resilience (e.g. 'B8-119' -> '120')."""
+    """Extracts machine tonnage size class with typo resilience (e.g., 'B8-119' -> '120')."""
     if pd.notna(size_col_val):
         try:
             return str(int(float(size_col_val)))
@@ -81,6 +81,7 @@ def derive_line_group(floor_code, mc_sl):
 
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label):
+    """Parses raw Excel floor production sheets and computes shift-proportional capacity."""
     file_stream = io.BytesIO(file_bytes)
     xls = pd.ExcelFile(file_stream)
 
@@ -160,8 +161,6 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             std_cap_shift = (
                 (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
             )
-            act_cap_day_pcs = std_cap_shift * 2.0
-            act_cap_day_ton = (act_cap_day_pcs * unit_wt_kg) / 1000.0
 
             demand_qty = (
                 pd.to_numeric(row.get("Demand"), errors="coerce")
@@ -186,11 +185,6 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             if pd.isna(a_rej):
                 a_rej = 0.0
 
-            a_runtime = (
-                (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
-            )
-            a_prod_ton = (a_good * unit_wt_kg) / 1000.0
-
             b_good = (
                 pd.to_numeric(row.get("B-Good"), errors="coerce")
                 if pd.notna(row.get("B-Good"))
@@ -208,6 +202,22 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 b_good = 0.0
             if pd.isna(b_rej):
                 b_rej = 0.0
+
+            # Rule 1: Shift-proportional capacity scaling
+            # 2 shifts if both ran, 1 shift if only Shift A or Shift B ran
+            shifts_active = (1.0 if a_good > 0 else 0.0) + (
+                1.0 if b_good > 0 else 0.0
+            )
+            if shifts_active == 0.0 and (a_rej > 0 or b_rej > 0):
+                shifts_active = 1.0
+
+            act_cap_day_pcs = std_cap_shift * shifts_active
+            act_cap_day_ton = (act_cap_day_pcs * unit_wt_kg) / 1000.0
+
+            a_runtime = (
+                (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
+            )
+            a_prod_ton = (a_good * unit_wt_kg) / 1000.0
 
             b_runtime = (
                 (b_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
@@ -253,6 +263,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
     if df_res.empty:
         return df_res
 
+    # Rule 3: Runtime-weighted multi-job entry weighting
     mc_totals = (
         df_res.groupby(["Floor", "Date", "Machine"])["Total Runtime (Hrs)"]
         .sum()
@@ -281,6 +292,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
 
 
 def consolidate_daily_machines(df_day):
+    """Consolidates machine performance per day with runtime-weighted CT and cavity averages."""
     records = []
     for (floor_val, mc), group in df_day.groupby(["Floor", "Machine"]):
         orders = group["Order Name"].unique()
@@ -316,7 +328,9 @@ def consolidate_daily_machines(df_day):
         mc_size = group["MC Size"].iloc[0]
         line_grp = group["Line Group"].iloc[0]
         cust_name = (
-            group["Customer"].iloc[0] if len(group["Customer"].unique()) == 1 else "Mixed"
+            group["Customer"].iloc[0]
+            if len(group["Customer"].unique()) == 1
+            else "Mixed"
         )
 
         records.append({
@@ -380,7 +394,7 @@ def compute_line_summary(df_subset):
 
 
 def compute_size_summary(df_subset):
-    """Computes Machine Size Summary matching Sheet2 Excel reference standard."""
+    """Computes Machine Size Summary matching Excel Sheet2 reference standard."""
     days_count = df_subset["Date"].nunique()
     records = []
 
@@ -411,6 +425,7 @@ def compute_size_summary(df_subset):
         else:
             avg_ct = grp["CT"].mean()
 
+        # Rule 4: Run Hour Average scaled by Days Count
         run_hr_avg = (
             tot_runtime / (unique_mc_qty * days_count)
             if (unique_mc_qty > 0 and days_count > 0)
@@ -442,6 +457,7 @@ def compute_size_summary(df_subset):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
+    """Adds a Sub-Total row averaging non-zero active size classes for Run Hour Average (13.57 hrs)."""
     if df.empty:
         return df
 
@@ -455,7 +471,6 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
             val = df[c].sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
         elif c in avg_cols:
-            # Average only active non-zero running machine size rows to match Excel Sheet2 (13.57 hrs)
             non_zero = df[df[c] > 0][c]
             tot_row[c] = (
                 round(non_zero.mean(), 2) if not non_zero.empty else 0.0
@@ -664,6 +679,7 @@ else:
             else:
                 df_curr = df_data_raw.copy()
 
+            # Rule 2: Complete drop of machines with zero production
             if hide_zero_runs:
                 df_active = df_curr[
                     (df_curr["Total Good"] > 0)
