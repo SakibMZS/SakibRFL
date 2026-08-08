@@ -117,7 +117,7 @@
     border-radius: 10px !important;
 }
 
-/* Buttons */
+/* Base Buttons */
 .stButton > button,
 .stDownloadButton > button,
 [data-testid="stDownloadButton"] button {
@@ -135,7 +135,9 @@
     color: #ffffff !important;
 }
 
-/* File Uploader */
+/* =========================================================
+   1. FIX FOR FILE UPLOADER BUTTON OVERLAP ('uploadpload')
+   ========================================================= */
 [data-testid="stFileUploader"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px dashed #9fb3c8 !important;
@@ -143,12 +145,68 @@
     padding: 1rem !important;
 }
 
-/* Metrics */
+[data-testid="stFileUploader"] button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.4rem !important;
+    min-width: 140px !important;
+    padding: 0.45rem 1rem !important;
+}
+
+[data-testid="stFileUploader"] button [data-testid="stIconMaterial"],
+[data-testid="stFileUploader"] button span[class*="icon"] {
+    display: none !important; /* Hides duplicate raw icon font string causing 'uploadpload' */
+}
+
+/* =========================================================
+   2. FIX FOR POPOVER COLUMNS OVERLAP ('Coexpand_more')
+   ========================================================= */
+[data-testid="stPopover"] > button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.6rem !important;
+    white-space: nowrap !important;
+    border-radius: 9px !important;
+    background: #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid var(--border-strong) !important;
+    font-weight: 600 !important;
+    padding: 0.45rem 0.95rem !important;
+    min-width: 150px !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+
+[data-testid="stPopover"] > button * {
+    color: #334155 !important;
+    white-space: nowrap !important;
+}
+
+[data-testid="stPopover"] > button [data-testid="stIconMaterial"] {
+    display: inline-block !important;
+    margin-left: 0.3rem !important;
+}
+
+/* =========================================================
+   3. FIX FOR METRIC CARD NUMBER TRUNCATION ('2,149,63...')
+   ========================================================= */
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px solid var(--border) !important;
     border-radius: 13px !important;
-    padding: 1rem 1.1rem !important;
+    padding: 0.85rem 1rem !important;
+    overflow: hidden !important;
+}
+
+[data-testid="stMetricValue"] {
+    font-size: 1.55rem !important; /* Scaled down slightly so multi-million values fit */
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+    overflow: visible !important;
 }
 
 /* Radio Control Navigation */
@@ -163,24 +221,4 @@
 [data-testid="stRadio"] > div[role="radiogroup"] label:has(input:checked) {
     background: #ffffff !important;
     box-shadow: 0 2px 7px rgba(15,23,42,.10) !important;
-}
-
-/* Popover Column Selector FIX (Solves 'Co expand_more' Overlap) */
-[data-testid="stPopover"] > button {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0.5rem !important;
-    white-space: nowrap !important;
-    border-radius: 9px !important;
-    background: #ffffff !important;
-    color: #334155 !important;
-    border: 1px solid var(--border-strong) !important;
-    font-weight: 600 !important;
-    padding: 0.4rem 0.85rem !important;
-    min-width: 125px !important;
-}
-
-[data-testid="stPopover"] > button * {
-    color: #334155 !important;
 }
