@@ -203,7 +203,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             if pd.isna(b_rej):
                 b_rej = 0.0
 
-            # Rule 1: Shift-proportional capacity scaling
+            # Shift-proportional capacity scaling
             # 2 shifts if both ran, 1 shift if only Shift A or Shift B ran
             shifts_active = (1.0 if a_good > 0 else 0.0) + (
                 1.0 if b_good > 0 else 0.0
@@ -263,7 +263,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
     if df_res.empty:
         return df_res
 
-    # Rule 3: Runtime-weighted multi-job entry weighting
+    # Runtime-weighted multi-job entry weighting
     mc_totals = (
         df_res.groupby(["Floor", "Date", "Machine"])["Total Runtime (Hrs)"]
         .sum()
@@ -393,8 +393,12 @@ def compute_line_summary(df_subset):
     return pd.DataFrame(records)
 
 
-def compute_size_summary(df_subset):
-    """Computes Machine Size Summary matching Excel Sheet2 reference standard."""
+def compute_size_summary(df_subset, mode="daily"):
+    """
+    Computes Machine Size Summary matching Excel Sheet2 standard.
+    - Daily Mode: MC QTY = Unique running machines on selected date.
+    - As-Of Mode: MC QTY = Cumulative running machine-days across period.
+    """
     days_count = df_subset["Date"].nunique()
     records = []
 
@@ -415,8 +419,20 @@ def compute_size_summary(df_subset):
             })
             continue
 
-        unique_mc_qty = grp["Machine"].nunique()
         tot_runtime = grp["Total Runtime (Hrs)"].sum()
+
+        if mode == "as_of":
+            # Cumulative active machine-days count (e.g. 257 for August)
+            mc_qty = grp.groupby(["Date", "Floor", "Machine"]).ngroups
+            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+        else:
+            # Unique active machines count on single date (e.g. 39 for Aug 7)
+            mc_qty = grp["Machine"].nunique()
+            run_hr_avg = (
+                tot_runtime / (mc_qty * days_count)
+                if (mc_qty > 0 and days_count > 0)
+                else 0.0
+            )
 
         if tot_runtime > 0:
             avg_ct = (
@@ -424,13 +440,6 @@ def compute_size_summary(df_subset):
             ).sum() / tot_runtime
         else:
             avg_ct = grp["CT"].mean()
-
-        # Rule 4: Run Hour Average scaled by Days Count
-        run_hr_avg = (
-            tot_runtime / (unique_mc_qty * days_count)
-            if (unique_mc_qty > 0 and days_count > 0)
-            else 0.0
-        )
 
         tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
         tot_prod_pcs = grp["Total Good"].sum()
@@ -442,7 +451,7 @@ def compute_size_summary(df_subset):
 
         records.append({
             "MC Size": sz,
-            "MC QTY": unique_mc_qty,
+            "MC QTY": mc_qty,
             "CT Average": round(avg_ct, 2),
             "Run Hour Average": round(run_hr_avg, 2),
             "Total Cap (Pcs)": round(tot_cap_pcs, 2),
@@ -457,7 +466,7 @@ def compute_size_summary(df_subset):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
-    """Adds a Sub-Total row averaging non-zero active size classes for Run Hour Average (13.57 hrs)."""
+    """Adds a Sub-Total row averaging non-zero active size classes for Run Hour Average."""
     if df.empty:
         return df
 
@@ -679,7 +688,6 @@ else:
             else:
                 df_curr = df_data_raw.copy()
 
-            # Rule 2: Complete drop of machines with zero production
             if hide_zero_runs:
                 df_active = df_curr[
                     (df_curr["Total Good"] > 0)
@@ -869,7 +877,9 @@ else:
 
                 elif daily_mode == "📏 Sizewise":
                     st.markdown("### 📏 Machine Size Summary")
-                    df_size_day = compute_size_summary(df_daily_raw)
+                    df_size_day = compute_size_summary(
+                        df_daily_raw, mode="daily"
+                    )
                     df_size_day_tot = add_total_row(
                         df_size_day,
                         "MC Size",
@@ -1102,7 +1112,9 @@ else:
                     st.markdown(
                         f"### 📏 Machine Size Summary (As of {as_of_date})"
                     )
-                    df_size_mtd = compute_size_summary(df_mtd)
+
+                    # Computes As-Of Size Summary matching Sheet2 cumulative machine-days standard
+                    df_size_mtd = compute_size_summary(df_mtd, mode="as_of")
                     df_size_mtd_tot = add_total_row(
                         df_size_mtd,
                         "MC Size",
