@@ -1,16 +1,17 @@
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# Streamlit Page Setup
+# Page Configuration
 st.set_page_config(
-    page_title="Plastic-3 FF | Operations Console",
+    page_title="Plastic-3 FF | Executive Dashboard",
     page_icon="🏭",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom Styling
+# AdminLTE / Industrial Console CSS Styling
 st.markdown(
     """
     <style>
@@ -19,7 +20,7 @@ st.markdown(
     [data-testid="stSidebar"] * { color: #f8fafc !important; }
     
     .dashboard-header {
-        background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
         padding: 20px 28px;
         border-radius: 10px;
         color: white;
@@ -53,9 +54,9 @@ st.markdown(
 
 @st.cache_data
 def load_and_parse_data(file_bytes):
-    """Parses daily date sheets using engineering formulas and calculates run-time
+    """Parses daily date sheets using engineering formulas and handles run-time weights,
 
-    weights and customer prefix tags.
+    machine sizes, and customer tags.
     """
     xls = pd.ExcelFile(file_bytes)
     date_sheets = [
@@ -78,10 +79,18 @@ def load_and_parse_data(file_bytes):
             order = str(row.get("Order Name")).strip()
             item = str(row.get("Item Name", "")).strip()
 
-            # Customer Prefix Extraction (e.g., 'JES' from 'JES-26-15')
+            # Customer Prefix Extraction
             cust_prefix = (
                 order.split("-")[0].strip().upper() if "-" in order else order
             )
+
+            # Machine Size Extraction (e.g. '120' from 'A2-120' or '530' from 'B3-530')
+            size_val = row.get("Size")
+            if pd.notna(size_val):
+                mc_size = str(int(float(size_val)))
+            else:
+                parts = mc_sl.split("-")
+                mc_size = parts[1] if len(parts) > 1 else "Other"
 
             ct = (
                 pd.to_numeric(row.get("CT"), errors="coerce")
@@ -111,6 +120,15 @@ def load_and_parse_data(file_bytes):
             )
             act_cap_day_pcs = std_cap_shift * 2.0
             act_cap_day_ton = (act_cap_day_pcs * unit_wt_kg) / 1000.0
+
+            # Demand Volume
+            demand_qty = (
+                pd.to_numeric(row.get("Demand"), errors="coerce")
+                if pd.notna(row.get("Demand"))
+                else 0.0
+            )
+            if pd.isna(demand_qty):
+                demand_qty = 0.0
 
             # Shift A Production
             a_good = (
@@ -162,16 +180,14 @@ def load_and_parse_data(file_bytes):
             total_runtime = a_runtime + b_runtime
             total_prod_ton = a_prod_ton + b_prod_ton
 
-            # Strict Filter: Exclude non-running machines/items
-            if total_good == 0 and total_runtime == 0:
-                continue
-
             all_records.append({
                 "Date": sheet.strip(),
                 "Machine": mc_sl,
+                "MC Size": mc_size,
                 "Customer": cust_prefix,
                 "Order Name": order,
                 "Item Name": item,
+                "Demand Qty": demand_qty,
                 "Cavity": cavity,
                 "CT": ct,
                 "Unit Wt (kg)": unit_wt_kg,
@@ -224,6 +240,150 @@ def load_and_parse_data(file_bytes):
     return df_res
 
 
+def consolidate_daily_machines(df_day):
+    """Consolidates multiple entries per machine into a single row per machine on a
+
+    given date.
+    """
+    records = []
+    for mc, group in df_day.groupby("Machine"):
+        orders = group["Order Name"].unique()
+        items = group["Item Name"].unique()
+
+        ord_name = orders[0] if len(orders) == 1 else "Mixed"
+        item_name = items[0] if len(items) == 1 else "Mixed"
+
+        mc_tot_runtime = group["Total Runtime (Hrs)"].sum()
+
+        if mc_tot_runtime > 0:
+            weighted_ct = (
+                group["CT"] * group["Total Runtime (Hrs)"]
+            ).sum() / mc_tot_runtime
+            weighted_cavity = (
+                group["Cavity"] * group["Total Runtime (Hrs)"]
+            ).sum() / mc_tot_runtime
+        else:
+            weighted_ct = group["CT"].mean()
+            weighted_cavity = group["Cavity"].mean()
+
+        tot_a_good = group["Shift A Good"].sum()
+        tot_b_good = group["Shift B Good"].sum()
+        tot_good = group["Total Good"].sum()
+        tot_bad = group["Total Rejections"].sum()
+        a_runtime = group["Shift A Runtime"].sum()
+        b_runtime = group["Shift B Runtime"].sum()
+
+        cap_pcs = group["Weighted Cap Pcs"].sum()
+        cap_ton = group["Weighted Cap Ton"].sum()
+        prod_ton = group["Total Prod Ton"].sum()
+
+        mc_size = group["MC Size"].iloc[0]
+        cust_name = (
+            group["Customer"].iloc[0] if len(group["Customer"].unique()) == 1 else "Mixed"
+        )
+
+        records.append({
+            "Machine": mc,
+            "MC Size": mc_size,
+            "Customer": cust_name,
+            "Order Name": ord_name,
+            "Item Name": item_name,
+            "Is Mixed": len(group) > 1,
+            "Entry Count": len(group),
+            "Cavity": round(weighted_cavity, 1),
+            "CT": round(weighted_ct, 1),
+            "Shift A Good": tot_a_good,
+            "Shift B Good": tot_b_good,
+            "Total Good": tot_good,
+            "Total Rejections": tot_bad,
+            "Shift A Runtime": a_runtime,
+            "Shift B Runtime": b_runtime,
+            "Total Runtime (Hrs)": mc_tot_runtime,
+            "Weighted Cap Pcs": cap_pcs,
+            "Weighted Cap Ton": cap_ton,
+            "Total Prod Ton": prod_ton,
+            "Ach Pcs %": (tot_good / cap_pcs * 100) if cap_pcs > 0 else 0.0,
+            "Ach Ton %": (prod_ton / cap_ton * 100) if cap_ton > 0 else 0.0,
+        })
+    return pd.DataFrame(records)
+
+
+def compute_size_summary(df_subset):
+    """Computes Machine Size Summary table (by tonnage class)."""
+    records = []
+    for sz, grp in df_subset.groupby("MC Size"):
+        mc_qty = grp["Machine"].nunique()
+        tot_runtime = grp["Total Runtime (Hrs)"].sum()
+
+        if tot_runtime > 0:
+            avg_ct = (
+                grp["CT"] * grp["Total Runtime (Hrs)"]
+            ).sum() / tot_runtime
+        else:
+            avg_ct = grp["CT"].mean()
+
+        avg_run_hrs = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+
+        tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = grp["Total Good"].sum()
+        tot_cap_ton = grp["Weighted Cap Ton"].sum()
+        tot_prod_ton = grp["Total Prod Ton"].sum()
+
+        ach_pcs = (
+            (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
+        )
+        ach_ton = (
+            (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+        )
+
+        records.append({
+            "MC Size": sz,
+            "MC QTY": mc_qty,
+            "CT Average": round(avg_ct, 1),
+            "Run Hour Avg": round(avg_run_hrs, 2),
+            "Total Cap (Pcs)": tot_cap_pcs,
+            "Total Prod (Pcs)": tot_prod_pcs,
+            "Pcs Ach %": ach_pcs,
+            "Cap (Ton)": tot_cap_ton,
+            "Prod (Ton)": tot_prod_ton,
+            "Ton Ach %": ach_ton,
+        })
+    return pd.DataFrame(records)
+
+
+def add_total_row(df, label_col, sum_cols, avg_cols):
+    """Appends a highlighted TOTAL & AVERAGE summary row at the bottom of a table."""
+    if df.empty:
+        return df
+
+    res_df = df.copy()
+    tot_row = {}
+
+    for c in df.columns:
+        if c == label_col:
+            tot_row[c] = "TOTAL / OVERALL"
+        elif c in sum_cols:
+            tot_row[c] = df[c].sum()
+        elif c in avg_cols:
+            tot_row[c] = df[c].mean()
+        else:
+            tot_row[c] = "-"
+
+    # Re-calculate overall percentages if capacity/prod columns exist
+    if "Total Cap (Pcs)" in df.columns and "Total Prod (Pcs)" in df.columns:
+        tc_p = df["Total Cap (Pcs)"].sum()
+        tp_p = df["Total Prod (Pcs)"].sum()
+        tot_row["Pcs Ach %"] = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
+
+    if "Cap (Ton)" in df.columns and "Prod (Ton)" in df.columns:
+        tc_t = df["Cap (Ton)"].sum()
+        tp_t = df["Prod (Ton)"].sum()
+        tot_row["Ton Ach %"] = (tp_t / tc_t * 100) if tc_t > 0 else 0.0
+
+    tot_df = pd.DataFrame([tot_row])
+    return pd.concat([res_df, tot_df], ignore_index=True)
+
+
 def render_card(title, value, subtext="", card_type="info"):
     st.markdown(
         f"""
@@ -237,7 +397,7 @@ def render_card(title, value, subtext="", card_type="info"):
     )
 
 
-# Sidebar Branding
+# Sidebar Header
 st.sidebar.markdown(
     "## 🏭 **PLASTIC-3 FF**\n*Industrial Operations Console*"
 )
@@ -247,14 +407,27 @@ uploaded_file = st.sidebar.file_uploader(
     "Upload Production Entry File (.xlsx)", type=["xlsx", "xls"]
 )
 
+# Active Run Filter Toggle
+hide_zero_runs = st.sidebar.toggle(
+    "Hide Non-Running Machines/Items", value=True
+)
+
 if uploaded_file is not None:
     df_data = load_and_parse_data(uploaded_file)
 
     if df_data.empty:
-        st.error("No active daily production entries found in the file.")
+        st.error("No valid daily production entries found in the file.")
     else:
+        if hide_zero_runs:
+            df_active = df_data[
+                (df_data["Total Good"] > 0)
+                | (df_data["Total Runtime (Hrs)"] > 0)
+            ].copy()
+        else:
+            df_active = df_data.copy()
+
         nav_choice = st.sidebar.radio(
-            "Select Navigation Module:",
+            "Select Dashboard View:",
             [
                 "📅 Daily Data",
                 "📊 As of Data (MTD)",
@@ -265,11 +438,10 @@ if uploaded_file is not None:
 
         st.sidebar.divider()
         st.sidebar.info(
-            f"🟢 Active Entries: **{len(df_data)}** records across"
-            f" **{df_data['Date'].nunique()}** operational dates."
+            f"🟢 Loaded: **{len(df_active)}** active entries across"
+            f" **{df_active['Date'].nunique()}** dates."
         )
 
-        # Main Header Banner
         st.markdown(
             f"""
             <div class="dashboard-header">
@@ -281,13 +453,14 @@ if uploaded_file is not None:
         )
 
         # ---------------------------------------------------------------------
-        # 1. DAILY DATA MODULE
+        # 1. DAILY DATA VIEW
         # ---------------------------------------------------------------------
         if nav_choice == "📅 Daily Data":
-            all_dates = sorted(list(df_data["Date"].unique()))
+            all_dates = sorted(list(df_active["Date"].unique()))
             selected_date = st.selectbox("Select Operational Date:", all_dates)
 
-            df_daily = df_data[df_data["Date"] == selected_date].copy()
+            df_daily_raw = df_active[df_active["Date"] == selected_date].copy()
+            df_daily = consolidate_daily_machines(df_daily_raw)
 
             tot_prod_ton = df_daily["Total Prod Ton"].sum()
             tot_cap_ton = df_daily["Weighted Cap Ton"].sum()
@@ -333,42 +506,118 @@ if uploaded_file is not None:
                     "info",
                 )
 
-            st.write("### Active Machine Details")
-            st.dataframe(
-                df_daily[[
-                    "Machine",
-                    "Order Name",
-                    "Item Name",
-                    "CT",
-                    "Cavity",
-                    "Shift A Good",
-                    "Shift B Good",
+            st.write("### 🏭 Consolidated Machine-Wise Performance (Single Row / Machine)")
+            st.caption(
+                "Note: Machines with multiple mold jobs/orders on this date show"
+                " 'Mixed' with weighted average CT/Cavities."
+            )
+
+            # Table with Bottom Total Row
+            df_daily_totals = add_total_row(
+                df_daily,
+                "Machine",
+                [
                     "Total Good",
                     "Total Rejections",
                     "Total Runtime (Hrs)",
-                    "Total Prod Ton",
+                    "Weighted Cap Pcs",
                     "Weighted Cap Ton",
+                    "Total Prod Ton",
+                ],
+                ["CT", "Cavity"],
+            )
+
+            st.dataframe(
+                df_daily_totals[[
+                    "Machine",
+                    "MC Size",
+                    "Order Name",
+                    "Item Name",
+                    "Cavity",
+                    "CT",
+                    "Total Good",
+                    "Total Rejections",
+                    "Total Runtime (Hrs)",
+                    "Weighted Cap Pcs",
+                    "Weighted Cap Ton",
+                    "Total Prod Ton",
+                    "Ach Ton %",
                 ]],
                 use_container_width=True,
                 hide_index=True,
             )
 
+            st.download_button(
+                "📥 Export Daily Machine Summary (CSV)",
+                df_daily_totals.to_csv(index=False),
+                "Daily_Machine_Summary.csv",
+                "text/csv",
+            )
+
+            # Mixed Machines Drill-Down Expander
+            mixed_machines = df_daily[df_daily["Is Mixed"]]["Machine"].tolist()
+            if mixed_machines:
+                with st.expander("🔍 Inspect Mixed Machine Entry Breakdowns"):
+                    sel_mc = st.selectbox(
+                        "Select Mixed Machine:", mixed_machines
+                    )
+                    sub_raw = df_daily_raw[df_daily_raw["Machine"] == sel_mc]
+                    st.write(
+                        f"**Row-Level Mold Runs for Machine {sel_mc}:**"
+                    )
+                    st.dataframe(
+                        sub_raw[[
+                            "Order Name",
+                            "Item Name",
+                            "CT",
+                            "Cavity",
+                            "Shift A Good",
+                            "Shift B Good",
+                            "Total Good",
+                            "Total Runtime (Hrs)",
+                            "Total Prod Ton",
+                        ]],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+            st.divider()
+
+            # Machine Size Summary Table
+            st.write("### 📊 Machine Size Wise Summary (Daily Snapshot)")
+            df_size_day = compute_size_summary(df_daily_raw)
+            df_size_day_tot = add_total_row(
+                df_size_day,
+                "MC Size",
+                [
+                    "MC QTY",
+                    "Total Cap (Pcs)",
+                    "Total Prod (Pcs)",
+                    "Cap (Ton)",
+                    "Prod (Ton)",
+                ],
+                ["CT Average", "Run Hour Avg"],
+            )
+
+            st.dataframe(df_size_day_tot, use_container_width=True, hide_index=True)
+
         # ---------------------------------------------------------------------
-        # 2. AS OF DATA (MTD / CUMULATIVE) MODULE
+        # 2. AS OF DATA (MTD / CUMULATIVE) VIEW
         # ---------------------------------------------------------------------
         elif nav_choice == "📊 As of Data (MTD)":
-            all_dates = sorted(list(df_data["Date"].unique()))
+            all_dates = sorted(list(df_active["Date"].unique()))
             as_of_date = st.select_slider(
-                "Filter Data Up To Date:",
+                "Filter Data Up To Date (As-Of):",
                 options=all_dates,
                 value=all_dates[-1],
             )
 
-            df_mtd = df_data[df_data["Date"] <= as_of_date].copy()
+            df_mtd = df_active[df_active["Date"] <= as_of_date].copy()
 
             tot_prod = df_mtd["Total Prod Ton"].sum()
             tot_cap = df_mtd["Weighted Cap Ton"].sum()
             tot_good = df_mtd["Total Good"].sum()
+            tot_cap_pcs = df_mtd["Weighted Cap Pcs"].sum()
             tot_rej = df_mtd["Total Rejections"].sum()
             tot_runtime = df_mtd["Total Runtime (Hrs)"].sum()
             ach_rate = (tot_prod / tot_cap * 100) if tot_cap > 0 else 0.0
@@ -378,14 +627,14 @@ if uploaded_file is not None:
                 render_card(
                     "Cumulative Tonnage",
                     f"{tot_prod:.2f} Ton",
-                    f"Target Cap: {tot_cap:.2f} Ton",
+                    f"Cap: {tot_cap:.2f} Ton",
                     "info",
                 )
             with c2:
                 render_card(
                     "Cumulative Pieces",
                     f"{int(tot_good):,} Pcs",
-                    f"Defects: {int(tot_rej):,} Pcs",
+                    f"Cap: {int(tot_cap_pcs):,} Pcs",
                     "success",
                 )
             with c3:
@@ -405,6 +654,31 @@ if uploaded_file is not None:
 
             st.divider()
 
+            # Machine Size Wise Summary (As-Of MTD Cumulative)
+            st.write(
+                f"### 📊 Machine Size Wise Summary (As-Of Cumulative to {as_of_date})"
+            )
+            df_size_mtd = compute_size_summary(df_mtd)
+            df_size_mtd_tot = add_total_row(
+                df_size_mtd,
+                "MC Size",
+                [
+                    "MC QTY",
+                    "Total Cap (Pcs)",
+                    "Total Prod (Pcs)",
+                    "Cap (Ton)",
+                    "Prod (Ton)",
+                ],
+                ["CT Average", "Run Hour Avg"],
+            )
+
+            st.dataframe(
+                df_size_mtd_tot, use_container_width=True, hide_index=True
+            )
+
+            st.divider()
+
+            # Daily Tonnage Trend Chart
             daily_agg = (
                 df_mtd.groupby("Date")[["Total Prod Ton", "Weighted Cap Ton"]]
                 .sum()
@@ -421,18 +695,18 @@ if uploaded_file is not None:
             st.plotly_chart(fig_trend, use_container_width=True)
 
         # ---------------------------------------------------------------------
-        # 3. SHIFTWISE DATA MODULE
+        # 3. SHIFTWISE DATA VIEW
         # ---------------------------------------------------------------------
         elif nav_choice == "🌗 Shiftwise Data":
-            a_ton = df_data["Shift A Prod Ton"].sum()
-            a_good = df_data["Shift A Good"].sum()
-            a_rej = df_data["Shift A Rej"].sum()
-            a_hrs = df_data["Shift A Runtime"].sum()
+            a_ton = df_active["Shift A Prod Ton"].sum()
+            a_good = df_active["Shift A Good"].sum()
+            a_rej = df_active["Shift A Rej"].sum()
+            a_hrs = df_active["Shift A Runtime"].sum()
 
-            b_ton = df_data["Shift B Prod Ton"].sum()
-            b_good = df_data["Shift B Good"].sum()
-            b_rej = df_data["Shift B Rej"].sum()
-            b_hrs = df_data["Shift B Runtime"].sum()
+            b_ton = df_active["Shift B Prod Ton"].sum()
+            b_good = df_active["Shift B Good"].sum()
+            b_rej = df_active["Shift B Rej"].sum()
+            b_hrs = df_active["Shift B Runtime"].sum()
 
             c1, c2 = st.columns(2)
             with c1:
@@ -468,12 +742,34 @@ if uploaded_file is not None:
             st.divider()
 
             shift_daily = (
-                df_data.groupby("Date")[
-                    ["Shift A Prod Ton", "Shift B Prod Ton"]
+                df_active.groupby("Date")[
+                    [
+                        "Shift A Good",
+                        "Shift B Good",
+                        "Shift A Prod Ton",
+                        "Shift B Prod Ton",
+                    ]
                 ]
                 .sum()
                 .reset_index()
             )
+
+            st.write("### Daily Shiftwise Production Log")
+            shift_daily_tot = add_total_row(
+                shift_daily,
+                "Date",
+                [
+                    "Shift A Good",
+                    "Shift B Good",
+                    "Shift A Prod Ton",
+                    "Shift B Prod Ton",
+                ],
+                [],
+            )
+            st.dataframe(
+                shift_daily_tot, use_container_width=True, hide_index=True
+            )
+
             fig_shift = px.bar(
                 shift_daily,
                 x="Date",
@@ -488,23 +784,24 @@ if uploaded_file is not None:
         # 4. JOB-ORDER WISE & CUSTOMER MODULE
         # ---------------------------------------------------------------------
         elif nav_choice == "📦 Job-Order Wise Data":
-            # Extract customer account list
             cust_list = ["ALL CUSTOMERS"] + sorted(
-                list(df_data["Customer"].unique())
+                list(df_active["Customer"].unique())
             )
             selected_cust = st.selectbox("Select Customer Account:", cust_list)
 
-            latest_date = sorted(list(df_data["Date"].unique()))[-1]
+            latest_date = sorted(list(df_active["Date"].unique()))[-1]
 
             if selected_cust == "ALL CUSTOMERS":
-                df_cust = df_data.copy()
+                df_cust = df_active.copy()
             else:
-                df_cust = df_data[df_data["Customer"] == selected_cust].copy()
+                df_cust = df_active[
+                    df_active["Customer"] == selected_cust
+                ].copy()
 
-            # Grouping by Order Name and Item Name
             job_agg = (
                 df_cust.groupby(["Customer", "Order Name", "Item Name"])
                 .agg({
+                    "Demand Qty": "max",
                     "Total Good": "sum",
                     "Total Rejections": "sum",
                     "Total Prod Ton": "sum",
@@ -515,7 +812,16 @@ if uploaded_file is not None:
                 .reset_index()
             )
 
-            # Last Day (Latest Date Snapshot Calculations)
+            job_agg["Due Production"] = (
+                job_agg["Demand Qty"] - job_agg["Total Good"]
+            ).apply(lambda x: max(0.0, x))
+            job_agg["As of %"] = (
+                (job_agg["Total Good"] / job_agg["Demand Qty"] * 100)
+                if (job_agg["Demand Qty"] > 0).any()
+                else 0.0
+            )
+
+            # Single Day (Last Day) Snapshot
             df_latest = df_cust[df_cust["Date"] == latest_date]
 
             last_day_stats = []
@@ -577,7 +883,6 @@ if uploaded_file is not None:
                 df_ld, on=["Order Name", "Item Name"]
             ).sort_values(by="Total Prod Ton", ascending=False)
 
-            # Top Metric Banner
             c1, c2, c3, c4 = st.columns(4)
             with c1:
                 render_card(
@@ -604,19 +909,40 @@ if uploaded_file is not None:
                 render_card(
                     "Last Day Tonnage Produced",
                     f"{job_final['Last Day Prod (Ton)'].sum():.2f} Ton",
-                    f"Capacity: {job_final['Last Day Cap (Ton)'].sum():.2f} Ton",
+                    f"Cap: {job_final['Last Day Cap (Ton)'].sum():.2f} Ton",
                     "success",
                 )
 
             st.write(
                 f"### Consolidated Order Performance Summary ({selected_cust})"
             )
+
+            job_final_tot = add_total_row(
+                job_final,
+                "Order Name",
+                [
+                    "Demand Qty",
+                    "Total Good",
+                    "Due Production",
+                    "Total Prod Ton",
+                    "Running Molds",
+                    "Last Day Cap (Pcs)",
+                    "Last Day Prod (Pcs)",
+                    "Last Day Cap (Ton)",
+                    "Last Day Prod (Ton)",
+                    "Last Day Runtime (Hrs)",
+                ],
+                [],
+            )
+
             st.dataframe(
-                job_final[[
+                job_final_tot[[
                     "Customer",
                     "Order Name",
                     "Item Name",
+                    "Demand Qty",
                     "Total Good",
+                    "Due Production",
                     "Total Prod Ton",
                     "Running Molds",
                     "MC Positions",
@@ -632,8 +958,15 @@ if uploaded_file is not None:
                 hide_index=True,
             )
 
+            st.download_button(
+                "📥 Export Job-Order Summary (CSV)",
+                job_final_tot.to_csv(index=False),
+                "Job_Order_Summary.csv",
+                "text/csv",
+            )
+
 else:
     st.info(
         "👈 **Welcome!** Please upload your production Excel file in the"
-        " sidebar to start the application."
+        " sidebar to launch the console."
     )
