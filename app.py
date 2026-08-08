@@ -51,23 +51,55 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Exact Excel Machine Size Tonnage List
+EXCEL_SIZES = [
+    "160",
+    "120",
+    "280",
+    "380",
+    "330",
+    "470",
+    "530",
+    "800",
+    "270",
+    "250",
+    "428",
+    "90",
+]
+SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
+
+
+def extract_excel_mc_size(mc_sl, size_col_val=None):
+    """Replicates Excel SEARCH/LOOKUP formula for machine size extraction."""
+    if pd.notna(size_col_val):
+        try:
+            return str(int(float(size_col_val)))
+        except (ValueError, TypeError):
+            pass
+
+    mc_str = str(mc_sl).strip().upper()
+    for sz in SORTED_SIZES:
+        if sz in mc_str:
+            return sz
+    return "Other"
+
 
 def derive_line_group(floor_code, mc_sl):
-    """Categorizes machine into standard production lines (GF A-B, GF C-D, GF E-F,
+    """Categorizes machine into standard production lines (GF Line A-B, GF Line
 
-    FF A-B, FF C-D).
+    C-D, GF Line E-F, FF Line A-B, FF Line C-D).
     """
     mc_str = str(mc_sl).strip().upper()
     prefix = mc_str[0] if len(mc_str) > 0 else ""
 
     if prefix in ["A", "B"]:
-        line_code = "A-B"
+        line_code = "Line A-B"
     elif prefix in ["C", "D"]:
-        line_code = "C-D"
+        line_code = "Line C-D"
     elif prefix in ["E", "F"]:
-        line_code = "E-F"
+        line_code = "Line E-F"
     else:
-        line_code = "Other"
+        line_code = "Line Other"
 
     return f"{floor_code} {line_code}"
 
@@ -99,14 +131,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             cust_prefix = (
                 order.split("-")[0].strip().upper() if "-" in order else order
             )
-
-            size_val = row.get("Size")
-            if pd.notna(size_val):
-                mc_size = str(int(float(size_val)))
-            else:
-                parts = mc_sl.split("-")
-                mc_size = parts[1] if len(parts) > 1 else "Other"
-
+            mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
 
             ct = (
@@ -191,6 +216,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             )
             b_prod_ton = (b_good * unit_wt_kg) / 1000.0
 
+            # Direct Sum for Physical Actuals
             total_good = a_good + b_good
             total_rej = a_rej + b_rej
             total_runtime = a_runtime + b_runtime
@@ -230,7 +256,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
     if df_res.empty:
         return df_res
 
-    # Run-Time Weighting
+    # Run-Time Weighting for Capacities
     mc_totals = (
         df_res.groupby(["Floor", "Date", "Machine"])["Total Runtime (Hrs)"]
         .sum()
@@ -330,9 +356,9 @@ def consolidate_daily_machines(df_day):
 
 
 def compute_line_summary(df_subset):
-    """Computes Line-Wise Performance Breakdown (GF A-B, GF C-D, GF E-F, FF A-B, FF
+    """Computes Line-Wise Performance Breakdown (GF Line A-B, GF Line C-D, GF Line
 
-    C-D).
+    E-F, FF Line A-B, FF Line C-D).
     """
     records = []
     for lg, grp in df_subset.groupby("Line Group"):
@@ -366,9 +392,13 @@ def compute_line_summary(df_subset):
 
 
 def compute_size_summary(df_subset):
-    """Computes Machine Size Summary table (by tonnage class)."""
+    """Computes Machine Size Summary table using exact tonnage classes."""
     records = []
-    for sz, grp in df_subset.groupby("MC Size"):
+    for sz in EXCEL_SIZES:
+        grp = df_subset[df_subset["MC Size"] == sz]
+        if grp.empty:
+            continue
+
         mc_qty = grp["Machine"].nunique()
         tot_runtime = grp["Total Runtime (Hrs)"].sum()
 
@@ -405,6 +435,41 @@ def compute_size_summary(df_subset):
             "Prod (Ton)": tot_prod_ton,
             "Ton Ach %": ach_ton,
         })
+
+    # Catch any leftover 'Other' sizes
+    grp_other = df_subset[~df_subset["MC Size"].isin(EXCEL_SIZES)]
+    if not grp_other.empty:
+        mc_qty = grp_other["Machine"].nunique()
+        tot_runtime = grp_other["Total Runtime (Hrs)"].sum()
+        avg_ct = (
+            (grp_other["CT"] * grp_other["Total Runtime (Hrs)"]).sum()
+            / tot_runtime
+            if tot_runtime > 0
+            else grp_other["CT"].mean()
+        )
+        avg_run_hrs = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+        tot_cap_pcs = grp_other["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = grp_other["Total Good"].sum()
+        tot_cap_ton = grp_other["Weighted Cap Ton"].sum()
+        tot_prod_ton = grp_other["Total Prod Ton"].sum()
+
+        records.append({
+            "MC Size": "Other",
+            "MC QTY": mc_qty,
+            "CT Average": round(avg_ct, 1),
+            "Run Hour Avg": round(avg_run_hrs, 2),
+            "Total Cap (Pcs)": tot_cap_pcs,
+            "Total Prod (Pcs)": tot_prod_pcs,
+            "Pcs Ach %": (tot_prod_pcs / tot_cap_pcs * 100)
+            if tot_cap_pcs > 0
+            else 0.0,
+            "Cap (Ton)": tot_cap_ton,
+            "Prod (Ton)": tot_prod_ton,
+            "Ton Ach %": (tot_prod_ton / tot_cap_ton * 100)
+            if tot_cap_ton > 0
+            else 0.0,
+        })
+
     return pd.DataFrame(records)
 
 
@@ -458,7 +523,7 @@ def render_card(title, value, subtext="", card_type="info"):
     )
 
 
-# Sidebar Header
+# Sidebar Branding
 st.sidebar.markdown(
     "## 🏭 **PLASTIC-3 CONSOLE**\n*First Floor (FF) & Ground Floor (GF)*"
 )
@@ -476,7 +541,6 @@ gf_file = st.sidebar.file_uploader(
     key="gf_up",
 )
 
-# Active Run Filter Toggle
 hide_zero_runs = st.sidebar.toggle(
     "Hide Non-Running Machines/Items", value=True
 )
@@ -496,7 +560,6 @@ if gf_file is not None:
 if all_floor_data:
     df_data = pd.concat(all_floor_data, ignore_index=True)
 
-    # Floor Toggle Navigation
     st.sidebar.divider()
     st.sidebar.markdown("### 🏢 **Floor Selector**")
     floor_choice = st.sidebar.radio(
@@ -596,7 +659,6 @@ if all_floor_data:
 
         st.divider()
 
-        # Line-Wise Summary Table (GF A-B, GF C-D, GF E-F, FF A-B, FF C-D)
         st.write("### 📈 Line-Wise Capacity vs Production Summary")
         df_line_day = compute_line_summary(df_daily_raw)
         df_line_day_tot = add_total_row(
@@ -667,7 +729,7 @@ if all_floor_data:
             "text/csv",
         )
 
-        # Mixed Machine Breakdown Pop-Up Modal
+        # Mixed Machine Modal
         mixed_machines = df_daily[df_daily["Is Mixed"]]["Machine"].tolist()
         if mixed_machines:
             with st.expander(
@@ -697,7 +759,6 @@ if all_floor_data:
 
         st.divider()
 
-        # Machine Size Summary Table
         st.write("### 📊 Machine Size Wise Summary (Daily Snapshot)")
         df_size_day = compute_size_summary(df_daily_raw)
         df_size_day_tot = add_total_row(
@@ -769,7 +830,6 @@ if all_floor_data:
 
         st.divider()
 
-        # Line-Wise Summary (Cumulative As-Of)
         st.write(
             f"### 📈 Line-Wise Capacity vs Production Summary (As-Of to"
             f" {as_of_date})"
@@ -794,7 +854,6 @@ if all_floor_data:
 
         st.divider()
 
-        # Machine Size Summary (Cumulative As-Of)
         st.write(
             f"### 📊 Machine Size Summary (As-Of Cumulative to {as_of_date})"
         )
@@ -1027,8 +1086,15 @@ if all_floor_data:
             hide_index=True,
         )
 
+        st.download_button(
+            "📥 Export Job-Order Summary (CSV)",
+            job_final_tot.to_csv(index=False),
+            "Job_Order_Summary.csv",
+            "text/csv",
+        )
+
 else:
     st.info(
         "👈 **Welcome!** Please upload your First Floor (FF) and Ground Floor"
-        " (GF) production Excel files in the sidebar to launch the app."
+        " (GF) production Excel files in the sidebar to launch the console."
     )
