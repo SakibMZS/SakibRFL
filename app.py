@@ -14,249 +14,85 @@ st.set_page_config(
 )
 
 # ============================================
-# PROFESSIONAL HIGH-CONTRAST LIGHT THEME
+# HIGH-CONTRAST LIGHT THEME CSS
 # ============================================
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* ===== GLOBAL ===== */
+    /* Global Light App Theme */
     .stApp {
-        background-color: #f1f5f9 !important;
+        background-color: #f8fafc !important;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #0f172a !important;
     }
-
-    /* Force readable text everywhere */
-    p, label, span, div, h1, h2, h3, h4, h5, h6, th, td, li {
+    
+    /* Universal Text Contrast Overrides */
+    p, label, span, div, h1, h2, h3, h4, h5, h6, th, td {
         color: #0f172a !important;
     }
-
-    /* ===== SIDEBAR ===== */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
-        border-right: none !important;
-    }
-    [data-testid="stSidebar"] * {
-        color: #f8fafc !important;
-    }
-    [data-testid="stSidebar"] .stRadio label,
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span {
-        color: #e2e8f0 !important;
-        font-weight: 500 !important;
-    }
-    [data-testid="stSidebar"] .stRadio > div {
-        gap: 6px;
-    }
-    [data-testid="stSidebar"] hr {
-        border-color: #334155 !important;
-        margin: 1rem 0 !important;
-    }
-    [data-testid="stSidebar"] .stButton > button {
-        background: #2563eb !important;
-        color: white !important;
-        border: none !important;
-        font-weight: 600 !important;
-        border-radius: 8px !important;
-    }
-    [data-testid="stSidebar"] .stButton > button:hover {
-        background: #1d4ed8 !important;
-    }
-
-    /* ===== MAIN CONTENT ===== */
-    .main .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 3rem !important;
-        max-width: 1400px;
-    }
-
-    /* Headers */
-    h1, h2, h3 {
-        letter-spacing: -0.025em !important;
-        font-weight: 700 !important;
-    }
-
-    /* ===== METRICS ===== */
-    [data-testid="stMetric"] {
-        background: white !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 12px !important;
-        padding: 16px 20px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-    }
-    [data-testid="stMetricLabel"] {
-        color: #64748b !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
-    }
-    [data-testid="stMetricValue"] {
+    
+    /* Dropdown & Selectbox Styles */
+    .stSelectbox div, .stMultiSelect div, .stRadio div {
+        background-color: #ffffff !important;
         color: #0f172a !important;
-        font-weight: 700 !important;
     }
-    [data-testid="stMetricDelta"] {
-        font-weight: 600 !important;
-    }
-
-    /* ===== CARDS / SETUP ===== */
-    .setup-card {
-        background: white;
-        padding: 28px 24px;
-        border-radius: 14px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.03);
-        margin-bottom: 8px;
-        transition: box-shadow 0.2s ease;
-    }
-    .setup-card:hover {
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
-    }
-    .setup-card.ff {
-        border-top: 5px solid #2563eb;
-    }
-    .setup-card.gf {
-        border-top: 5px solid #059669;
-    }
-    .setup-card h3 {
-        margin: 0 0 6px 0 !important;
-        color: #0f172a !important;
-        font-size: 1.25rem !important;
-    }
-    .setup-card p {
-        margin: 0 !important;
-        color: #64748b !important;
-        font-size: 0.95rem !important;
-    }
-
-    /* ===== FILE UPLOADER ===== */
+    
+    /* File Uploader Container Styling */
     [data-testid="stFileUploader"] {
-        background: white !important;
+        background-color: #ffffff !important;
         border: 2px dashed #94a3b8 !important;
-        border-radius: 12px !important;
-        padding: 20px !important;
+        border-radius: 10px !important;
+        padding: 16px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
     }
     [data-testid="stFileUploader"] * {
         color: #0f172a !important;
     }
     [data-testid="stFileUploader"] button {
-        background: #2563eb !important;
-        color: white !important;
+        background-color: #2563eb !important;
+        color: #ffffff !important;
         border: none !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        padding: 0.4rem 1.2rem !important;
+        border-radius: 6px !important;
     }
-    [data-testid="stFileUploader"] button:hover {
-        background: #1d4ed8 !important;
+    [data-testid="stFileUploader"] button * {
+        color: #ffffff !important;
     }
-
-    /* ===== INPUTS / SELECTS ===== */
-    .stSelectbox > div > div,
-    .stMultiSelect > div > div,
-    .stRadio > div {
-        background-color: white !important;
+    
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #f1f5f9 !important;
+        border-right: 1px solid #cbd5e1 !important;
+    }
+    [data-testid="stSidebar"] * {
         color: #0f172a !important;
-        border-radius: 8px !important;
     }
-    .stSelectbox label, .stRadio label, .stSlider label {
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #334155 !important;
         font-weight: 600 !important;
     }
-
-    /* ===== BUTTONS ===== */
-    .stButton > button {
+    
+    /* Setup Screen Card Styling */
+    .setup-card {
+        background-color: #ffffff;
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        margin-bottom: 20px;
+    }
+    .setup-card.ff { border-top: 5px solid #2563eb; }
+    .setup-card.gf { border-top: 5px solid #10b981; }
+    
+    /* Dataframe Table Container */
+    .stDataFrame {
+        background-color: #ffffff !important;
         border-radius: 8px !important;
-        font-weight: 600 !important;
-        border: none !important;
-        transition: all 0.15s ease !important;
-    }
-    .stButton > button[kind="primary"] {
-        background: #2563eb !important;
-        color: white !important;
-    }
-    .stButton > button[kind="primary"]:hover {
-        background: #1d4ed8 !important;
-        box-shadow: 0 4px 12px rgba(37,99,235,0.35) !important;
-    }
-    .stDownloadButton > button {
-        background: #0f172a !important;
-        color: white !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-    }
-    .stDownloadButton > button:hover {
-        background: #1e293b !important;
-    }
-
-    /* ===== DATAFRAMES ===== */
-    .stDataFrame, [data-testid="stDataFrame"] {
-        background: white !important;
-        border-radius: 12px !important;
         border: 1px solid #e2e8f0 !important;
-        overflow: hidden !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-    }
-    .stDataFrame th {
-        background: #f8fafc !important;
-        color: #334155 !important;
-        font-weight: 600 !important;
-    }
-
-    /* ===== DIVIDERS ===== */
-    hr {
-        border: none !important;
-        border-top: 1px solid #e2e8f0 !important;
-        margin: 1.5rem 0 !important;
-    }
-
-    /* ===== RADIO / TOGGLE ===== */
-    .stRadio > label {
-        font-weight: 600 !important;
-        color: #0f172a !important;
-    }
-    [data-testid="stToggle"] label {
-        color: #334155 !important;
-        font-weight: 500 !important;
-    }
-
-    /* ===== POPOVER ===== */
-    [data-testid="stPopover"] button {
-        background: white !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #0f172a !important;
-        border-radius: 8px !important;
-        font-weight: 500 !important;
-    }
-
-    /* ===== CAPTIONS ===== */
-    .stCaption, [data-testid="stCaptionContainer"] {
-        color: #64748b !important;
-    }
-
-    /* ===== SLIDER ===== */
-    .stSlider label {
-        color: #334155 !important;
-        font-weight: 600 !important;
-    }
-
-    /* ===== WARNING / ERROR ===== */
-    .stAlert {
-        border-radius: 10px !important;
-    }
-
-    /* ===== SECTION TITLES ===== */
-    .section-title {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 8px;
     }
     </style>
-    """,
+""",
     unsafe_allow_html=True,
 )
 
@@ -279,6 +115,7 @@ EXCEL_SIZES = [
 ]
 SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
 
+
 def extract_excel_mc_size(mc_sl, size_col_val=None):
     if pd.notna(size_col_val):
         try:
@@ -291,9 +128,11 @@ def extract_excel_mc_size(mc_sl, size_col_val=None):
             return sz
     return "Other"
 
+
 def derive_line_group(floor_code, mc_sl):
     mc_str = str(mc_sl).strip().upper()
     prefix = mc_str[0] if len(mc_str) > 0 else ""
+
     if prefix in ["A", "B"]:
         line_code = "Line A-B"
     elif prefix in ["C", "D"]:
@@ -302,7 +141,9 @@ def derive_line_group(floor_code, mc_sl):
         line_code = "Line E-F"
     else:
         line_code = "Line Other"
+
     return f"{floor_code} {line_code}"
+
 
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label):
@@ -312,22 +153,29 @@ def load_and_parse_floor_data(file_bytes, floor_label):
     date_sheets = [
         s for s in xls.sheet_names if "-" in s and ("202" in s or "203" in s)
     ]
+
     all_records = []
+
     for sheet in date_sheets:
         df = pd.read_excel(xls, sheet_name=sheet)
         df = df.dropna(how="all").reset_index(drop=True)
+
         if "MC SL" not in df.columns or "Order Name" not in df.columns:
             continue
+
         df = df[df["MC SL"].notna() & df["Order Name"].notna()].copy()
+
         for _, row in df.iterrows():
             mc_sl = str(row.get("MC SL")).strip()
             order = str(row.get("Order Name")).strip()
             item = str(row.get("Item Name", "")).strip()
+
             cust_prefix = (
                 order.split("-")[0].strip().upper() if "-" in order else order
             )
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
+
             ct = (
                 pd.to_numeric(row.get("CT"), errors="coerce")
                 if pd.notna(row.get("CT"))
@@ -343,17 +191,20 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 if pd.notna(row.get("Unit Wt"))
                 else 0.0
             )
+
             if pd.isna(ct):
                 ct = 0.0
             if pd.isna(cavity):
                 cavity = 0.0
             if pd.isna(unit_wt_kg):
                 unit_wt_kg = 0.0
+
             std_cap_shift = (
                 (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
             )
             act_cap_day_pcs = std_cap_shift * 2.0
             act_cap_day_ton = (act_cap_day_pcs * unit_wt_kg) / 1000.0
+
             demand_qty = (
                 pd.to_numeric(row.get("Demand"), errors="coerce")
                 if pd.notna(row.get("Demand"))
@@ -361,6 +212,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             )
             if pd.isna(demand_qty):
                 demand_qty = 0.0
+
             a_good = (
                 pd.to_numeric(row.get("A-Good"), errors="coerce")
                 if pd.notna(row.get("A-Good"))
@@ -375,10 +227,12 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 a_good = 0.0
             if pd.isna(a_rej):
                 a_rej = 0.0
+
             a_runtime = (
                 (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
             )
             a_prod_ton = (a_good * unit_wt_kg) / 1000.0
+
             b_good = (
                 pd.to_numeric(row.get("B-Good"), errors="coerce")
                 if pd.notna(row.get("B-Good"))
@@ -396,14 +250,17 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 b_good = 0.0
             if pd.isna(b_rej):
                 b_rej = 0.0
+
             b_runtime = (
                 (b_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
             )
             b_prod_ton = (b_good * unit_wt_kg) / 1000.0
+
             total_good = a_good + b_good
             total_rej = a_rej + b_rej
             total_runtime = a_runtime + b_runtime
             total_prod_ton = a_prod_ton + b_prod_ton
+
             all_records.append({
                 "Floor": floor_label,
                 "Line Group": line_group,
@@ -433,9 +290,11 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 "Total Runtime (Hrs)": total_runtime,
                 "Total Prod Ton": total_prod_ton,
             })
+
     df_res = pd.DataFrame(all_records)
     if df_res.empty:
         return df_res
+
     mc_totals = (
         df_res.groupby(["Floor", "Date", "Machine"])["Total Runtime (Hrs)"]
         .sum()
@@ -443,6 +302,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
         .rename(columns={"Total Runtime (Hrs)": "MC_Daily_Runtime"})
     )
     df_res = df_res.merge(mc_totals, on=["Floor", "Date", "Machine"])
+
     df_res["Runtime Weight"] = df_res.apply(
         lambda r: (
             r["Total Runtime (Hrs)"] / r["MC_Daily_Runtime"]
@@ -451,22 +311,28 @@ def load_and_parse_floor_data(file_bytes, floor_label):
         ),
         axis=1,
     )
+
     df_res["Weighted Cap Ton"] = (
         df_res["Daily Cap Ton"] * df_res["Runtime Weight"]
     )
     df_res["Weighted Cap Pcs"] = (
         df_res["Daily Cap Pcs"] * df_res["Runtime Weight"]
     )
+
     return df_res
+
 
 def consolidate_daily_machines(df_day):
     records = []
     for (floor_val, mc), group in df_day.groupby(["Floor", "Machine"]):
         orders = group["Order Name"].unique()
         items = group["Item Name"].unique()
+
         ord_name = orders[0] if len(orders) == 1 else "Mixed"
         item_name = items[0] if len(items) == 1 else "Mixed"
+
         mc_tot_runtime = group["Total Runtime (Hrs)"].sum()
+
         if mc_tot_runtime > 0:
             weighted_ct = (
                 group["CT"] * group["Total Runtime (Hrs)"]
@@ -477,20 +343,24 @@ def consolidate_daily_machines(df_day):
         else:
             weighted_ct = group["CT"].mean()
             weighted_cavity = group["Cavity"].mean()
+
         tot_a_good = group["Shift A Good"].sum()
         tot_b_good = group["Shift B Good"].sum()
         tot_good = group["Total Good"].sum()
         tot_bad = group["Total Rejections"].sum()
         a_runtime = group["Shift A Runtime"].sum()
         b_runtime = group["Shift B Runtime"].sum()
+
         cap_pcs = group["Weighted Cap Pcs"].sum()
         cap_ton = group["Weighted Cap Ton"].sum()
         prod_ton = group["Total Prod Ton"].sum()
+
         mc_size = group["MC Size"].iloc[0]
         line_grp = group["Line Group"].iloc[0]
         cust_name = (
             group["Customer"].iloc[0] if len(group["Customer"].unique()) == 1 else "Mixed"
         )
+
         records.append({
             "Floor": floor_val,
             "Line Group": line_grp,
@@ -522,17 +392,21 @@ def consolidate_daily_machines(df_day):
         })
     return pd.DataFrame(records)
 
+
 def compute_line_summary(df_subset):
     records = []
     for lg, grp in df_subset.groupby("Line Group"):
         mc_qty = grp["Machine"].nunique()
         tot_runtime = grp["Total Runtime (Hrs)"].sum()
+
         tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
         tot_prod_pcs = grp["Total Good"].sum()
         tot_cap_ton = grp["Weighted Cap Ton"].sum()
         tot_prod_ton = grp["Total Prod Ton"].sum()
+
         ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
         ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+
         records.append({
             "Line Group": lg,
             "Running MC Qty": mc_qty,
@@ -546,30 +420,41 @@ def compute_line_summary(df_subset):
         })
     return pd.DataFrame(records)
 
+
 def compute_size_summary(df_subset):
+    """Computes Machine Size Summary matching Sheet2 Excel reference standard."""
     records = []
     for sz in EXCEL_SIZES:
         grp = df_subset[df_subset["MC Size"] == sz]
         if grp.empty:
             continue
-        mc_qty = grp["Machine"].nunique()
+
+        # Cumulative machine run instances count for As-Of
+        mc_run_count = len(grp["Machine"])
+        unique_mc_qty = grp["Machine"].nunique()
         tot_runtime = grp["Total Runtime (Hrs)"].sum()
+
         if tot_runtime > 0:
             avg_ct = (
                 grp["CT"] * grp["Total Runtime (Hrs)"]
             ).sum() / tot_runtime
         else:
             avg_ct = grp["CT"].mean()
-        avg_run_hrs = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+
+        avg_run_hrs = tot_runtime / unique_mc_qty if unique_mc_qty > 0 else 0.0
+
         tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
         tot_prod_pcs = grp["Total Good"].sum()
         tot_cap_ton = grp["Weighted Cap Ton"].sum()
         tot_prod_ton = grp["Total Prod Ton"].sum()
+
         ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
         ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+
         records.append({
             "MC Size": sz,
-            "MC QTY": mc_qty,
+            "MC QTY": unique_mc_qty,
+            "Run Instances": mc_run_count,
             "CT Average": round(avg_ct, 2),
             "Run Hour Avg": round(avg_run_hrs, 2),
             "Total Cap (Pcs)": round(tot_cap_pcs, 2),
@@ -579,9 +464,11 @@ def compute_size_summary(df_subset):
             "Prod (Ton)": round(tot_prod_ton, 2),
             "Ton Ach %": f"{ach_ton:.2f}%",
         })
+
     grp_other = df_subset[~df_subset["MC Size"].isin(EXCEL_SIZES)]
     if not grp_other.empty:
-        mc_qty = grp_other["Machine"].nunique()
+        mc_run_count = len(grp_other["Machine"])
+        unique_mc_qty = grp_other["Machine"].nunique()
         tot_runtime = grp_other["Total Runtime (Hrs)"].sum()
         avg_ct = (
             (grp_other["CT"] * grp_other["Total Runtime (Hrs)"]).sum()
@@ -589,16 +476,19 @@ def compute_size_summary(df_subset):
             if tot_runtime > 0
             else grp_other["CT"].mean()
         )
-        avg_run_hrs = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+        avg_run_hrs = tot_runtime / unique_mc_qty if unique_mc_qty > 0 else 0.0
         tot_cap_pcs = grp_other["Weighted Cap Pcs"].sum()
         tot_prod_pcs = grp_other["Total Good"].sum()
         tot_cap_ton = grp_other["Weighted Cap Ton"].sum()
         tot_prod_ton = grp_other["Total Prod Ton"].sum()
+
         ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
         ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+
         records.append({
             "MC Size": "Other",
-            "MC QTY": mc_qty,
+            "MC QTY": unique_mc_qty,
+            "Run Instances": mc_run_count,
             "CT Average": round(avg_ct, 2),
             "Run Hour Avg": round(avg_run_hrs, 2),
             "Total Cap (Pcs)": round(tot_cap_pcs, 2),
@@ -610,11 +500,14 @@ def compute_size_summary(df_subset):
         })
     return pd.DataFrame(records)
 
+
 def add_total_row(df, label_col, sum_cols, avg_cols):
     if df.empty:
         return df
+
     res_df = df.copy()
     tot_row = {}
+
     for c in df.columns:
         if c == label_col:
             tot_row[c] = "TOTAL / OVERALL"
@@ -626,34 +519,41 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
             tot_row[c] = round(val, 2)
         else:
             tot_row[c] = "-"
+
     if "Total Cap (Pcs)" in df.columns and "Total Prod (Pcs)" in df.columns:
         tc_p = pd.to_numeric(df["Total Cap (Pcs)"], errors="coerce").sum()
         tp_p = pd.to_numeric(df["Total Prod (Pcs)"], errors="coerce").sum()
         ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
         tot_row["Pcs Ach %"] = f"{ach:.2f}%"
+
     if "Cap (Ton)" in df.columns and "Prod (Ton)" in df.columns:
         tc_t = pd.to_numeric(df["Cap (Ton)"], errors="coerce").sum()
         tp_t = pd.to_numeric(df["Prod (Ton)"], errors="coerce").sum()
         ach = (tp_t / tc_t * 100) if tc_t > 0 else 0.0
         tot_row["Ton Ach %"] = f"{ach:.2f}%"
+
     if "Cap (Pcs)" in df.columns and "Prod (Pcs)" in df.columns:
         tc_p = pd.to_numeric(df["Cap (Pcs)"], errors="coerce").sum()
         tp_p = pd.to_numeric(df["Prod (Pcs)"], errors="coerce").sum()
         ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
         tot_row["Pcs Ach %"] = f"{ach:.2f}%"
+
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
 
+
 def column_visibility_selector(df, key_prefix=""):
-    """Interactive column selector allowing users to choose visible columns."""
+    """Interactive column selector button allowing user column accessibility."""
     all_cols = df.columns.tolist()
     default_cols = [
         c for c in all_cols if c not in ["Entry Count", "Is Mixed"]
     ]
+
     if f"{key_prefix}_visible_cols" not in st.session_state:
         st.session_state[f"{key_prefix}_visible_cols"] = default_cols
-    with st.popover("👁️ Select Visible Columns"):
-        st.caption("Check/uncheck columns to customize display:")
+
+    with st.popover("👁️ Columns"):
+        st.caption("Check or uncheck columns to customize active table view:")
         visible = []
         for col in all_cols:
             checked = st.checkbox(
@@ -668,8 +568,10 @@ def column_visibility_selector(df, key_prefix=""):
         ):
             st.session_state[f"{key_prefix}_visible_cols"] = visible
             st.rerun()
+
     selected = st.session_state[f"{key_prefix}_visible_cols"]
     return [c for c in selected if c in df.columns]
+
 
 # ============================================
 # SESSION STATE INITIALIZATION
@@ -678,25 +580,19 @@ if "app_launched" not in st.session_state:
     st.session_state["app_launched"] = False
 
 # ============================================
-# LANDING SCREEN (SETUP SCREEN)
+# LANDING SETUP SCREEN
 # ============================================
 if not st.session_state["app_launched"]:
-    st.markdown("## 🏭 Plastic-3 Console Setup")
-    st.markdown(
-        '<p style="color:#64748b; font-size:1.05rem; margin-top:-8px;">Upload your production entry files to launch the operations dashboard.</p>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("## 🏭 **PLASTIC-3 CONSOLE SETUP**")
+    st.markdown("##### Upload your production entry files to launch.")
     st.divider()
 
-    col1, col2 = st.columns(2, gap="large")
+    col1, col2 = st.columns(2)
     with col1:
         st.markdown(
-            """
-            <div class="setup-card ff">
-                <h3>🏢 First Floor (FF)</h3>
-                <p>Select the First Floor Excel production file</p>
-            </div>
-            """,
+            '<div class="setup-card ff"><h3>🏢 First Floor (FF)</h3><p'
+            ' style="color:#64748b !important;">Select the FF Excel production'
+            " file</p></div>",
             unsafe_allow_html=True,
         )
         ff_file = st.file_uploader(
@@ -704,14 +600,12 @@ if not st.session_state["app_launched"]:
             type=["xlsx", "xls"],
             key="init_ff",
         )
+
     with col2:
         st.markdown(
-            """
-            <div class="setup-card gf">
-                <h3>🏬 Ground Floor (GF)</h3>
-                <p>Select the Ground Floor Excel production file</p>
-            </div>
-            """,
+            '<div class="setup-card gf"><h3>🏬 Ground Floor (GF)</h3><p'
+            ' style="color:#64748b !important;">Select the GF Excel production'
+            " file</p></div>",
             unsafe_allow_html=True,
         )
         gf_file = st.file_uploader(
@@ -721,6 +615,7 @@ if not st.session_state["app_launched"]:
         )
 
     st.divider()
+
     c_btn, _ = st.columns([1, 3])
     with c_btn:
         if st.button(
@@ -733,6 +628,7 @@ if not st.session_state["app_launched"]:
                     st.session_state["ff_bytes"] = ff_file.getvalue()
                 if gf_file is not None:
                     st.session_state["gf_bytes"] = gf_file.getvalue()
+
                 st.session_state["app_launched"] = True
                 st.rerun()
 
@@ -740,26 +636,31 @@ if not st.session_state["app_launched"]:
 # MAIN DASHBOARD CONSOLE
 # ============================================
 else:
-    # Sidebar Navigation
+    # Sidebar
     with st.sidebar:
-        st.markdown("### 🏭 Plastic-3 Console")
+        st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
         st.caption("Active Production Session")
         st.divider()
+
         nav_choice = st.radio(
-            "📍 Select Module",
+            "📍 **Select Module:**",
             [
                 "📅 Daily Data",
                 "📊 As of Data (MTD)",
                 "🌗 Shiftwise Data",
             ],
         )
+
         st.divider()
+
         hide_zero_runs = st.toggle(
             "🚫 Hide Non-Running Machines",
             value=True,
             help="Filters out idle machines with zero production",
         )
+
         st.divider()
+
         if st.button("⚙️ Change Uploaded Files", use_container_width=True):
             st.session_state["app_launched"] = False
             st.session_state.pop("ff_bytes", None)
@@ -768,10 +669,12 @@ else:
 
     # Parse Loaded Binary Bytes
     all_floor_data = []
+
     if "ff_bytes" in st.session_state:
         df_ff = load_and_parse_floor_data(st.session_state["ff_bytes"], "FF")
         if not df_ff.empty:
             all_floor_data.append(df_ff)
+
     if "gf_bytes" in st.session_state:
         df_gf = load_and_parse_floor_data(st.session_state["gf_bytes"], "GF")
         if not df_gf.empty:
@@ -779,7 +682,8 @@ else:
 
     if not all_floor_data:
         st.error(
-            "No valid data parsed. Click '⚙️ Change Uploaded Files' in the sidebar."
+            "No valid data parsed. Click '⚙️ Change Uploaded Files' in"
+            " sidebar."
         )
     else:
         df_data_raw = pd.concat(all_floor_data, ignore_index=True)
@@ -788,24 +692,31 @@ else:
         col_hdr1, col_hdr2 = st.columns([3, 2])
         with col_hdr1:
             st.markdown(f"## {nav_choice}")
-            st.caption("Plastic-3 Production Optimization & Live Monitoring Panel")
+            st.caption(
+                "Plastic-3 Production Optimization & Live Monitoring Panel"
+            )
+
         with col_hdr2:
             floor_choice = st.radio(
-                "🏢 Floor View",
+                "🏢 Floor View Toggle:",
                 ["ALL FLOORS", "FF", "GF"],
                 horizontal=True,
                 key="floor_toggle",
             )
+
         st.divider()
 
         # Handle Missing File Prompts
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
             st.warning(
-                "⚠️ **First Floor (FF) file is not uploaded.** Please click '⚙️ Change Uploaded Files' in the sidebar to upload the FF file."
+                "⚠️ **First Floor (FF) file is not uploaded.** Please click '⚙️"
+                " Change Uploaded Files' in the sidebar to upload the FF file."
             )
         elif floor_choice == "GF" and "gf_bytes" not in st.session_state:
             st.warning(
-                "⚠️ **Ground Floor (GF) file is not uploaded.** Please click '⚙️ Change Uploaded Files' in the sidebar to upload the GF file."
+                "⚠️ **Ground Floor (GF) file is not uploaded.** Please click"
+                " '⚙️ Change Uploaded Files' in the sidebar to upload the GF"
+                " file."
             )
         else:
             if floor_choice != "ALL FLOORS":
@@ -829,8 +740,9 @@ else:
             if nav_choice == "📅 Daily Data":
                 all_dates = sorted(list(df_active["Date"].unique()))
                 selected_date = st.selectbox(
-                    "📅 Select Operational Date", all_dates
+                    "📅 Select Operational Date:", all_dates
                 )
+
                 df_daily_raw = df_active[
                     df_active["Date"] == selected_date
                 ].copy()
@@ -842,6 +754,7 @@ else:
                 tot_cap_pcs = df_daily["Weighted Cap Pcs"].sum()
                 tot_rej = df_daily["Total Rejections"].sum()
                 tot_time = df_daily["Total Runtime (Hrs)"].sum()
+
                 ton_ach = (
                     (tot_prod_ton / tot_cap_ton * 100)
                     if tot_cap_ton > 0
@@ -878,8 +791,9 @@ else:
                 )
 
                 st.divider()
+
                 daily_mode = st.radio(
-                    "Daily View Mode",
+                    "Daily View Mode:",
                     [
                         "📊 Linewise",
                         "🏭 MC Wise",
@@ -905,6 +819,7 @@ else:
                         ],
                         [],
                     )
+
                     v_cols = column_visibility_selector(
                         df_line_day_tot, "daily_line"
                     )
@@ -913,6 +828,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export Daily Line Summary (CSV)",
                         df_line_day_tot[v_cols].to_csv(index=False),
@@ -935,6 +851,7 @@ else:
                         ],
                         ["CT", "Cavity"],
                     )
+
                     v_cols = column_visibility_selector(
                         df_daily_totals, "daily_mc"
                     )
@@ -943,6 +860,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export Daily Machine Summary (CSV)",
                         df_daily_totals[v_cols].to_csv(index=False),
@@ -950,22 +868,25 @@ else:
                         "text/csv",
                     )
 
-                    # Interactive Pop-Up Inspector for "Mixed" Machine Entries
+                    # Pop-Up Modal Inspector for "Mixed" Machine Entries
                     mixed_mcs = df_daily[df_daily["Is Mixed"]][
                         "Machine"
                     ].tolist()
                     if mixed_mcs:
                         st.divider()
                         st.markdown(
-                            "#### 🔍 Inspect Mixed Machine Breakdown (Inside Story)"
+                            "#### 🔍 Inspect Mixed Machine Breakdown (Inside"
+                            " Story)"
                         )
                         sel_mc = st.selectbox(
-                            "Select a Mixed Machine ID to view its mold run breakdown",
+                            "Select a Mixed Machine ID to view its mold run"
+                            " breakdown:",
                             mixed_mcs,
                         )
                         sub_raw = df_daily_raw[
                             df_daily_raw["Machine"] == sel_mc
                         ].copy()
+
                         sub_raw["Daily Cap (Pcs)"] = sub_raw[
                             "Weighted Cap Pcs"
                         ].round(2)
@@ -975,6 +896,7 @@ else:
                         sub_raw["Runtime (Hrs)"] = sub_raw[
                             "Total Runtime (Hrs)"
                         ].round(2)
+
                         st.dataframe(
                             sub_raw[[
                                 "Floor",
@@ -1007,6 +929,7 @@ else:
                         ],
                         ["CT Average", "Run Hour Avg"],
                     )
+
                     v_cols = column_visibility_selector(
                         df_size_day_tot, "daily_size"
                     )
@@ -1015,6 +938,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export Daily Size Summary (CSV)",
                         df_size_day_tot[v_cols].to_csv(index=False),
@@ -1024,7 +948,14 @@ else:
 
                 elif daily_mode == "📦 Job-Order Wise (Daily Active)":
                     st.markdown("### 📦 Active Orders Run On Selected Date")
-                    # Aggregating daily active orders with Machine Positions list
+
+                    # Search Input Box for Daily Job Orders
+                    search_term = st.text_input(
+                        "🔍 Search Job Order or Item Name:",
+                        "",
+                        placeholder="Type order name or item description...",
+                    )
+
                     records_job_day = []
                     for (
                         cust,
@@ -1039,8 +970,10 @@ else:
                         cap_ton_val = grp["Weighted Cap Ton"].sum()
                         cap_pcs_val = grp["Weighted Cap Pcs"].sum()
                         tot_runtime_val = grp["Total Runtime (Hrs)"].sum()
+
                         mc_count = grp["Machine"].nunique()
                         mc_pos = ", ".join(sorted(grp["Machine"].unique()))
+
                         ach_ton_val = (
                             (tot_prod_ton_val / cap_ton_val * 100)
                             if cap_ton_val > 0
@@ -1051,6 +984,7 @@ else:
                             if cap_pcs_val > 0
                             else 0.0
                         )
+
                         records_job_day.append({
                             "Customer": cust,
                             "Order Name": ord_name,
@@ -1068,7 +1002,17 @@ else:
                             "Daily Util (Ton %)": f"{ach_ton_val:.2f}%",
                             "Daily Runtime (Hrs)": round(tot_runtime_val, 2),
                         })
+
                     job_day = pd.DataFrame(records_job_day)
+
+                    if search_term.strip():
+                        term = search_term.strip().lower()
+                        job_day = job_day[
+                            job_day["Order Name"].str.lower().str.contains(term)
+                            | job_day["Item Name"].str.lower().str.contains(term)
+                            | job_day["Customer"].str.lower().str.contains(term)
+                        ]
+
                     job_day_tot = add_total_row(
                         job_day,
                         "Order Name",
@@ -1085,6 +1029,7 @@ else:
                         ],
                         [],
                     )
+
                     v_cols = column_visibility_selector(
                         job_day_tot, "daily_job"
                     )
@@ -1093,6 +1038,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export Daily Active Job Summary (CSV)",
                         job_day_tot[v_cols].to_csv(index=False),
@@ -1105,11 +1051,26 @@ else:
             # ============================================
             elif nav_choice == "📊 As of Data (MTD)":
                 all_dates = sorted(list(df_active["Date"].unique()))
-                as_of_date = st.select_slider(
-                    "📅 Filter Cumulative Data Up To Date",
-                    options=all_dates,
-                    value=all_dates[-1],
+
+                # Auto-Detect Range: 1st of Month to Latest Date in Excel
+                latest_date_str = all_dates[-1]
+                latest_dt = pd.to_datetime(latest_date_str, format="%d-%m-%Y", errors="coerce")
+                if pd.notna(latest_dt):
+                    start_date_str = f"01-{latest_dt.month:02d}-{latest_dt.year}"
+                else:
+                    start_date_str = all_dates[0]
+
+                st.markdown(
+                    f"### 📊 As-Of Production Period: **{start_date_str}** to"
+                    f" **{latest_date_str}**"
                 )
+
+                as_of_date = st.select_slider(
+                    "📅 Adjust As-Of Cutoff Date:",
+                    options=all_dates,
+                    value=latest_date_str,
+                )
+
                 df_mtd = df_active[df_active["Date"] <= as_of_date].copy()
 
                 tot_prod = df_mtd["Total Prod Ton"].sum()
@@ -1138,8 +1099,9 @@ else:
                 )
 
                 st.divider()
+
                 mtd_mode = st.radio(
-                    "As-Of View Mode",
+                    "As-Of View Mode:",
                     [
                         "📊 Linewise",
                         "📏 Sizewise",
@@ -1166,6 +1128,7 @@ else:
                         ],
                         [],
                     )
+
                     v_cols = column_visibility_selector(
                         df_line_mtd_tot, "mtd_line"
                     )
@@ -1174,6 +1137,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export As-Of Line Summary (CSV)",
                         df_line_mtd_tot[v_cols].to_csv(index=False),
@@ -1191,6 +1155,7 @@ else:
                         "MC Size",
                         [
                             "MC QTY",
+                            "Run Instances",
                             "Total Cap (Pcs)",
                             "Total Prod (Pcs)",
                             "Cap (Ton)",
@@ -1198,6 +1163,7 @@ else:
                         ],
                         ["CT Average", "Run Hour Avg"],
                     )
+
                     v_cols = column_visibility_selector(
                         df_size_mtd_tot, "mtd_size"
                     )
@@ -1206,6 +1172,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export As-Of Size Summary (CSV)",
                         df_size_mtd_tot[v_cols].to_csv(index=False),
@@ -1215,20 +1182,31 @@ else:
 
                 elif mtd_mode == "📦 Job-Order Wise (Cumulative)":
                     st.markdown(
-                        f"### 📦 Master Order Completion Summary (As of {as_of_date})"
+                        "### 📦 Master Order Completion Summary (As of"
+                        f" {as_of_date})"
                     )
+
+                    # Search Input Box for Cumulative Job Orders
+                    search_term_mtd = st.text_input(
+                        "🔍 Search Cumulative Job Order or Item Name:",
+                        "",
+                        placeholder="Type order name or item description...",
+                    )
+
                     cust_list = ["ALL CUSTOMERS"] + sorted(
                         list(df_mtd["Customer"].unique())
                     )
                     selected_cust = st.selectbox(
-                        "Select Customer Account", cust_list
+                        "Select Customer Account:", cust_list
                     )
+
                     if selected_cust == "ALL CUSTOMERS":
                         df_cust = df_mtd.copy()
                     else:
                         df_cust = df_mtd[
                             df_mtd["Customer"] == selected_cust
                         ].copy()
+
                     job_agg = (
                         df_cust.groupby(
                             ["Customer", "Order Name", "Item Name"]
@@ -1243,12 +1221,22 @@ else:
                         })
                         .reset_index()
                     )
+
                     job_agg["Due Production"] = (
                         job_agg["Demand Qty"] - job_agg["Total Good"]
                     ).apply(lambda x: max(0.0, x))
                     job_agg["Completion %"] = (
                         job_agg["Total Good"] / job_agg["Demand Qty"] * 100
                     ).apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "0.00%")
+
+                    if search_term_mtd.strip():
+                        term = search_term_mtd.strip().lower()
+                        job_agg = job_agg[
+                            job_agg["Order Name"].str.lower().str.contains(term)
+                            | job_agg["Item Name"].str.lower().str.contains(term)
+                            | job_agg["Customer"].str.lower().str.contains(term)
+                        ]
+
                     job_agg_tot = add_total_row(
                         job_agg,
                         "Order Name",
@@ -1262,6 +1250,7 @@ else:
                         ],
                         [],
                     )
+
                     v_cols = column_visibility_selector(
                         job_agg_tot, "mtd_job"
                     )
@@ -1270,6 +1259,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export Master Job Summary (CSV)",
                         job_agg_tot[v_cols].to_csv(index=False),
@@ -1282,7 +1272,7 @@ else:
             # ============================================
             elif nav_choice == "🌗 Shiftwise Data":
                 shift_mode = st.radio(
-                    "Shiftwise Mode",
+                    "Shiftwise Mode:",
                     [
                         "📅 Daily Shiftwise",
                         "📊 As-Of Cumulative Shiftwise",
@@ -1294,6 +1284,7 @@ else:
                 a_good = df_active["Shift A Good"].sum()
                 a_rej = df_active["Shift A Rej"].sum()
                 a_hrs = df_active["Shift A Runtime"].sum()
+
                 b_ton = df_active["Shift B Prod Ton"].sum()
                 b_good = df_active["Shift B Good"].sum()
                 b_rej = df_active["Shift B Rej"].sum()
@@ -1308,6 +1299,7 @@ else:
                         f"{int(a_good):,} Pcs",
                         f"Rejections: {int(a_rej):,}",
                     )
+
                 with c2:
                     st.markdown("#### 🌙 Shift B (Night Shift)")
                     st.metric("Night Shift Tonnage", f"{b_ton:.2f} T")
@@ -1332,6 +1324,7 @@ else:
                         .sum()
                         .reset_index()
                     )
+
                     shift_daily_tot = add_total_row(
                         shift_daily,
                         "Date",
@@ -1343,6 +1336,7 @@ else:
                         ],
                         [],
                     )
+
                     v_cols = column_visibility_selector(
                         shift_daily_tot, "daily_shift"
                     )
@@ -1351,6 +1345,7 @@ else:
                         use_container_width=True,
                         hide_index=True,
                     )
+
                     st.download_button(
                         "📥 Export Daily Shiftwise Log (CSV)",
                         shift_daily_tot[v_cols].to_csv(index=False),
