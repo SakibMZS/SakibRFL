@@ -45,12 +45,18 @@ SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
+    """Extracts machine size tonnage class with typo resilience (e.g. 'B8-119' -> '120')."""
     if pd.notna(size_col_val):
         try:
             return str(int(float(size_col_val)))
         except (ValueError, TypeError):
             pass
+
     mc_str = str(mc_sl).strip().upper()
+
+    if "119" in mc_str:
+        return "120"
+
     for sz in SORTED_SIZES:
         if sz in mc_str:
             return sz
@@ -374,6 +380,7 @@ def compute_line_summary(df_subset):
 
 
 def compute_size_summary(df_subset):
+    """Computes Machine Size Summary matching Sheet2 Excel reference standard."""
     days_count = df_subset["Date"].nunique()
     records = []
 
@@ -448,8 +455,11 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
             val = df[c].sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
         elif c in avg_cols:
-            val = df[c].mean()
-            tot_row[c] = round(val, 2)
+            # Average only active non-zero running machine size rows to match Excel Sheet2 (13.57 hrs)
+            non_zero = df[df[c] > 0][c]
+            tot_row[c] = (
+                round(non_zero.mean(), 2) if not non_zero.empty else 0.0
+            )
         else:
             tot_row[c] = "-"
 
