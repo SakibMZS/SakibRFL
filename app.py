@@ -20,80 +20,505 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    /* =========================================================
+       PREMIUM PLASTIC-3 CONSOLE — FRONTEND ONLY
+       No application/data/logic rules are changed here.
+       ========================================================= */
 
-    /* Global Light App Theme */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --bg: #eef3f8;
+        --surface: #ffffff;
+        --surface-soft: #f7faff;
+        --surface-muted: #f1f5f9;
+        --text: #0f172a;
+        --text-soft: #475569;
+        --text-muted: #64748b;
+        --border: #dbe4ee;
+        --border-strong: #c7d3e0;
+        --blue: #2563eb;
+        --blue-dark: #1d4ed8;
+        --blue-soft: #eff6ff;
+        --green: #059669;
+        --green-soft: #ecfdf5;
+        --amber: #d97706;
+        --amber-soft: #fffbeb;
+        --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+        --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.08);
+        --radius: 14px;
+    }
+
+    /* ---------- App canvas ---------- */
     .stApp {
-        background-color: #f8fafc !important;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        color: #0f172a !important;
+        background:
+            radial-gradient(circle at 10% 0%, rgba(37,99,235,.07), transparent 28%),
+            radial-gradient(circle at 95% 8%, rgba(16,185,129,.055), transparent 25%),
+            linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%) !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        color: var(--text) !important;
     }
-    
-    /* Universal Text Contrast Overrides */
-    p, label, span, div, h1, h2, h3, h4, h5, h6, th, td {
-        color: #0f172a !important;
+
+    .stApp, .stApp * {
+        box-sizing: border-box;
     }
-    
-    /* Dropdown & Selectbox Styles */
-    .stSelectbox div, .stMultiSelect div, .stRadio div {
-        background-color: #ffffff !important;
-        color: #0f172a !important;
+
+    /* ---------- Global typography / visibility ---------- */
+    .stApp p,
+    .stApp label,
+    .stApp span,
+    .stApp div,
+    .stApp h1,
+    .stApp h2,
+    .stApp h3,
+    .stApp h4,
+    .stApp h5,
+    .stApp h6,
+    .stApp th,
+    .stApp td,
+    .stApp small {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
-    
-    /* File Uploader Container Styling */
-    [data-testid="stFileUploader"] {
-        background-color: #ffffff !important;
-        border: 2px dashed #94a3b8 !important;
-        border-radius: 10px !important;
-        padding: 16px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+
+    .stApp p,
+    .stApp label,
+    .stApp h1,
+    .stApp h2,
+    .stApp h3,
+    .stApp h4,
+    .stApp h5,
+    .stApp h6 {
+        color: var(--text) !important;
     }
-    [data-testid="stFileUploader"] * {
-        color: #0f172a !important;
+
+    .stApp [data-testid="stCaptionContainer"],
+    .stApp [data-testid="stCaptionContainer"] * {
+        color: var(--text-muted) !important;
     }
-    [data-testid="stFileUploader"] button {
-        background-color: #2563eb !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 6px !important;
+
+    .stApp hr {
+        border: 0 !important;
+        border-top: 1px solid var(--border) !important;
+        margin: 1.15rem 0 !important;
     }
-    [data-testid="stFileUploader"] button * {
-        color: #ffffff !important;
+
+    /* ---------- Main content spacing ---------- */
+    .block-container {
+        max-width: 1540px !important;
+        padding-top: 2rem !important;
+        padding-bottom: 3rem !important;
+        padding-left: 2.25rem !important;
+        padding-right: 2.25rem !important;
     }
-    
-    /* Sidebar Styling */
+
+    /* ---------- Sidebar ---------- */
     [data-testid="stSidebar"] {
-        background-color: #f1f5f9 !important;
-        border-right: 1px solid #cbd5e1 !important;
+        background:
+            linear-gradient(180deg, #f8fbff 0%, #edf3f9 58%, #e9f1f8 100%) !important;
+        border-right: 1px solid var(--border) !important;
+        box-shadow: 6px 0 24px rgba(15, 23, 42, 0.045) !important;
     }
+
+    [data-testid="stSidebar"] > div:first-child {
+        padding-top: 1.5rem !important;
+    }
+
     [data-testid="stSidebar"] * {
-        color: #0f172a !important;
+        color: var(--text) !important;
     }
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
+
+    [data-testid="stSidebar"] h3 {
+        font-weight: 800 !important;
+        letter-spacing: -0.025em !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
+        color: var(--text-muted) !important;
+    }
+
+    [data-testid="stSidebar"] label {
         color: #334155 !important;
         font-weight: 600 !important;
     }
-    
-    /* Setup Screen Card Styling */
-    .setup-card {
-        background-color: #ffffff;
-        padding: 24px;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-        margin-bottom: 20px;
+
+    /* ---------- Headers ---------- */
+    .stApp h1 {
+        font-size: 2rem !important;
+        line-height: 1.15 !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.04em !important;
     }
-    .setup-card.ff { border-top: 5px solid #2563eb; }
-    .setup-card.gf { border-top: 5px solid #10b981; }
-    
-    /* Dataframe Table Container */
-    .stDataFrame {
-        background-color: #ffffff !important;
+
+    .stApp h2 {
+        font-weight: 800 !important;
+        letter-spacing: -0.035em !important;
+    }
+
+    .stApp h3 {
+        font-weight: 750 !important;
+        letter-spacing: -0.025em !important;
+    }
+
+    /* ---------- Cards / setup panels ---------- */
+    .setup-card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
+        padding: 1.35rem 1.4rem !important;
+        border-radius: var(--radius) !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: var(--shadow-sm) !important;
+        margin-bottom: 1rem !important;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+    .setup-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md) !important;
+        border-color: #bfd0e3 !important;
+    }
+
+    .setup-card::after {
+        content: "";
+        position: absolute;
+        top: -55px;
+        right: -45px;
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: rgba(37,99,235,.055);
+        pointer-events: none;
+    }
+
+    .setup-card.ff {
+        border-top: 4px solid var(--blue) !important;
+    }
+
+    .setup-card.gf {
+        border-top: 4px solid var(--green) !important;
+    }
+
+    /* ---------- Inputs / selectboxes / multiselects ---------- */
+    [data-baseweb="select"] > div {
+        background: #ffffff !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border-strong) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 2px rgba(15,23,42,.025) !important;
+    }
+
+    [data-baseweb="select"] > div:hover {
+        border-color: #93b4df !important;
+    }
+
+    [data-baseweb="select"] input,
+    [data-baseweb="select"] span,
+    [data-baseweb="select"] div {
+        color: var(--text) !important;
+    }
+
+    [data-baseweb="popover"],
+    [data-baseweb="menu"] {
+        background: #ffffff !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: var(--shadow-md) !important;
+        border-radius: 10px !important;
+    }
+
+    [role="option"] {
+        color: var(--text) !important;
+        background: #ffffff !important;
+    }
+
+    [role="option"]:hover,
+    [aria-selected="true"] {
+        background: var(--blue-soft) !important;
+        color: var(--blue-dark) !important;
+    }
+
+    [data-testid="stTextInput"] input,
+    [data-testid="stNumberInput"] input,
+    [data-testid="stDateInput"] input {
+        background: #ffffff !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border-strong) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 2px rgba(15,23,42,.025) !important;
+    }
+
+    [data-testid="stTextInput"] input:focus,
+    [data-testid="stNumberInput"] input:focus,
+    [data-testid="stDateInput"] input:focus {
+        border-color: var(--blue) !important;
+        box-shadow: 0 0 0 3px rgba(37,99,235,.12) !important;
+    }
+
+    /* ---------- Buttons: unmistakably buttons ---------- */
+    .stButton > button,
+    .stDownloadButton > button,
+    [data-testid="stDownloadButton"] button {
+        min-height: 2.55rem !important;
+        border-radius: 9px !important;
+        border: 1px solid #cbd5e1 !important;
+        background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+        color: #0f172a !important;
+        font-weight: 650 !important;
+        letter-spacing: -0.01em !important;
+        box-shadow: 0 2px 5px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.8) !important;
+        transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease, background .14s ease !important;
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover,
+    [data-testid="stDownloadButton"] button:hover {
+        transform: translateY(-1px) !important;
+        border-color: #94a3b8 !important;
+        box-shadow: 0 6px 14px rgba(15,23,42,.11) !important;
+        background: linear-gradient(180deg, #ffffff 0%, #e8eef5 100%) !important;
+        color: #0f172a !important;
+    }
+
+    .stButton > button:active,
+    .stDownloadButton > button:active,
+    [data-testid="stDownloadButton"] button:active {
+        transform: translateY(0) !important;
+    }
+
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+        border-color: #1d4ed8 !important;
+        color: #ffffff !important;
+        box-shadow: 0 7px 16px rgba(37,99,235,.24) !important;
+    }
+
+    .stButton > button[kind="primary"] *,
+    .stButton > button[data-testid="baseButton-primary"] * {
+        color: #ffffff !important;
+    }
+
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-testid="baseButton-primary"]:hover {
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+        box-shadow: 0 9px 20px rgba(37,99,235,.30) !important;
+    }
+
+    /* Download buttons get a subtle positive/action treatment */
+    .stDownloadButton > button,
+    [data-testid="stDownloadButton"] button {
+        border-color: #bfdbfe !important;
+        background: linear-gradient(135deg, #f8fbff 0%, #eff6ff 100%) !important;
+        color: #1d4ed8 !important;
+    }
+
+    .stDownloadButton > button *,
+    [data-testid="stDownloadButton"] button * {
+        color: #1d4ed8 !important;
+    }
+
+    /* ---------- File uploader ---------- */
+    [data-testid="stFileUploader"] {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
+        border: 1px dashed #9fb3c8 !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    [data-testid="stFileUploader"] * {
+        color: var(--text) !important;
+    }
+
+    [data-testid="stFileUploader"] section {
+        background: transparent !important;
+    }
+
+    [data-testid="stFileUploader"] button {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+        color: #ffffff !important;
+        border: 0 !important;
         border-radius: 8px !important;
-        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 5px 12px rgba(37,99,235,.20) !important;
+    }
+
+    [data-testid="stFileUploader"] button * {
+        color: #ffffff !important;
+    }
+
+    /* ---------- Metrics ---------- */
+    [data-testid="stMetric"] {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 13px !important;
+        padding: 1rem 1.1rem !important;
+        box-shadow: var(--shadow-sm) !important;
+        min-height: 112px !important;
+    }
+
+    [data-testid="stMetricLabel"] *,
+    [data-testid="stMetricLabel"] {
+        color: var(--text-muted) !important;
+        font-weight: 600 !important;
+    }
+
+    [data-testid="stMetricValue"] *,
+    [data-testid="stMetricValue"] {
+        color: var(--text) !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.035em !important;
+    }
+
+    [data-testid="stMetricDelta"] *,
+    [data-testid="stMetricDelta"] {
+        color: #475569 !important;
+        font-weight: 600 !important;
+    }
+
+    /* ---------- Radio controls: clean segmented navigation ---------- */
+    [data-testid="stRadio"] > div[role="radiogroup"] {
+        gap: 0.35rem !important;
+        padding: 0.3rem !important;
+        background: #e8eef5 !important;
+        border: 1px solid #d5dfe9 !important;
+        border-radius: 11px !important;
+        width: fit-content !important;
+        max-width: 100% !important;
+    }
+
+    [data-testid="stRadio"] > div[role="radiogroup"] label {
+        background: transparent !important;
+        border-radius: 8px !important;
+        padding: .45rem .8rem !important;
+        transition: all .15s ease !important;
+    }
+
+    [data-testid="stRadio"] > div[role="radiogroup"] label:hover {
+        background: rgba(255,255,255,.72) !important;
+    }
+
+    [data-testid="stRadio"] > div[role="radiogroup"] label:has(input:checked) {
+        background: #ffffff !important;
+        box-shadow: 0 2px 7px rgba(15,23,42,.10) !important;
+    }
+
+    [data-testid="stRadio"] > div[role="radiogroup"] label p,
+    [data-testid="stRadio"] > div[role="radiogroup"] label span {
+        color: #334155 !important;
+        font-weight: 650 !important;
+    }
+
+    [data-testid="stRadio"] > div[role="radiogroup"] label:has(input:checked) p,
+    [data-testid="stRadio"] > div[role="radiogroup"] label:has(input:checked) span {
+        color: #1d4ed8 !important;
+    }
+
+    /* ---------- Toggle ---------- */
+    [data-testid="stToggle"] label {
+        color: #334155 !important;
+        font-weight: 600 !important;
+    }
+
+    /* ---------- Dataframes ---------- */
+    [data-testid="stDataFrame"] {
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        box-shadow: var(--shadow-sm) !important;
+        background: #ffffff !important;
+    }
+
+    [data-testid="stDataFrame"] > div {
+        background: #ffffff !important;
+    }
+
+    /* ---------- Popover / column selector ---------- */
+    [data-testid="stPopover"] > button {
+        border-radius: 9px !important;
+        background: #ffffff !important;
+        color: #334155 !important;
+        border: 1px solid var(--border-strong) !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 5px rgba(15,23,42,.06) !important;
+    }
+
+    [data-testid="stPopover"] > button * {
+        color: #334155 !important;
+    }
+
+    /* ---------- Alerts ---------- */
+    [data-testid="stAlert"] {
+        border-radius: 11px !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    [data-testid="stAlert"] * {
+        color: var(--text) !important;
+    }
+
+    /* ---------- Expander ---------- */
+    [data-testid="stExpander"] {
+        background: #ffffff !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 11px !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    /* ---------- Plotly chart containers ---------- */
+    .stPlotlyChart {
+        background: #ffffff !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 13px !important;
+        padding: .4rem !important;
+        box-shadow: var(--shadow-sm) !important;
+        overflow: hidden !important;
+    }
+
+    /* ---------- Form / widget labels ---------- */
+    [data-testid="stWidgetLabel"] p,
+    [data-testid="stWidgetLabel"] label {
+        color: #334155 !important;
+        font-weight: 650 !important;
+    }
+
+    /* ---------- Scrollbars ---------- */
+    ::-webkit-scrollbar {
+        width: 9px;
+        height: 9px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #e8eef5;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #b7c5d5;
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a8bd;
+    }
+
+    /* ---------- Responsive polish ---------- */
+    @media (max-width: 900px) {
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        [data-testid="stRadio"] > div[role="radiogroup"] {
+            width: 100% !important;
+            overflow-x: auto !important;
+        }
+
+        [data-testid="stRadio"] > div[role="radiogroup"] label {
+            white-space: nowrap !important;
+        }
     }
     </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
