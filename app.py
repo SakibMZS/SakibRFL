@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from streamlit_option_menu import option_menu
 import time
 
 # Streamlit Page Setup
@@ -65,6 +64,7 @@ st.markdown(
         justify-content: space-between;
         align-items: center;
         margin-bottom: 24px;
+        border-radius: 12px 12px 0 0;
     }
     .navbar-brand {
         display: flex;
@@ -243,6 +243,8 @@ st.markdown(
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 12px;
     }
     .table-container .table-header h3 {
         font-size: 16px;
@@ -254,6 +256,7 @@ st.markdown(
         display: flex;
         gap: 12px;
         align-items: center;
+        flex-wrap: wrap;
     }
     
     /* Achievement Badges */
@@ -302,10 +305,13 @@ st.markdown(
         justify-content: space-between;
         font-size: 12px;
         color: #94a3b8;
+        flex-wrap: wrap;
+        gap: 8px;
     }
     .status-bar .right {
         display: flex;
         gap: 20px;
+        flex-wrap: wrap;
     }
     
     /* ===== RESPONSIVE ===== */
@@ -735,20 +741,31 @@ def apply_pagination(df, rows_per_page, page_number):
 def pagination_controls(total_rows, rows_per_page, key_prefix=""):
     """Generate pagination controls."""
     total_pages = max(1, (total_rows + rows_per_page - 1) // rows_per_page)
-    current_page = st.session_state.get(f"{key_prefix}_page", 0)
     
-    cols = st.columns([1, 3, 1])
-    with cols[0]:
-        if st.button("◀ Previous", key=f"{key_prefix}_prev", disabled=current_page == 0):
-            current_page = max(0, current_page - 1)
-            st.session_state[f"{key_prefix}_page"] = current_page
+    # Initialize session state
+    if f"{key_prefix}_page" not in st.session_state:
+        st.session_state[f"{key_prefix}_page"] = 0
+    
+    current_page = st.session_state[f"{key_prefix}_page"]
+    
+    col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+    with col1:
+        if st.button("◀", key=f"{key_prefix}_first", disabled=current_page == 0):
+            st.session_state[f"{key_prefix}_page"] = 0
             st.rerun()
-    with cols[1]:
+    with col2:
+        if st.button("◀ Previous", key=f"{key_prefix}_prev", disabled=current_page == 0):
+            st.session_state[f"{key_prefix}_page"] = max(0, current_page - 1)
+            st.rerun()
+    with col3:
         st.caption(f"Page {current_page + 1} of {total_pages} ({total_rows} rows)")
-    with cols[2]:
+    with col4:
         if st.button("Next ▶", key=f"{key_prefix}_next", disabled=current_page >= total_pages - 1):
-            current_page = min(total_pages - 1, current_page + 1)
-            st.session_state[f"{key_prefix}_page"] = current_page
+            st.session_state[f"{key_prefix}_page"] = min(total_pages - 1, current_page + 1)
+            st.rerun()
+    with col5:
+        if st.button("▶", key=f"{key_prefix}_last", disabled=current_page >= total_pages - 1):
+            st.session_state[f"{key_prefix}_page"] = total_pages - 1
             st.rerun()
     
     return current_page, total_pages
@@ -756,12 +773,17 @@ def pagination_controls(total_rows, rows_per_page, key_prefix=""):
 def column_visibility_selector(df, key_prefix=""):
     """Generate column visibility selector dropdown."""
     all_cols = df.columns.tolist()
+    
+    # Default visible columns (hide internal columns)
     default_cols = [c for c in all_cols if c not in ['Entry Count', 'Is Mixed']]
     
+    # Initialize session state
     if f"{key_prefix}_visible_cols" not in st.session_state:
         st.session_state[f"{key_prefix}_visible_cols"] = default_cols
     
+    # Show popover for column selection
     with st.popover("👁️ Columns"):
+        st.caption("Select columns to display")
         visible = []
         for col in all_cols:
             checked = st.checkbox(
@@ -797,7 +819,7 @@ with st.sidebar:
     )
     
     hide_zero_runs = st.toggle(
-        "Hide Non-Running Machines",
+        "🚫 Hide Non-Running Machines",
         value=True,
         help="Filters out machines with zero production"
     )
@@ -807,31 +829,4 @@ with st.sidebar:
     # Floor selector
     floor_choice = st.radio(
         "🏢 Floor View",
-        ["ALL FLOORS", "FF", "GF"],
-        horizontal=True
-    )
-    
-    st.divider()
-    
-    # Quick stats in sidebar
-    if 'all_floor_data' in locals() and all_floor_data:
-        st.markdown("### 📊 Quick Stats")
-        st.caption(f"📅 Days: {df_data['Date'].nunique()}")
-        st.caption(f"🏭 Machines: {df_data['Machine'].nunique()}")
-        st.caption(f"📦 Orders: {df_data['Order Name'].nunique()}")
-
-# ============================================
-# MAIN CONTENT
-# ============================================
-
-# Load data
-all_floor_data = []
-
-if ff_file is not None:
-    df_ff = load_and_parse_floor_data(ff_file, "FF")
-    if not df_ff.empty:
-        all_floor_data.append(df_ff)
-
-if gf_file is not None:
-    df_gf = load_and_parse_floor_data(gf_file, "GF")
-   
+        ["ALL FLOORS", "FF",
