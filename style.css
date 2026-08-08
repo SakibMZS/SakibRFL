@@ -136,7 +136,7 @@
 }
 
 /* =========================================================
-   1. FIX FOR FILE UPLOADER BUTTON OVERLAP ('uploadpload')
+   1. FILE UPLOADER BUTTON FIX ('uploadpload' collision fix)
    ========================================================= */
 [data-testid="stFileUploader"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
@@ -156,41 +156,50 @@
 
 [data-testid="stFileUploader"] button [data-testid="stIconMaterial"],
 [data-testid="stFileUploader"] button span[class*="icon"] {
-    display: none !important; /* Hides duplicate raw icon font string causing 'uploadpload' */
+    display: none !important;
 }
 
 /* =========================================================
-   2. FIX FOR POPOVER COLUMNS OVERLAP ('Coexpand_more')
+   2. POPOVER COLUMNS BUTTON FIX ('Coexpand_more' collision fix)
    ========================================================= */
+[data-testid="stPopover"] {
+    width: auto !important;
+}
+
 [data-testid="stPopover"] > button {
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0.6rem !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem !important;
+    width: auto !important;
+    min-width: 135px !important;
+    max-width: 100% !important;
+    padding: 0.4rem 0.85rem !important;
     white-space: nowrap !important;
+    overflow: visible !important;
+    position: relative !important;
     border-radius: 9px !important;
     background: #ffffff !important;
     color: #334155 !important;
     border: 1px solid var(--border-strong) !important;
     font-weight: 600 !important;
-    padding: 0.45rem 0.95rem !important;
-    min-width: 150px !important;
-    height: auto !important;
-    overflow: visible !important;
 }
 
 [data-testid="stPopover"] > button * {
-    color: #334155 !important;
+    position: static !important;
     white-space: nowrap !important;
+    line-height: 1 !important;
+    color: #334155 !important;
 }
 
 [data-testid="stPopover"] > button [data-testid="stIconMaterial"] {
     display: inline-block !important;
-    margin-left: 0.3rem !important;
+    font-size: 1.1rem !important;
+    margin-left: 0.2rem !important;
 }
 
 /* =========================================================
-   3. FIX FOR METRIC CARD NUMBER TRUNCATION ('2,149,63...')
+   3. METRIC CARD NUMBER TRUNCATION FIX ('2,149,63...')
    ========================================================= */
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
@@ -201,7 +210,7 @@
 }
 
 [data-testid="stMetricValue"] {
-    font-size: 1.55rem !important; /* Scaled down slightly so multi-million values fit */
+    font-size: 1.55rem !important;
     font-weight: 800 !important;
     letter-spacing: -0.02em !important;
     white-space: nowrap !important;
