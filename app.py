@@ -1,4 +1,5 @@
 import io
+import re
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -101,17 +102,17 @@ st.markdown(
 # ============================================
 EXCEL_SIZES = [
     "160",
+    "90",
     "120",
+    "250",
+    "270",
     "280",
     "380",
     "330",
     "470",
     "530",
     "800",
-    "270",
-    "250",
     "428",
-    "90",
 ]
 SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
 
@@ -147,12 +148,39 @@ def derive_line_group(floor_code, mc_sl):
 
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label):
-    """Parses daily date sheets for a specific floor (FF or GF)."""
+    """Parses daily date sheets dynamically filtering for the latest month in the workbook."""
     file_stream = io.BytesIO(file_bytes)
     xls = pd.ExcelFile(file_stream)
-    date_sheets = [
-        s for s in xls.sheet_names if "-" in s and ("202" in s or "203" in s)
-    ]
+
+    # 1. Parse all sheets containing valid date format DD-MM-YYYY
+    valid_sheets = []
+    all_parsed_dates = []
+
+    for s in xls.sheet_names:
+        s_clean = s.strip()
+        match = re.search(r"(\d{2}-\d{2}-\d{4})", s_clean)
+        if match:
+            dt_str = match.group(1)
+            try:
+                dt = pd.to_datetime(dt_str, format="%d-%m-%Y")
+                valid_sheets.append((s, dt))
+                all_parsed_dates.append(dt)
+            except Exception:
+                pass
+
+    # 2. Dynamic Month Detection: Find latest date and restrict strictly to that month/year
+    if all_parsed_dates:
+        latest_date = max(all_parsed_dates)
+        latest_month = latest_date.month
+        latest_year = latest_date.year
+
+        date_sheets = [
+            s
+            for s, dt in valid_sheets
+            if dt.month == latest_month and dt.year == latest_year
+        ]
+    else:
+        date_sheets = []
 
     all_records = []
 
@@ -423,14 +451,26 @@ def compute_line_summary(df_subset):
 
 def compute_size_summary(df_subset):
     """Computes Machine Size Summary matching Sheet2 Excel reference standard."""
+    days_count = df_subset["Date"].nunique()
     records = []
+
     for sz in EXCEL_SIZES:
         grp = df_subset[df_subset["MC Size"] == sz]
         if grp.empty:
+            records.append({
+                "MC Size": sz,
+                "MC QTY": 0,
+                "CT Average": 0.00,
+                "Run Hour Average": 0.00,
+                "Total Cap (Pcs)": 0.00,
+                "Total Prod (Pcs)": 0.00,
+                "% OF Ach Pcs": "0.00%",
+                "Cap (Ton)": 0.00,
+                "Prod (Ton)": 0.00,
+                "% OF Ach Ton": "0.00%",
+            })
             continue
 
-        # Cumulative machine run instances count for As-Of
-        mc_run_count = len(grp["Machine"])
         unique_mc_qty = grp["Machine"].nunique()
         tot_runtime = grp["Total Runtime (Hrs)"].sum()
 
@@ -441,7 +481,12 @@ def compute_size_summary(df_subset):
         else:
             avg_ct = grp["CT"].mean()
 
-        avg_run_hrs = tot_runtime / unique_mc_qty if unique_mc_qty > 0 else 0.0
+        # Run Hour Average scaled by Days Count for 24-hour daily operational context
+        run_hr_avg = (
+            tot_runtime / (unique_mc_qty * days_count)
+            if (unique_mc_qty > 0 and days_count > 0)
+            else 0.0
+        )
 
         tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
         tot_prod_pcs = grp["Total Good"].sum()
@@ -454,50 +499,16 @@ def compute_size_summary(df_subset):
         records.append({
             "MC Size": sz,
             "MC QTY": unique_mc_qty,
-            "Run Instances": mc_run_count,
             "CT Average": round(avg_ct, 2),
-            "Run Hour Avg": round(avg_run_hrs, 2),
+            "Run Hour Average": round(run_hr_avg, 2),
             "Total Cap (Pcs)": round(tot_cap_pcs, 2),
             "Total Prod (Pcs)": round(tot_prod_pcs, 2),
-            "Pcs Ach %": f"{ach_pcs:.2f}%",
+            "% OF Ach Pcs": f"{ach_pcs:.2f}%",
             "Cap (Ton)": round(tot_cap_ton, 2),
             "Prod (Ton)": round(tot_prod_ton, 2),
-            "Ton Ach %": f"{ach_ton:.2f}%",
+            "% OF Ach Ton": f"{ach_ton:.2f}%",
         })
 
-    grp_other = df_subset[~df_subset["MC Size"].isin(EXCEL_SIZES)]
-    if not grp_other.empty:
-        mc_run_count = len(grp_other["Machine"])
-        unique_mc_qty = grp_other["Machine"].nunique()
-        tot_runtime = grp_other["Total Runtime (Hrs)"].sum()
-        avg_ct = (
-            (grp_other["CT"] * grp_other["Total Runtime (Hrs)"]).sum()
-            / tot_runtime
-            if tot_runtime > 0
-            else grp_other["CT"].mean()
-        )
-        avg_run_hrs = tot_runtime / unique_mc_qty if unique_mc_qty > 0 else 0.0
-        tot_cap_pcs = grp_other["Weighted Cap Pcs"].sum()
-        tot_prod_pcs = grp_other["Total Good"].sum()
-        tot_cap_ton = grp_other["Weighted Cap Ton"].sum()
-        tot_prod_ton = grp_other["Total Prod Ton"].sum()
-
-        ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
-        ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
-
-        records.append({
-            "MC Size": "Other",
-            "MC QTY": unique_mc_qty,
-            "Run Instances": mc_run_count,
-            "CT Average": round(avg_ct, 2),
-            "Run Hour Avg": round(avg_run_hrs, 2),
-            "Total Cap (Pcs)": round(tot_cap_pcs, 2),
-            "Total Prod (Pcs)": round(tot_prod_pcs, 2),
-            "Pcs Ach %": f"{ach_pcs:.2f}%",
-            "Cap (Ton)": round(tot_cap_ton, 2),
-            "Prod (Ton)": round(tot_prod_ton, 2),
-            "Ton Ach %": f"{ach_ton:.2f}%",
-        })
     return pd.DataFrame(records)
 
 
@@ -510,7 +521,7 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 
     for c in df.columns:
         if c == label_col:
-            tot_row[c] = "TOTAL / OVERALL"
+            tot_row[c] = "Sub Total"
         elif c in sum_cols:
             val = df[c].sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
@@ -524,19 +535,19 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
         tc_p = pd.to_numeric(df["Total Cap (Pcs)"], errors="coerce").sum()
         tp_p = pd.to_numeric(df["Total Prod (Pcs)"], errors="coerce").sum()
         ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
-        tot_row["Pcs Ach %"] = f"{ach:.2f}%"
+        if "% OF Ach Pcs" in df.columns:
+            tot_row["% OF Ach Pcs"] = f"{ach:.2f}%"
+        if "Pcs Ach %" in df.columns:
+            tot_row["Pcs Ach %"] = f"{ach:.2f}%"
 
     if "Cap (Ton)" in df.columns and "Prod (Ton)" in df.columns:
         tc_t = pd.to_numeric(df["Cap (Ton)"], errors="coerce").sum()
         tp_t = pd.to_numeric(df["Prod (Ton)"], errors="coerce").sum()
         ach = (tp_t / tc_t * 100) if tc_t > 0 else 0.0
-        tot_row["Ton Ach %"] = f"{ach:.2f}%"
-
-    if "Cap (Pcs)" in df.columns and "Prod (Pcs)" in df.columns:
-        tc_p = pd.to_numeric(df["Cap (Pcs)"], errors="coerce").sum()
-        tp_p = pd.to_numeric(df["Prod (Pcs)"], errors="coerce").sum()
-        ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
-        tot_row["Pcs Ach %"] = f"{ach:.2f}%"
+        if "% OF Ach Ton" in df.columns:
+            tot_row["% OF Ach Ton"] = f"{ach:.2f}%"
+        if "Ton Ach %" in df.columns:
+            tot_row["Ton Ach %"] = f"{ach:.2f}%"
 
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
@@ -868,7 +879,6 @@ else:
                         "text/csv",
                     )
 
-                    # Pop-Up Modal Inspector for "Mixed" Machine Entries
                     mixed_mcs = df_daily[df_daily["Is Mixed"]][
                         "Machine"
                     ].tolist()
@@ -927,7 +937,7 @@ else:
                             "Cap (Ton)",
                             "Prod (Ton)",
                         ],
-                        ["CT Average", "Run Hour Avg"],
+                        ["CT Average", "Run Hour Average"],
                     )
 
                     v_cols = column_visibility_selector(
@@ -949,7 +959,6 @@ else:
                 elif daily_mode == "📦 Job-Order Wise (Daily Active)":
                     st.markdown("### 📦 Active Orders Run On Selected Date")
 
-                    # Search Input Box for Daily Job Orders
                     search_term = st.text_input(
                         "🔍 Search Job Order or Item Name:",
                         "",
@@ -1052,9 +1061,11 @@ else:
             elif nav_choice == "📊 As of Data (MTD)":
                 all_dates = sorted(list(df_active["Date"].unique()))
 
-                # Auto-Detect Range: 1st of Month to Latest Date in Excel
+                # Dynamic Auto-Detection of Start/End Date Range for active month
                 latest_date_str = all_dates[-1]
-                latest_dt = pd.to_datetime(latest_date_str, format="%d-%m-%Y", errors="coerce")
+                latest_dt = pd.to_datetime(
+                    latest_date_str, format="%d-%m-%Y", errors="coerce"
+                )
                 if pd.notna(latest_dt):
                     start_date_str = f"01-{latest_dt.month:02d}-{latest_dt.year}"
                 else:
@@ -1155,13 +1166,12 @@ else:
                         "MC Size",
                         [
                             "MC QTY",
-                            "Run Instances",
                             "Total Cap (Pcs)",
                             "Total Prod (Pcs)",
                             "Cap (Ton)",
                             "Prod (Ton)",
                         ],
-                        ["CT Average", "Run Hour Avg"],
+                        ["CT Average", "Run Hour Average"],
                     )
 
                     v_cols = column_visibility_selector(
@@ -1186,7 +1196,6 @@ else:
                         f" {as_of_date})"
                     )
 
-                    # Search Input Box for Cumulative Job Orders
                     search_term_mtd = st.text_input(
                         "🔍 Search Cumulative Job Order or Item Name:",
                         "",
