@@ -1,3 +1,4 @@
+import io
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -13,7 +14,7 @@ st.set_page_config(
 )
 
 # ============================================
-# HIGH-CONTRAST PROFESSIONAL CSS
+# HIGH-CONTRAST PROFESSIONAL CSS (FIXED CONTRAST)
 # ============================================
 st.markdown(
     """
@@ -27,9 +28,30 @@ st.markdown(
         color: #0f172a;
     }
     
-    /* Ensure all text labels & headers have dark readable contrast */
+    /* Ensure all text labels & headers have crisp dark contrast */
     p, label, span, div, h1, h2, h3, h4, h5, h6 {
         color: #0f172a !important;
+    }
+    
+    /* File Uploader Custom High-Contrast Styling */
+    [data-testid="stFileUploader"] {
+        background-color: #ffffff !important;
+        border: 2px dashed #cbd5e1 !important;
+        border-radius: 10px !important;
+        padding: 16px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    [data-testid="stFileUploader"] * {
+        color: #0f172a !important;
+    }
+    [data-testid="stFileUploader"] button {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stFileUploader"] button * {
+        color: #ffffff !important;
     }
     
     /* Sidebar Styling */
@@ -55,27 +77,18 @@ st.markdown(
         align-items: center;
         margin-bottom: 20px;
     }
-    .navbar-title h2 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 700;
-        color: #0f172a !important;
-    }
-    .navbar-title p {
-        margin: 2px 0 0 0;
-        font-size: 13px;
-        color: #64748b !important;
-    }
     
-    /* Custom Card Containers */
-    .table-card {
+    /* Custom Setup Cards */
+    .setup-card {
         background-color: #ffffff;
-        padding: 20px;
+        padding: 24px;
         border-radius: 12px;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
         margin-bottom: 20px;
     }
+    .setup-card.ff { border-top: 5px solid #2563eb; }
+    .setup-card.gf { border-top: 5px solid #10b981; }
     
     /* Status Footer */
     .status-footer {
@@ -145,7 +158,10 @@ def derive_line_group(floor_code, mc_sl):
 
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label):
-    xls = pd.ExcelFile(file_bytes)
+    """Parses daily date sheets for a specific floor (FF or GF)."""
+    # Wrap raw bytes inside io.BytesIO to resolve pandas TypeError
+    file_stream = io.BytesIO(file_bytes)
+    xls = pd.ExcelFile(file_stream)
     date_sheets = [
         s for s in xls.sheet_names if "-" in s and ("202" in s or "203" in s)
     ]
@@ -539,7 +555,7 @@ if "app_launched" not in st.session_state:
     st.session_state["app_launched"] = False
 
 # ============================================
-# LANDING SCREEN (PRE-DASHBOARD FILE SETUP)
+# LANDING SCREEN (HIGH-CONTRAST FILE SETUP)
 # ============================================
 if not st.session_state["app_launched"]:
     st.markdown("## 🏭 **PLASTIC-3 CONSOLE SETUP**")
@@ -548,12 +564,25 @@ if not st.session_state["app_launched"]:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 🏢 First Floor (FF)")
-        ff_file = st.file_uploader(
-            "Upload First Floor File (.xlsx)", type=["xlsx", "xls"], key="init_ff"
+        st.markdown(
+            '<div class="setup-card ff"><h3>🏢 First Floor (FF)</h3><p'
+            ' style="color:#64748b !important;">Select the FF Excel production'
+            " file</p></div>",
+            unsafe_allow_html=True,
         )
+        ff_file = st.file_uploader(
+            "Upload First Floor File (.xlsx)",
+            type=["xlsx", "xls"],
+            key="init_ff",
+        )
+
     with col2:
-        st.markdown("### 🏬 Ground Floor (GF)")
+        st.markdown(
+            '<div class="setup-card gf"><h3>🏬 Ground Floor (GF)</h3><p'
+            ' style="color:#64748b !important;">Select the GF Excel production'
+            " file</p></div>",
+            unsafe_allow_html=True,
+        )
         gf_file = st.file_uploader(
             "Upload Ground Floor File (.xlsx)",
             type=["xlsx", "xls"],
@@ -564,7 +593,9 @@ if not st.session_state["app_launched"]:
 
     c_btn, _ = st.columns([1, 3])
     with c_btn:
-        if st.button("🚀 Launch Dashboard", type="primary", use_container_width=True):
+        if st.button(
+            "🚀 Launch Dashboard", type="primary", use_container_width=True
+        ):
             if ff_file is None and gf_file is None:
                 st.error("Please upload at least one floor file to launch.")
             else:
@@ -580,10 +611,10 @@ if not st.session_state["app_launched"]:
 # MAIN DASHBOARD CONSOLE
 # ============================================
 else:
-    # Sidebar
+    # Sidebar Navigation
     with st.sidebar:
         st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
-        st.caption("Active Session")
+        st.caption("Active Production Session")
         st.divider()
 
         nav_choice = st.radio(
@@ -603,10 +634,6 @@ else:
             help="Filters out idle machines with zero production",
         )
 
-        rows_per_page = st.selectbox(
-            "📄 Rows per table page", [10, 25, 50, 100], index=1
-        )
-
         st.divider()
 
         if st.button("⚙️ Change Uploaded Files", use_container_width=True):
@@ -615,7 +642,7 @@ else:
             st.session_state.pop("gf_bytes", None)
             st.rerun()
 
-    # Load Data
+    # Parse Loaded Binary Bytes
     all_floor_data = []
 
     if "ff_bytes" in st.session_state:
@@ -629,17 +656,20 @@ else:
             all_floor_data.append(df_gf)
 
     if not all_floor_data:
-        st.error("No valid data parsed. Click '⚙️ Change Uploaded Files' in sidebar.")
+        st.error(
+            "No valid data parsed. Click '⚙️ Change Uploaded Files' in"
+            " sidebar."
+        )
     else:
         df_data_raw = pd.concat(all_floor_data, ignore_index=True)
 
-        # Top Header Bar
+        # Header Bar
         col_hdr1, col_hdr2 = st.columns([3, 2])
         with col_hdr1:
-            st.markdown(
-                f"## {nav_choice}",
+            st.markdown(f"## {nav_choice}")
+            st.caption(
+                "Plastic-3 Production Optimization & Live Monitoring Panel"
             )
-            st.caption("Plastic-3 Production Optimization & Live Monitoring Panel")
 
         with col_hdr2:
             floor_choice = st.radio(
@@ -651,21 +681,23 @@ else:
 
         st.divider()
 
-        # Floor Missing Alert Handling
+        # Handle Missing File Prompts
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
             st.warning(
-                "⚠️ **First Floor (FF) file is not uploaded.** Please click '⚙️ Change"
-                " Uploaded Files' in the sidebar to upload the FF file."
+                "⚠️ **First Floor (FF) file is not uploaded.** Please click '⚙️"
+                " Change Uploaded Files' in the sidebar to upload the FF file."
             )
         elif floor_choice == "GF" and "gf_bytes" not in st.session_state:
             st.warning(
-                "⚠️ **Ground Floor (GF) file is not uploaded.** Please click '⚙️ Change"
-                " Uploaded Files' in the sidebar to upload the GF file."
+                "⚠️ **Ground Floor (GF) file is not uploaded.** Please click"
+                " '⚙️ Change Uploaded Files' in the sidebar to upload the GF"
+                " file."
             )
         else:
-            # Filter Data
             if floor_choice != "ALL FLOORS":
-                df_curr = df_data_raw[df_data_raw["Floor"] == floor_choice].copy()
+                df_curr = df_data_raw[
+                    df_data_raw["Floor"] == floor_choice
+                ].copy()
             else:
                 df_curr = df_data_raw.copy()
 
@@ -682,12 +714,15 @@ else:
             # ============================================
             if nav_choice == "📅 Daily Data":
                 all_dates = sorted(list(df_active["Date"].unique()))
-                selected_date = st.selectbox("📅 Select Operational Date:", all_dates)
+                selected_date = st.selectbox(
+                    "📅 Select Operational Date:", all_dates
+                )
 
-                df_daily_raw = df_active[df_active["Date"] == selected_date].copy()
+                df_daily_raw = df_active[
+                    df_active["Date"] == selected_date
+                ].copy()
                 df_daily = consolidate_daily_machines(df_daily_raw)
 
-                # Top Metrics (Running Only)
                 tot_prod_ton = df_daily["Total Prod Ton"].sum()
                 tot_cap_ton = df_daily["Weighted Cap Ton"].sum()
                 tot_good_pcs = df_daily["Total Good"].sum()
@@ -732,7 +767,6 @@ else:
 
                 st.divider()
 
-                # Contextual Mode Navigation
                 daily_mode = st.radio(
                     "Daily View Mode:",
                     [
@@ -761,7 +795,9 @@ else:
                         [],
                     )
                     st.dataframe(
-                        df_line_day_tot, use_container_width=True, hide_index=True
+                        df_line_day_tot,
+                        use_container_width=True,
+                        hide_index=True,
                     )
                     st.download_button(
                         "📥 Export Daily Line Summary (CSV)",
@@ -815,8 +851,9 @@ else:
                         "text/csv",
                     )
 
-                    # Mixed Machine Expander
-                    mixed_mcs = df_daily[df_daily["Is Mixed"]]["Machine"].tolist()
+                    mixed_mcs = df_daily[df_daily["Is Mixed"]][
+                        "Machine"
+                    ].tolist()
                     if mixed_mcs:
                         with st.expander("🔍 Inspect Mixed Machine Breakdown"):
                             sel_mc = st.selectbox("Select Machine:", mixed_mcs)
@@ -856,7 +893,9 @@ else:
                         ["CT Average", "Run Hour Avg"],
                     )
                     st.dataframe(
-                        df_size_day_tot, use_container_width=True, hide_index=True
+                        df_size_day_tot,
+                        use_container_width=True,
+                        hide_index=True,
                     )
                     st.download_button(
                         "📥 Export Daily Size Summary (CSV)",
@@ -966,7 +1005,9 @@ else:
                 )
 
                 if mtd_mode == "📊 Linewise":
-                    st.markdown(f"### 📈 Line-Wise Summary (As of {as_of_date})")
+                    st.markdown(
+                        f"### 📈 Line-Wise Summary (As of {as_of_date})"
+                    )
                     df_line_mtd = compute_line_summary(df_mtd)
                     df_line_mtd_tot = add_total_row(
                         df_line_mtd,
@@ -1024,7 +1065,8 @@ else:
 
                 elif mtd_mode == "📦 Job-Order Wise (Cumulative)":
                     st.markdown(
-                        f"### 📦 Master Order Completion Summary (As of {as_of_date})"
+                        "### 📦 Master Order Completion Summary (As of"
+                        f" {as_of_date})"
                     )
                     cust_list = ["ALL CUSTOMERS"] + sorted(
                         list(df_mtd["Customer"].unique())
@@ -1036,10 +1078,14 @@ else:
                     if selected_cust == "ALL CUSTOMERS":
                         df_cust = df_mtd.copy()
                     else:
-                        df_cust = df_mtd[df_mtd["Customer"] == selected_cust].copy()
+                        df_cust = df_mtd[
+                            df_mtd["Customer"] == selected_cust
+                        ].copy()
 
                     job_agg = (
-                        df_cust.groupby(["Customer", "Order Name", "Item Name"])
+                        df_cust.groupby(
+                            ["Customer", "Order Name", "Item Name"]
+                        )
                         .agg({
                             "Demand Qty": "max",
                             "Total Good": "sum",
@@ -1175,6 +1221,6 @@ else:
                         y=["Shift A Prod Ton", "Shift B Prod Ton"],
                         title="Daily Shift Comparison (Tonnage)",
                         barmode="group",
-                        color_discrete_sequence=["#f59e0b", "#1e293b"],
+                        color_discrete_sequence=["#f59e0b", "#0f172a"],
                     )
                     st.plotly_chart(fig_shift, use_container_width=True)
