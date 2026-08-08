@@ -23,7 +23,7 @@
     --radius: 14px;
 }
 
-/* App canvas */
+/* App Canvas */
 .stApp {
     background:
         radial-gradient(circle at 10% 0%, rgba(37,99,235,.07), transparent 28%),
@@ -37,14 +37,11 @@
     box-sizing: border-box;
 }
 
-/* Global typography */
+/* Global Typography */
 .stApp p, .stApp label, .stApp span, .stApp div, 
 .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
 .stApp th, .stApp td, .stApp small {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-}
-
-.stApp p, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
     color: var(--text) !important;
 }
 
@@ -59,7 +56,7 @@
     margin: 1.15rem 0 !important;
 }
 
-/* Main container spacing */
+/* Main Container Spacing */
 .block-container {
     max-width: 1540px !important;
     padding-top: 2rem !important;
@@ -108,7 +105,7 @@
 .setup-card.ff { border-top: 4px solid var(--blue) !important; }
 .setup-card.gf { border-top: 4px solid var(--green) !important; }
 
-/* Inputs / Selectboxes */
+/* Inputs & Dropdowns */
 [data-baseweb="select"] > div,
 [data-testid="stTextInput"] input {
     background: #ffffff !important;
@@ -135,9 +132,7 @@
     color: #ffffff !important;
 }
 
-/* =========================================================
-   1. FILE UPLOADER BUTTON FIX ('uploadpload' collision fix)
-   ========================================================= */
+/* File Uploader Button & Layout */
 [data-testid="stFileUploader"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px dashed #9fb3c8 !important;
@@ -149,7 +144,6 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 0.4rem !important;
     min-width: 140px !important;
     padding: 0.45rem 1rem !important;
 }
@@ -159,9 +153,7 @@
     display: none !important;
 }
 
-/* =========================================================
-   2. POPOVER COLUMNS BUTTON FIX ('Coexpand_more' collision fix)
-   ========================================================= */
+/* Popover Columns Button (Completely removes 'expand_more' text string) */
 [data-testid="stPopover"] {
     width: auto !important;
 }
@@ -169,15 +161,11 @@
 [data-testid="stPopover"] > button {
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 0.5rem !important;
+    justify-content: center !important;
     width: auto !important;
-    min-width: 135px !important;
-    max-width: 100% !important;
-    padding: 0.4rem 0.85rem !important;
+    min-width: 120px !important;
+    padding: 0.45rem 0.95rem !important;
     white-space: nowrap !important;
-    overflow: visible !important;
-    position: relative !important;
     border-radius: 9px !important;
     background: #ffffff !important;
     color: #334155 !important;
@@ -185,22 +173,11 @@
     font-weight: 600 !important;
 }
 
-[data-testid="stPopover"] > button * {
-    position: static !important;
-    white-space: nowrap !important;
-    line-height: 1 !important;
-    color: #334155 !important;
-}
-
 [data-testid="stPopover"] > button [data-testid="stIconMaterial"] {
-    display: inline-block !important;
-    font-size: 1.1rem !important;
-    margin-left: 0.2rem !important;
+    display: none !important; /* Strips the 'expand_more' text string completely */
 }
 
-/* =========================================================
-   3. METRIC CARD NUMBER TRUNCATION FIX ('2,149,63...')
-   ========================================================= */
+/* Metric Cards */
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px solid var(--border) !important;
@@ -214,11 +191,10 @@
     font-weight: 800 !important;
     letter-spacing: -0.02em !important;
     white-space: nowrap !important;
-    text-overflow: clip !important;
     overflow: visible !important;
 }
 
-/* Radio Control Navigation */
+/* Segmented Navigation Radio Controls */
 [data-testid="stRadio"] > div[role="radiogroup"] {
     gap: 0.35rem !important;
     padding: 0.3rem !important;
