@@ -13,9 +13,8 @@ st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
     page_icon="🏭",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="locked",
 )
-
 
 def load_css(file_name="style.css"):
     if os.path.exists(file_name):
