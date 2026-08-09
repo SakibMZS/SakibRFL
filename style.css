@@ -38,35 +38,42 @@
     box-sizing: border-box;
 }
 
-/* Keep top Streamlit header container active for sidebar toggle */
+/* Make top header bar container non-intrusive while anchoring sidebar toggle */
 header[data-testid="stHeader"] {
     background: transparent !important;
-    z-index: 99999 !important;
+    height: 3rem !important;
+    z-index: 999999 !important;
 }
 
-/* Hide ONLY developer tools (Share, Star, GitHub, Edit menu) */
+/* Hide Streamlit default developer toolbar (Share, Star, GitHub, Edit menu) */
 [data-testid="stToolbar"],
 header[data-testid="stHeader"] > div:nth-child(2) {
     display: none !important;
     visibility: hidden !important;
 }
 
-/* FORCE SIDEBAR TOGGLE BUTTON TO STAY VISIBLE */
+/* FORCE SIDEBAR TOGGLE BUTTON TO STAY ANCHORED TOP-LEFT */
 [data-testid="stSidebarCollapseButton"],
-header[data-testid="stHeader"] [data-testid="stSidebarCollapseButton"] {
-    display: block !important;
+header[data-testid="stHeader"] [data-testid="stSidebarCollapseButton"],
+button[data-testid="baseButton-header"] {
+    display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
-    z-index: 999999 !important;
+    position: fixed !important;
+    top: 0.6rem !important;
+    left: 0.8rem !important;
+    z-index: 9999999 !important;
+    background: #ffffff !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 8px !important;
+    box-shadow: var(--shadow-sm) !important;
 }
 
 /* --- SECTION 3: GLOBAL TYPOGRAPHY & ICON ISOLATION --- */
-/* Enforce Inter font everywhere EXCEPT Material Icon elements */
 .stApp *:not([data-testid="stIconMaterial"]):not(i):not([class*="icon"]):not(.material-icons) {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
-/* Preserve original font families for Streamlit Material Symbols (fixes expand_more / upload text overlaps) */
 [data-testid="stIconMaterial"],
 span[class*="icon"],
 i.material-icons {
@@ -93,7 +100,7 @@ i.material-icons {
 /* --- SECTION 4: CONTAINER SPACING & TOP PADDING --- */
 .block-container {
     max-width: 1540px !important;
-    padding-top: 2rem !important;
+    padding-top: 3.5rem !important;
     padding-bottom: 2.5rem !important;
     padding-left: 2rem !important;
     padding-right: 2rem !important;
