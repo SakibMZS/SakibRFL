@@ -425,11 +425,9 @@ def compute_size_summary(df_subset, mode="daily"):
         tot_runtime = grp["Total Runtime (Hrs)"].sum()
 
         if mode == "as_of":
-            # Cumulative active machine-days count (e.g. 257 for August)
             mc_qty = grp.groupby(["Date", "Floor", "Machine"]).ngroups
             run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
         else:
-            # Unique active machines count on single date (e.g. 39 for Aug 7)
             mc_qty = grp["Machine"].nunique()
             run_hr_avg = (
                 tot_runtime / (mc_qty * days_count)
@@ -515,7 +513,7 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 # ============================================
 # SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
 # ============================================
-def display_custom_table(df, key_prefix=""):
+def display_custom_table(df):
     """
     Renders dataframes as styled HTML tables to ensure exact Excel alignment:
     - Text/Mixed -> Left-aligned
@@ -528,16 +526,16 @@ def display_custom_table(df, key_prefix=""):
     for col in df_clean.columns:
         if df_clean[col].dtype in ["float64", "float32"]:
             df_clean[col] = df_clean[col].apply(
-                lambda x: f"{x:.2f}" if pd.notna(x) and x != "-" else "-"
+                lambda x: f"{x:.2f}" if pd.notna(x) and str(x) != "-" else "-"
             )
         elif df_clean[col].dtype in ["int64", "int32"]:
             df_clean[col] = df_clean[col].apply(
-                lambda x: f"{x:,}" if pd.notna(x) and x != "-" else "-"
+                lambda x: f"{x:,}" if pd.notna(x) and str(x) != "-" else "-"
             )
 
     # Determine alignment classes per column
     align_styles = []
-    for col in df_clean.columns:
+    for idx, col in enumerate(df_clean.columns):
         col_lower = col.lower()
         if (
             df[col].dtype in ["float64", "float32", "int64", "int32"]
@@ -555,16 +553,33 @@ def display_custom_table(df, key_prefix=""):
             or "cavity" in col_lower
             or "cap" in col_lower
         ):
-            align_styles.append({"selector": f"td.col{df_clean.columns.get_loc(col)}", "props": [("text-align", "center")]})
+            align_styles.append({
+                "selector": f"td.col{idx}",
+                "props": [("text-align", "center")],
+            })
         else:
-            align_styles.append({"selector": f"td.col{df_clean.columns.get_loc(col)}", "props": [("text-align", "left")]})
+            align_styles.append({
+                "selector": f"td.col{idx}",
+                "props": [("text-align", "left")],
+            })
 
     # Header centering style
-    align_styles.append({"selector": "th", "props": [("text-align", "center"), ("background-color", "#f1f5f9")]})
+    align_styles.append({
+        "selector": "th",
+        "props": [("text-align", "center"), ("background-color", "#f1f5f9")],
+    })
 
     # Render HTML table
-    html_table = df_clean.style.set_table_styles(align_styles).hide(axis="index").to_html()
-    st.markdown(f'<div class="excel-table-container">{html_table}</div>', unsafe_allow_html=True)
+    html_table = (
+        df_clean.style.set_table_styles(align_styles)
+        .hide(axis="index")
+        .to_html()
+    )
+    st.markdown(
+        f'<div class="excel-table-container">{html_table}</div>',
+        unsafe_allow_html=True,
+    )
+
 
 def column_visibility_selector(df, key_prefix=""):
     """Manages column visibility selector with default exclusions."""
@@ -844,12 +859,7 @@ else:
                     v_cols = column_visibility_selector(
                         df_line_day_tot, "daily_line"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_line_day_tot[v_cols]),
-                        column_config=get_column_configurations(df_line_day_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(df_line_day_tot[v_cols])
 
                     st.download_button(
                         "📥 Export Daily Line Summary (CSV)",
@@ -877,12 +887,7 @@ else:
                     v_cols = column_visibility_selector(
                         df_daily_totals, "daily_mc"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_daily_totals[v_cols]),
-                        column_config=get_column_configurations(df_daily_totals[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(df_daily_totals[v_cols])
 
                     st.download_button(
                         "📥 Export Daily Machine Summary (CSV)",
@@ -919,37 +924,19 @@ else:
                             "Total Runtime (Hrs)"
                         ].round(2)
 
-                        st.dataframe(
-                            clean_and_format_dataframe(
-                                sub_raw[[
-                                    "Floor",
-                                    "Order Name",
-                                    "Item Name",
-                                    "CT",
-                                    "Cavity",
-                                    "Shift A Good",
-                                    "Shift B Good",
-                                    "Total Good",
-                                    "Runtime (Hrs)",
-                                    "Daily Prod (Ton)",
-                                ]]
-                            ),
-                            column_config=get_column_configurations(
-                                sub_raw[[
-                                    "Floor",
-                                    "Order Name",
-                                    "Item Name",
-                                    "CT",
-                                    "Cavity",
-                                    "Shift A Good",
-                                    "Shift B Good",
-                                    "Total Good",
-                                    "Runtime (Hrs)",
-                                    "Daily Prod (Ton)",
-                                ]]
-                            ),
-                            use_container_width=True,
-                            hide_index=True,
+                        display_custom_table(
+                            sub_raw[[
+                                "Floor",
+                                "Order Name",
+                                "Item Name",
+                                "CT",
+                                "Cavity",
+                                "Shift A Good",
+                                "Shift B Good",
+                                "Total Good",
+                                "Runtime (Hrs)",
+                                "Daily Prod (Ton)",
+                            ]]
                         )
 
                 elif daily_mode == "📏 Sizewise":
@@ -973,12 +960,7 @@ else:
                     v_cols = column_visibility_selector(
                         df_size_day_tot, "daily_size"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_size_day_tot[v_cols]),
-                        column_config=get_column_configurations(df_size_day_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(df_size_day_tot[v_cols])
 
                     st.download_button(
                         "📥 Export Daily Size Summary (CSV)",
@@ -1073,12 +1055,7 @@ else:
                     v_cols = column_visibility_selector(
                         job_day_tot, "daily_job"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(job_day_tot[v_cols]),
-                        column_config=get_column_configurations(job_day_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(job_day_tot[v_cols])
 
                     st.download_button(
                         "📥 Export Daily Active Job Summary (CSV)",
@@ -1174,12 +1151,7 @@ else:
                     v_cols = column_visibility_selector(
                         df_line_mtd_tot, "mtd_line"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_line_mtd_tot[v_cols]),
-                        column_config=get_column_configurations(df_line_mtd_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(df_line_mtd_tot[v_cols])
 
                     st.download_button(
                         "📥 Export As-Of Line Summary (CSV)",
@@ -1211,12 +1183,7 @@ else:
                     v_cols = column_visibility_selector(
                         df_size_mtd_tot, "mtd_size"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_size_mtd_tot[v_cols]),
-                        column_config=get_column_configurations(df_size_mtd_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(df_size_mtd_tot[v_cols])
 
                     st.download_button(
                         "📥 Export As-Of Size Summary (CSV)",
@@ -1298,12 +1265,7 @@ else:
                     v_cols = column_visibility_selector(
                         job_agg_tot, "mtd_job"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(job_agg_tot[v_cols]),
-                        column_config=get_column_configurations(job_agg_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(job_agg_tot[v_cols])
 
                     st.download_button(
                         "📥 Export Master Job Summary (CSV)",
@@ -1385,12 +1347,7 @@ else:
                     v_cols = column_visibility_selector(
                         shift_daily_tot, "daily_shift"
                     )
-                    st.dataframe(
-                        clean_and_format_dataframe(shift_daily_tot[v_cols]),
-                        column_config=get_column_configurations(shift_daily_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    display_custom_table(shift_daily_tot[v_cols])
 
                     st.download_button(
                         "📥 Export Daily Shiftwise Log (CSV)",
