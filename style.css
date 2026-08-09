@@ -228,25 +228,40 @@ div[data-testid="stPopover"] button {
 }
 
 /* --- SECTION 8: TABLE ALIGNMENT & FONT SIZE --- */
-[data-testid="stDataFrame"] {
-    display: flex !important;
-    justify-content: center !important;
+.excel-table-container {
+    width: 100% !important;
+    overflow-x: auto !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 1rem !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
 }
 
-[data-testid="stDataFrame"] * {
-    font-size: 0.75rem !important;
+.excel-table-container table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 0.80rem !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
-/* Centered Header Column Titles */
-[data-testid="stDataFrame"] div[role="columnheader"],
-[data-testid="stDataFrame"] div[role="columnheader"] * {
-    text-align: center !important;
-    justify-content: center !important;
-    align-items: center !important;
+.excel-table-container th {
+    padding: 0.55rem 0.75rem !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    border-bottom: 2px solid var(--border-strong) !important;
+    border-right: 1px solid var(--border) !important;
+    white-space: nowrap !important;
 }
 
-/* Vertical and Horizontal Alignment Defaults */
-[data-testid="stDataFrame"] div[role="gridcell"] {
-    display: flex !important;
-    align-items: center !important;
+.excel-table-container td {
+    padding: 0.45rem 0.75rem !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    color: #0f172a !important;
+    white-space: nowrap !important;
+}
+
+.excel-table-container tr:hover td {
+    background-color: #f8fbff !important;
 }
