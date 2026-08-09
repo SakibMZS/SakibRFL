@@ -75,34 +75,31 @@
 
 
 /* =========================================================
-   SECTION 3: STREAMLIT TOP HEADER / TOOLBAR
-   Hide only the default top UI.
-   DO NOT TOUCH THE SIDEBAR.
+   SECTION 3: STREAMLIT TOP HEADER
+   Hide the top header/toolbar only.
+   Native sidebar is intentionally untouched.
    ========================================================= */
 
-/* Hide the visual Streamlit header */
 header[data-testid="stHeader"] {
     background: transparent !important;
 }
 
-/* Hide Streamlit toolbar */
 [data-testid="stToolbar"] {
     display: none !important;
     visibility: hidden !important;
 }
 
-/* Hide decoration/menu area inside the header if present */
 header[data-testid="stHeader"] [data-testid="stDecoration"] {
     display: none !important;
+    visibility: hidden !important;
 }
 
-/*
-   IMPORTANT:
-   We intentionally DO NOT hide:
-       [data-testid="stSidebarCollapseButton"]
 
-   The native sidebar must remain fully functional.
-*/
+/* =========================================================
+   IMPORTANT:
+   NO stSidebarCollapseButton RULE HERE.
+   NO sidebar display/position/width/transform RULE HERE.
+   ========================================================= */
 
 
 /* =========================================================
@@ -118,7 +115,9 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
         sans-serif !important;
 }
 
+
 /* Preserve Streamlit Material icons */
+
 .stApp [data-testid="stIconMaterial"],
 .stApp i.material-icons,
 .stApp span[class*="icon"],
@@ -128,6 +127,7 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
         'Material Symbols Outlined',
         'Material Symbols Rounded' !important;
 }
+
 
 .stApp p,
 .stApp label,
@@ -145,10 +145,12 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
     color: var(--text) !important;
 }
 
+
 .stApp [data-testid="stCaptionContainer"],
 .stApp [data-testid="stCaptionContainer"] * {
     color: var(--text-muted) !important;
 }
+
 
 .stApp hr {
     border: 0 !important;
@@ -174,19 +176,9 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
 
 /* =========================================================
    SECTION 6: NATIVE STREAMLIT SIDEBAR
+   Only visual styling.
+   Native layout and collapse behavior untouched.
    ========================================================= */
-
-/*
-   The sidebar remains completely native.
-
-   We only change its visual appearance.
-   We do NOT:
-   - change display
-   - change position
-   - change width
-   - hide collapse controls
-   - manipulate flex layout
-*/
 
 section[data-testid="stSidebar"] {
     background:
@@ -203,7 +195,7 @@ section[data-testid="stSidebar"] {
         6px 0 24px rgba(15, 23, 42, 0.045) !important;
 }
 
-/* Sidebar content */
+
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] h1,
@@ -215,10 +207,12 @@ section[data-testid="stSidebar"] h6 {
     color: var(--text) !important;
 }
 
+
 section[data-testid="stSidebar"] h3 {
     font-weight: 800 !important;
     letter-spacing: -0.025em !important;
 }
+
 
 section[data-testid="stSidebar"] label {
     color: #334155 !important;
@@ -251,9 +245,11 @@ section[data-testid="stSidebar"] label {
     margin-bottom: 1rem !important;
 }
 
+
 .setup-card.ff {
     border-top: 4px solid var(--blue) !important;
 }
+
 
 .setup-card.gf {
     border-top: 4px solid var(--green) !important;
@@ -269,11 +265,14 @@ section[data-testid="stSidebar"] label {
 [data-testid="stNumberInput"] input,
 [data-testid="stDateInput"] input {
     background: #ffffff !important;
+
     color: var(--text) !important;
 
     border: 1px solid var(--border-strong) !important;
+
     border-radius: 10px !important;
 }
+
 
 [data-baseweb="select"] input,
 [data-baseweb="select"] span,
@@ -292,6 +291,7 @@ section[data-testid="stSidebar"] label {
     min-height: 2.55rem !important;
 
     border-radius: 9px !important;
+
     border: 1px solid #cbd5e1 !important;
 
     background:
@@ -309,6 +309,7 @@ section[data-testid="stSidebar"] label {
         0 2px 5px rgba(15, 23, 42, 0.08) !important;
 }
 
+
 .stButton > button:hover,
 .stDownloadButton > button:hover,
 [data-testid="stDownloadButton"] button:hover {
@@ -324,6 +325,7 @@ section[data-testid="stSidebar"] label {
     box-shadow:
         0 6px 14px rgba(15, 23, 42, 0.11) !important;
 }
+
 
 .stButton > button[kind="primary"],
 .stButton > button[data-testid="baseButton-primary"] {
@@ -342,6 +344,7 @@ section[data-testid="stSidebar"] label {
         0 7px 16px rgba(37, 99, 235, 0.24) !important;
 }
 
+
 .stButton > button[kind="primary"] *,
 .stButton > button[data-testid="baseButton-primary"] * {
     color: #ffffff !important;
@@ -356,6 +359,7 @@ section[data-testid="stSidebar"] label {
     width: auto !important;
     display: inline-block !important;
 }
+
 
 [data-testid="stPopover"] > button {
     display: inline-flex !important;
@@ -376,12 +380,14 @@ section[data-testid="stSidebar"] label {
     border-radius: 9px !important;
 
     background: #ffffff !important;
+
     color: #334155 !important;
 
     border: 1px solid var(--border-strong) !important;
 
     font-weight: 600 !important;
 }
+
 
 [data-testid="stPopover"] > button * {
     color: #334155 !important;
@@ -401,10 +407,12 @@ section[data-testid="stSidebar"] label {
         ) !important;
 
     border: 1px dashed #9fb3c8 !important;
+
     border-radius: 12px !important;
 
     padding: 1rem !important;
 }
+
 
 [data-testid="stFileUploader"] * {
     color: var(--text) !important;
@@ -424,6 +432,7 @@ section[data-testid="stSidebar"] label {
         ) !important;
 
     border: 1px solid var(--border) !important;
+
     border-radius: 13px !important;
 
     padding: 0.85rem 1rem !important;
@@ -433,6 +442,7 @@ section[data-testid="stSidebar"] label {
     box-shadow: var(--shadow-sm) !important;
 }
 
+
 [data-testid="stMetricValue"] {
     font-size: 1.55rem !important;
 
@@ -441,6 +451,7 @@ section[data-testid="stSidebar"] label {
     letter-spacing: -0.02em !important;
 
     white-space: nowrap !important;
+
     overflow: visible !important;
 }
 
@@ -461,14 +472,18 @@ section[data-testid="stSidebar"] label {
     border-radius: 11px !important;
 }
 
+
 [data-testid="stRadio"] > div[role="radiogroup"] label {
     border-radius: 8px !important;
+
     padding: 0.45rem 0.8rem !important;
 }
+
 
 [data-testid="stRadio"] > div[role="radiogroup"] label:hover {
     background: rgba(255, 255, 255, 0.7) !important;
 }
+
 
 [data-testid="stRadio"] > div[role="radiogroup"] label:has(input:checked) {
     background: #ffffff !important;
@@ -477,9 +492,11 @@ section[data-testid="stSidebar"] label {
         0 2px 7px rgba(15, 23, 42, 0.10) !important;
 }
 
+
 [data-testid="stRadio"] > div[role="radiogroup"] label p,
 [data-testid="stRadio"] > div[role="radiogroup"] label span {
     color: #334155 !important;
+
     font-weight: 650 !important;
 }
 
@@ -496,6 +513,7 @@ section[data-testid="stSidebar"] label {
     width: 100% !important;
 
     border: 1px solid var(--border) !important;
+
     border-radius: 12px !important;
 
     overflow: hidden !important;
@@ -505,13 +523,16 @@ section[data-testid="stSidebar"] label {
     background: #ffffff !important;
 }
 
+
 [data-testid="stDataFrame"] * {
     font-size: 0.78rem !important;
 }
 
+
 [data-testid="stDataFrame"] div[role="columnheader"],
 [data-testid="stDataFrame"] div[role="columnheader"] * {
     text-align: center !important;
+
     justify-content: center !important;
 }
 
@@ -584,14 +605,18 @@ section[data-testid="stSidebar"] label {
     height: 9px;
 }
 
+
 ::-webkit-scrollbar-track {
     background: #e8eef5;
 }
 
+
 ::-webkit-scrollbar-thumb {
     background: #b7c5d5;
+
     border-radius: 10px;
 }
+
 
 ::-webkit-scrollbar-thumb:hover {
     background: #94a8bd;
