@@ -515,40 +515,35 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 # ============================================
 # SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
 # ============================================
-def clean_and_format_dataframe(df):
+def display_custom_table(df, key_prefix=""):
     """
-    Cleans data types, rounds numeric values, and prepares
-    clean dataframes for Streamlit rendering.
+    Renders dataframes as styled HTML tables to ensure exact Excel alignment:
+    - Text/Mixed -> Left-aligned
+    - Numbers/Percentages -> Center-aligned
+    - Headers -> Centered with compact column widths
     """
     df_clean = df.copy()
 
+    # Format numbers cleanly
     for col in df_clean.columns:
         if df_clean[col].dtype in ["float64", "float32"]:
-            df_clean[col] = df_clean[col].round(2)
-        elif df_clean[col].dtype in ["int64", "int32"]:
-            df_clean[col] = df_clean[col].astype(int)
-
-    return df_clean
-
-
-def get_column_configurations(df):
-    """
-    Returns Streamlit native column configurations:
-    - Text/Mixed columns -> Left aligned
-    - Numbers, Quantities & Percentages -> Center aligned with proper formatting
-    """
-    config = {}
-
-    for col in df.columns:
-        col_lower = col.lower()
-
-        if "%" in col or "ach" in col_lower or "util" in col_lower:
-            config[col] = st.column_config.Column(
-                col,
-                width="medium",
+            df_clean[col] = df_clean[col].apply(
+                lambda x: f"{x:.2f}" if pd.notna(x) and x != "-" else "-"
             )
-        elif (
+        elif df_clean[col].dtype in ["int64", "int32"]:
+            df_clean[col] = df_clean[col].apply(
+                lambda x: f"{x:,}" if pd.notna(x) and x != "-" else "-"
+            )
+
+    # Determine alignment classes per column
+    align_styles = []
+    for col in df_clean.columns:
+        col_lower = col.lower()
+        if (
             df[col].dtype in ["float64", "float32", "int64", "int32"]
+            or "%" in col
+            or "ach" in col_lower
+            or "util" in col_lower
             or "qty" in col_lower
             or "pcs" in col_lower
             or "ton" in col_lower
@@ -559,19 +554,17 @@ def get_column_configurations(df):
             or "ct" in col_lower
             or "cavity" in col_lower
             or "cap" in col_lower
-            or "demand" in col_lower
         ):
-            config[col] = st.column_config.NumberColumn(
-                col,
-                format="%.2f" if df[col].dtype in ["float64", "float32"] else "%d",
-            )
+            align_styles.append({"selector": f"td.col{df_clean.columns.get_loc(col)}", "props": [("text-align", "center")]})
         else:
-            config[col] = st.column_config.TextColumn(
-                col,
-            )
+            align_styles.append({"selector": f"td.col{df_clean.columns.get_loc(col)}", "props": [("text-align", "left")]})
 
-    return config
+    # Header centering style
+    align_styles.append({"selector": "th", "props": [("text-align", "center"), ("background-color", "#f1f5f9")]})
 
+    # Render HTML table
+    html_table = df_clean.style.set_table_styles(align_styles).hide(axis="index").to_html()
+    st.markdown(f'<div class="excel-table-container">{html_table}</div>', unsafe_allow_html=True)
 
 def column_visibility_selector(df, key_prefix=""):
     """Manages column visibility selector with default exclusions."""
