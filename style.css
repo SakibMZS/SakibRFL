@@ -234,3 +234,8 @@ div[data-testid="stPopover"] button {
     background: #ffffff !important;
     box-shadow: 0 2px 7px rgba(15,23,42,.10) !important;
 }
+
+/* Custom Table Font Size Control */
+[data-testid="stDataFrame"] * {
+    font-size: 0.75rem !important; /* Adjust between 0.80rem (12.8px) and 0.90rem (14.4px) */
+}
