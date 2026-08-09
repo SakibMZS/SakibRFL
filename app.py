@@ -1,3 +1,6 @@
+# ============================================
+# SECTION 1: IMPORTS & STREAMLIT SETUP
+# ============================================
 import io
 import os
 import re
@@ -6,7 +9,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-# Streamlit Page Setup
 st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
     page_icon="🏭",
@@ -15,7 +17,6 @@ st.set_page_config(
 )
 
 
-# Load External CSS
 def load_css(file_name="style.css"):
     if os.path.exists(file_name):
         with open(file_name) as f:
@@ -25,7 +26,7 @@ def load_css(file_name="style.css"):
 load_css("style.css")
 
 # ============================================
-# EXCEL CONFIGURATION & ENGINE
+# SECTION 2: EXCEL CONFIGURATION & SIZING
 # ============================================
 EXCEL_SIZES = [
     "160",
@@ -79,6 +80,9 @@ def derive_line_group(floor_code, mc_sl):
     return f"{floor_code} {line_code}"
 
 
+# ============================================
+# SECTION 3: DATA PARSING & AGGREGATION ENGINE
+# ============================================
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label):
     """Parses raw Excel floor production sheets and computes shift-proportional capacity."""
@@ -204,7 +208,6 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 b_rej = 0.0
 
             # Shift-proportional capacity scaling
-            # 2 shifts if both ran, 1 shift if only Shift A or Shift B ran
             shifts_active = (1.0 if a_good > 0 else 0.0) + (
                 1.0 if b_good > 0 else 0.0
             )
@@ -508,12 +511,32 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
 
+
+# ============================================
+# SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
+# ============================================
+def format_table_alignment(df):
+    """Aligns text/string columns to Left and numeric/metric columns to Center."""
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    text_cols = df.select_dtypes(include=["object", "string"]).columns.tolist()
+
+    # Center percentage and metric strings, left-align standard text
+    center_cols = numeric_cols + [
+        c for c in text_cols if "%" in c or "Ach" in c or "Util" in c
+    ]
+    left_cols = [c for c in text_cols if c not in center_cols]
+
+    return df.style.set_properties(
+        **{"text-align": "center"}, subset=center_cols
+    ).set_properties(**{"text-align": "left"}, subset=left_cols)
+
+
 def column_visibility_selector(df, key_prefix=""):
+    """Manages column visibility selector with default exclusions."""
     all_cols = df.columns.tolist()
 
     # Columns excluded from default table view
     excluded_defaults = ["Entry Count", "Is Mixed", "Line Group", "MC Size"]
-
     default_cols = [c for c in all_cols if c not in excluded_defaults]
 
     if f"{key_prefix}_visible_cols" not in st.session_state:
@@ -541,13 +564,13 @@ def column_visibility_selector(df, key_prefix=""):
 
 
 # ============================================
-# SESSION STATE INITIALIZATION
+# SECTION 5: SESSION STATE INITIALIZATION
 # ============================================
 if "app_launched" not in st.session_state:
     st.session_state["app_launched"] = False
 
 # ============================================
-# LANDING SETUP SCREEN
+# SECTION 6: LANDING SETUP SCREEN
 # ============================================
 if not st.session_state["app_launched"]:
     st.markdown("## 🏭 **PLASTIC-3 CONSOLE SETUP**")
@@ -600,7 +623,7 @@ if not st.session_state["app_launched"]:
                 st.rerun()
 
 # ============================================
-# MAIN DASHBOARD CONSOLE
+# SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
 else:
     with st.sidebar:
@@ -698,7 +721,7 @@ else:
                 df_active = df_curr.copy()
 
             # ============================================
-            # 1. DAILY DATA MODULE
+            # SECTION 8: MODULE 1 — DAILY DATA
             # ============================================
             if nav_choice == "📅 Daily Data":
                 all_dates = sorted(list(df_active["Date"].unique()))
@@ -787,7 +810,7 @@ else:
                         df_line_day_tot, "daily_line"
                     )
                     st.dataframe(
-                        df_line_day_tot[v_cols],
+                        format_table_alignment(df_line_day_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -819,7 +842,7 @@ else:
                         df_daily_totals, "daily_mc"
                     )
                     st.dataframe(
-                        df_daily_totals[v_cols],
+                        format_table_alignment(df_daily_totals[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -860,18 +883,20 @@ else:
                         ].round(2)
 
                         st.dataframe(
-                            sub_raw[[
-                                "Floor",
-                                "Order Name",
-                                "Item Name",
-                                "CT",
-                                "Cavity",
-                                "Shift A Good",
-                                "Shift B Good",
-                                "Total Good",
-                                "Runtime (Hrs)",
-                                "Daily Prod (Ton)",
-                            ]],
+                            format_table_alignment(
+                                sub_raw[[
+                                    "Floor",
+                                    "Order Name",
+                                    "Item Name",
+                                    "CT",
+                                    "Cavity",
+                                    "Shift A Good",
+                                    "Shift B Good",
+                                    "Total Good",
+                                    "Runtime (Hrs)",
+                                    "Daily Prod (Ton)",
+                                ]]
+                            ),
                             use_container_width=True,
                             hide_index=True,
                         )
@@ -898,7 +923,7 @@ else:
                         df_size_day_tot, "daily_size"
                     )
                     st.dataframe(
-                        df_size_day_tot[v_cols],
+                        format_table_alignment(df_size_day_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -997,7 +1022,7 @@ else:
                         job_day_tot, "daily_job"
                     )
                     st.dataframe(
-                        job_day_tot[v_cols],
+                        format_table_alignment(job_day_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1010,7 +1035,7 @@ else:
                     )
 
             # ============================================
-            # 2. AS OF DATA (MTD) MODULE
+            # SECTION 9: MODULE 2 — AS OF DATA (MTD)
             # ============================================
             elif nav_choice == "📊 As of Data (MTD)":
                 all_dates = sorted(list(df_active["Date"].unique()))
@@ -1097,7 +1122,7 @@ else:
                         df_line_mtd_tot, "mtd_line"
                     )
                     st.dataframe(
-                        df_line_mtd_tot[v_cols],
+                        format_table_alignment(df_line_mtd_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1133,7 +1158,7 @@ else:
                         df_size_mtd_tot, "mtd_size"
                     )
                     st.dataframe(
-                        df_size_mtd_tot[v_cols],
+                        format_table_alignment(df_size_mtd_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1219,7 +1244,7 @@ else:
                         job_agg_tot, "mtd_job"
                     )
                     st.dataframe(
-                        job_agg_tot[v_cols],
+                        format_table_alignment(job_agg_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1232,7 +1257,7 @@ else:
                     )
 
             # ============================================
-            # 3. SHIFTWISE DATA MODULE
+            # SECTION 10: MODULE 3 — SHIFTWISE DATA
             # ============================================
             elif nav_choice == "🌗 Shiftwise Data":
                 shift_mode = st.radio(
@@ -1305,7 +1330,7 @@ else:
                         shift_daily_tot, "daily_shift"
                     )
                     st.dataframe(
-                        shift_daily_tot[v_cols],
+                        format_table_alignment(shift_daily_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
