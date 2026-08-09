@@ -578,7 +578,7 @@ def column_visibility_selector(df, key_prefix=""):
     all_cols = df.columns.tolist()
 
     # Columns excluded from default table view
-    excluded_defaults = ["Entry Count", "Is Mixed", "Line Group", "MC Size"]
+    excluded_defaults = ["Entry Count", "Is Mixed"]
     default_cols = [c for c in all_cols if c not in excluded_defaults]
 
     if f"{key_prefix}_visible_cols" not in st.session_state:
