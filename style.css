@@ -4,6 +4,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+/* --- SECTION 1: DESIGN SYSTEM VARIABLES --- */
 :root {
     --bg: #eef3f8;
     --surface: #ffffff;
@@ -23,7 +24,7 @@
     --radius: 14px;
 }
 
-/* App Canvas */
+/* --- SECTION 2: APP CANVAS & BACKGROUND --- */
 .stApp {
     background:
         radial-gradient(circle at 10% 0%, rgba(37,99,235,.07), transparent 28%),
@@ -37,7 +38,7 @@
     box-sizing: border-box;
 }
 
-/* Global Typography */
+/* --- SECTION 3: GLOBAL TYPOGRAPHY --- */
 .stApp p, .stApp label, .stApp span, .stApp div, 
 .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
 .stApp th, .stApp td, .stApp small {
@@ -56,7 +57,7 @@
     margin: 1.15rem 0 !important;
 }
 
-/* Main Container Spacing */
+/* --- SECTION 4: CONTAINER SPACING & SIDEBAR --- */
 .block-container {
     max-width: 1540px !important;
     padding-top: 2rem !important;
@@ -65,7 +66,6 @@
     padding-right: 2.25rem !important;
 }
 
-/* Sidebar */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #f8fbff 0%, #edf3f9 58%, #e9f1f8 100%) !important;
     border-right: 1px solid var(--border) !important;
@@ -90,7 +90,7 @@
     font-weight: 600 !important;
 }
 
-/* Setup Cards */
+/* --- SECTION 5: INPUTS & BUTTONS --- */
 .setup-card {
     position: relative;
     overflow: hidden;
@@ -105,7 +105,6 @@
 .setup-card.ff { border-top: 4px solid var(--blue) !important; }
 .setup-card.gf { border-top: 4px solid var(--green) !important; }
 
-/* Inputs & Dropdowns */
 [data-baseweb="select"] > div,
 [data-testid="stTextInput"] input {
     background: #ffffff !important;
@@ -114,7 +113,6 @@
     border-radius: 10px !important;
 }
 
-/* Base Buttons */
 .stButton > button,
 .stDownloadButton > button,
 [data-testid="stDownloadButton"] button {
@@ -132,7 +130,7 @@
     color: #ffffff !important;
 }
 
-/* File Uploader */
+/* --- SECTION 6: FILE UPLOADER & POPOVER FIX --- */
 [data-testid="stFileUploader"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px dashed #9fb3c8 !important;
@@ -153,9 +151,6 @@
     display: none !important;
 }
 
-/* =========================================================
-   POPOVER COLUMNS BUTTON FIX (Completely Removes 'expand_more')
-   ========================================================= */
 [data-testid="stPopover"],
 div[data-testid="stPopover"] {
     width: auto !important;
@@ -180,7 +175,6 @@ div[data-testid="stPopover"] button {
     font-weight: 600 !important;
 }
 
-/* Hides ALL secondary icon spans, SVGs, and material text elements */
 [data-testid="stPopover"] button span:not(:first-child),
 [data-testid="stPopover"] button [data-testid="stIconMaterial"],
 [data-testid="stPopover"] button i,
@@ -193,7 +187,6 @@ div[data-testid="stPopover"] button {
     opacity: 0 !important;
 }
 
-/* Keeps primary text visible and centered */
 [data-testid="stPopover"] button p,
 [data-testid="stPopover"] button span:first-child {
     font-size: 0.95rem !important;
@@ -204,7 +197,7 @@ div[data-testid="stPopover"] button {
     white-space: nowrap !important;
 }
 
-/* Metric Cards */
+/* --- SECTION 7: METRICS & RADIO CONTROLS --- */
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px solid var(--border) !important;
@@ -221,7 +214,6 @@ div[data-testid="stPopover"] button {
     overflow: visible !important;
 }
 
-/* Segmented Radio Navigation */
 [data-testid="stRadio"] > div[role="radiogroup"] {
     gap: 0.35rem !important;
     padding: 0.3rem !important;
@@ -235,7 +227,18 @@ div[data-testid="stPopover"] button {
     box-shadow: 0 2px 7px rgba(15,23,42,.10) !important;
 }
 
-/* Custom Table Font Size Control */
+/* --- SECTION 8: TABLE ALIGNMENT & FONT SIZE --- */
+[data-testid="stDataFrame"] {
+    display: flex !important;
+    justify-content: center !important;
+}
+
 [data-testid="stDataFrame"] * {
-    font-size: 0.75rem !important; /* Adjust between 0.80rem (12.8px) and 0.90rem (14.4px) */
+    font-size: 0.75rem !important;
+}
+
+/* Force Table Header Titles to Center Align */
+[data-testid="stDataFrame"] div[role="columnheader"] {
+    text-align: center !important;
+    justify-content: center !important;
 }
