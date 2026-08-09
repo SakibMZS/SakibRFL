@@ -24,7 +24,7 @@
     --radius: 14px;
 }
 
-/* --- SECTION 2: APP CANVAS & DEFAULT HEADER REMOVAL --- */
+/* --- SECTION 2: APP CANVAS & DEFAULT HEADER STRIPPING --- */
 .stApp {
     background:
         radial-gradient(circle at 10% 0%, rgba(37,99,235,.07), transparent 28%),
@@ -38,13 +38,19 @@
     box-sizing: border-box;
 }
 
-/* Completely drop default Streamlit top header & developer toolbar */
+/* Make top header container transparent and pass clicks through to workspace */
 header[data-testid="stHeader"] {
+    background: transparent !important;
+    pointer-events: none !important;
+    height: 2.5rem !important;
+    z-index: 99 !important;
+}
+
+/* Hide Streamlit default developer toolbar (Share, Star, GitHub, Edit menu) */
+[data-testid="stToolbar"],
+header[data-testid="stHeader"] > div:nth-child(2) {
     display: none !important;
     visibility: hidden !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
 }
 
 /* --- SECTION 3: GLOBAL TYPOGRAPHY & ICON ISOLATION --- */
@@ -86,7 +92,7 @@ i.material-icons {
     padding-right: 2rem !important;
 }
 
-/* --- SECTION 5: LOCKED PERMANENT SIDEBAR --- */
+/* --- SECTION 5: PERMANENT VISIBLE SIDEBAR --- */
 [data-testid="stSidebar"] {
     display: block !important;
     visibility: visible !important;
@@ -97,8 +103,10 @@ i.material-icons {
     box-shadow: 6px 0 24px rgba(15, 23, 42, 0.045) !important;
 }
 
+/* Force inner content wrappers to stay 100% visible inside sidebar */
 [data-testid="stSidebarUserContent"],
 [data-testid="stSidebarNav"],
+[data-testid="stSidebarContent"],
 [data-testid="stSidebar"] > div {
     display: block !important;
     visibility: visible !important;
@@ -192,6 +200,7 @@ div[data-testid="stPopover"] button {
     color: #334155 !important;
     border: 1px solid var(--border-strong) !important;
     font-weight: 600 !important;
+    pointer-events: auto !important;
 }
 
 [data-testid="stFileUploader"] {
