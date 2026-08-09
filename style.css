@@ -175,6 +175,12 @@ section[data-testid="stSidebar"] {
         6px 0 24px rgba(15, 23, 42, 0.045) !important;
 }
 
+/* Reduce only the empty top space inside the native sidebar */
+section[data-testid="stSidebar"]
+[data-testid="stSidebarContent"] {
+    padding-top: 0.5rem !important;
+}
+
 
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
