@@ -54,18 +54,19 @@
 .stApp hr {
     border: 0 !important;
     border-top: 1px solid var(--border) !important;
-    margin: 1.15rem 0 !important;
+    margin: 1rem 0 !important;
 }
 
-/* --- SECTION 4: CONTAINER SPACING & SIDEBAR --- */
+/* --- SECTION 4: CONTAINER SPACING & TOP PADDING --- */
 .block-container {
     max-width: 1540px !important;
-    padding-top: 2rem !important;
-    padding-bottom: 3rem !important;
-    padding-left: 2.25rem !important;
-    padding-right: 2.25rem !important;
+    padding-top: 1rem !important;
+    padding-bottom: 2.5rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
 }
 
+/* --- SECTION 5: SIDEBAR & TOGGLE FIX --- */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #f8fbff 0%, #edf3f9 58%, #e9f1f8 100%) !important;
     border-right: 1px solid var(--border) !important;
@@ -73,7 +74,7 @@
 }
 
 [data-testid="stSidebar"] > div:first-child {
-    padding-top: 1.5rem !important;
+    padding-top: 1.25rem !important;
 }
 
 [data-testid="stSidebar"] * {
@@ -90,7 +91,21 @@
     font-weight: 600 !important;
 }
 
-/* --- SECTION 5: INPUTS & BUTTONS --- */
+/* Suppresses raw Material icon text on sidebar collapse button */
+[data-testid="stSidebarCollapseButton"] button span,
+[data-testid="stSidebarCollapseButton"] button [data-testid="stIconMaterial"],
+[data-testid="stSidebarCollapseButton"] button i {
+    font-size: 0px !important;
+    color: transparent !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button::after {
+    content: "◀" !important;
+    font-size: 0.85rem !important;
+    color: #334155 !important;
+}
+
+/* --- SECTION 6: INPUTS & BUTTONS --- */
 .setup-card {
     position: relative;
     overflow: hidden;
@@ -130,27 +145,7 @@
     color: #ffffff !important;
 }
 
-/* --- SECTION 6: FILE UPLOADER & POPOVER FIX --- */
-[data-testid="stFileUploader"] {
-    background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
-    border: 1px dashed #9fb3c8 !important;
-    border-radius: 12px !important;
-    padding: 1rem !important;
-}
-
-[data-testid="stFileUploader"] button {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    min-width: 140px !important;
-    padding: 0.45rem 1rem !important;
-}
-
-[data-testid="stFileUploader"] button [data-testid="stIconMaterial"],
-[data-testid="stFileUploader"] button span[class*="icon"] {
-    display: none !important;
-}
-
+/* --- SECTION 7: POPOVER & METRICS --- */
 [data-testid="stPopover"],
 div[data-testid="stPopover"] {
     width: auto !important;
@@ -175,29 +170,6 @@ div[data-testid="stPopover"] button {
     font-weight: 600 !important;
 }
 
-[data-testid="stPopover"] button span:not(:first-child),
-[data-testid="stPopover"] button [data-testid="stIconMaterial"],
-[data-testid="stPopover"] button i,
-[data-testid="stPopover"] button svg {
-    display: none !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
-    font-size: 0px !important;
-    opacity: 0 !important;
-}
-
-[data-testid="stPopover"] button p,
-[data-testid="stPopover"] button span:first-child {
-    font-size: 0.95rem !important;
-    font-weight: 650 !important;
-    color: #334155 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    white-space: nowrap !important;
-}
-
-/* --- SECTION 7: METRICS & RADIO CONTROLS --- */
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%) !important;
     border: 1px solid var(--border) !important;
@@ -216,7 +188,7 @@ div[data-testid="stPopover"] button {
 
 [data-testid="stRadio"] > div[role="radiogroup"] {
     gap: 0.35rem !important;
-    padding: 0.3rem !important;
+    padding: 0.25rem !important;
     background: #e8eef5 !important;
     border: 1px solid #d5dfe9 !important;
     border-radius: 11px !important;
@@ -227,41 +199,19 @@ div[data-testid="stPopover"] button {
     box-shadow: 0 2px 7px rgba(15,23,42,.10) !important;
 }
 
-/* --- SECTION 8: TABLE ALIGNMENT & FONT SIZE --- */
-.excel-table-container {
+/* --- SECTION 8: NATIVE TABLE STYLING --- */
+[data-testid="stDataFrame"] {
+    display: flex !important;
+    justify-content: center !important;
     width: 100% !important;
-    overflow-x: auto !important;
-    margin-top: 0.5rem !important;
-    margin-bottom: 1rem !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 10px !important;
-    background: #ffffff !important;
 }
 
-.excel-table-container table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-    font-size: 0.80rem !important;
-    font-family: 'Inter', sans-serif !important;
+[data-testid="stDataFrame"] * {
+    font-size: 0.78rem !important;
 }
 
-.excel-table-container th {
-    padding: 0.55rem 0.75rem !important;
-    font-weight: 700 !important;
-    color: #334155 !important;
-    border-bottom: 2px solid var(--border-strong) !important;
-    border-right: 1px solid var(--border) !important;
-    white-space: nowrap !important;
-}
-
-.excel-table-container td {
-    padding: 0.45rem 0.75rem !important;
-    border-bottom: 1px solid var(--border) !important;
-    border-right: 1px solid var(--border) !important;
-    color: #0f172a !important;
-    white-space: nowrap !important;
-}
-
-.excel-table-container tr:hover td {
-    background-color: #f8fbff !important;
+[data-testid="stDataFrame"] div[role="columnheader"],
+[data-testid="stDataFrame"] div[role="columnheader"] * {
+    text-align: center !important;
+    justify-content: center !important;
 }
