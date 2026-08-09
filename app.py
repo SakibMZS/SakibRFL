@@ -81,11 +81,11 @@ def derive_line_group(floor_code, mc_sl):
 
 
 # ============================================
-# SECTION 3: DATA PARSING & AGGREGATION ENGINE
+# SECTION 3: DATA PARSING & TYPO AUDIT ENGINE
 # ============================================
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label):
-    """Parses raw Excel floor production sheets and computes shift-proportional capacity."""
+    """Parses raw Excel floor production sheets, computes capacity, and logs typo exceptions."""
     file_stream = io.BytesIO(file_bytes)
     xls = pd.ExcelFile(file_stream)
 
@@ -118,6 +118,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
         date_sheets = []
 
     all_records = []
+    typo_logs = []
 
     for sheet in date_sheets:
         df = pd.read_excel(xls, sheet_name=sheet)
@@ -138,6 +139,17 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             )
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
+
+            # Audit Check 1: Machine Serial Typo (e.g., '119' or '121' instead of standard sizes)
+            if "119" in mc_sl or "121" in mc_sl:
+                typo_logs.append({
+                    "Date": sheet.strip(),
+                    "Floor": floor_label,
+                    "Machine SL": mc_sl,
+                    "Order Name": order,
+                    "Issue Detected": f"Machine SL typo '{mc_sl}' found",
+                    "Applied Resolution": f"Auto-remapped to size class '{mc_size}'",
+                })
 
             ct = (
                 pd.to_numeric(row.get("CT"), errors="coerce")
@@ -161,18 +173,6 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 cavity = 0.0
             if pd.isna(unit_wt_kg):
                 unit_wt_kg = 0.0
-
-            std_cap_shift = (
-                (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
-            )
-
-            demand_qty = (
-                pd.to_numeric(row.get("Demand"), errors="coerce")
-                if pd.notna(row.get("Demand"))
-                else 0.0
-            )
-            if pd.isna(demand_qty):
-                demand_qty = 0.0
 
             a_good = (
                 pd.to_numeric(row.get("A-Good"), errors="coerce")
@@ -206,6 +206,31 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                 b_good = 0.0
             if pd.isna(b_rej):
                 b_rej = 0.0
+
+            # Audit Check 2: Missing CT/Cavity on active production runs
+            if (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0):
+                typo_logs.append({
+                    "Date": sheet.strip(),
+                    "Floor": floor_label,
+                    "Machine SL": mc_sl,
+                    "Order Name": order,
+                    "Issue Detected": (
+                        f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
+                    ),
+                    "Applied Resolution": "Flagged for source Excel correction",
+                })
+
+            std_cap_shift = (
+                (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
+            )
+
+            demand_qty = (
+                pd.to_numeric(row.get("Demand"), errors="coerce")
+                if pd.notna(row.get("Demand"))
+                else 0.0
+            )
+            if pd.isna(demand_qty):
+                demand_qty = 0.0
 
             # Shift-proportional capacity scaling
             shifts_active = (1.0 if a_good > 0 else 0.0) + (
@@ -263,8 +288,10 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             })
 
     df_res = pd.DataFrame(all_records)
+    df_audit = pd.DataFrame(typo_logs)
+
     if df_res.empty:
-        return df_res
+        return df_res, df_audit
 
     # Runtime-weighted multi-job entry weighting
     mc_totals = (
@@ -291,7 +318,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
         df_res["Daily Cap Pcs"] * df_res["Runtime Weight"]
     )
 
-    return df_res
+    return df_res, df_audit
 
 
 def consolidate_daily_machines(df_day):
@@ -660,72 +687,74 @@ if not st.session_state["app_launched"]:
 # SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
 else:
-    with st.sidebar:
-        st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
-        st.caption("Active Production Session")
-        st.divider()
-
-        nav_choice = st.radio(
-            "📍 **Select Module:**",
-            [
-                "📅 Daily Data",
-                "📊 As of Data (MTD)",
-                "🌗 Shiftwise Data",
-            ],
-        )
-
-        st.divider()
-
-        hide_zero_runs = st.toggle(
-            "🚫 Hide Non-Running Machines",
-            value=True,
-            help="Filters out idle machines with zero production",
-        )
-
-        st.divider()
-
-        if st.button("⚙️ Change Uploaded Files", use_container_width=True):
-            st.session_state["app_launched"] = False
-            st.session_state.pop("ff_bytes", None)
-            st.session_state.pop("gf_bytes", None)
-            st.rerun()
-
-    all_floor_data = []
+    all_parsed_dfs = []
+    all_audit_dfs = []
 
     if "ff_bytes" in st.session_state:
-        df_ff = load_and_parse_floor_data(st.session_state["ff_bytes"], "FF")
+        df_ff, df_ff_audit = load_and_parse_floor_data(st.session_state["ff_bytes"], "FF")
         if not df_ff.empty:
-            all_floor_data.append(df_ff)
+            all_parsed_dfs.append(df_ff)
+        if not df_ff_audit.empty:
+            all_audit_dfs.append(df_ff_audit)
 
     if "gf_bytes" in st.session_state:
-        df_gf = load_and_parse_floor_data(st.session_state["gf_bytes"], "GF")
+        df_gf, df_gf_audit = load_and_parse_floor_data(st.session_state["gf_bytes"], "GF")
         if not df_gf.empty:
-            all_floor_data.append(df_gf)
+            all_parsed_dfs.append(df_gf)
+        if not df_gf_audit.empty:
+            all_audit_dfs.append(df_gf_audit)
 
-    if not all_floor_data:
+    if not all_parsed_dfs:
         st.error(
             "No valid data parsed. Click '⚙️ Change Uploaded Files' in"
             " sidebar."
         )
     else:
-        df_data_raw = pd.concat(all_floor_data, ignore_index=True)
+        df_data_raw = pd.concat(all_parsed_dfs, ignore_index=True)
+        df_typo_audit = (
+            pd.concat(all_audit_dfs, ignore_index=True)
+            if all_audit_dfs
+            else pd.DataFrame()
+        )
 
-        col_hdr1, col_hdr2 = st.columns([3, 2])
-        with col_hdr1:
-            st.markdown(f"## {nav_choice}")
-            st.caption(
-                "Plastic-3 Production Optimization & Live Monitoring Panel"
+        with st.sidebar:
+            st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
+            st.caption("Active Production Session")
+            st.divider()
+
+            nav_choice = st.radio(
+                "📍 **Select Module:**",
+                [
+                    "📅 Daily Data",
+                    "📊 As of Data (MTD)",
+                    "🌗 Shiftwise Data",
+                ],
             )
 
-        with col_hdr2:
+            st.divider()
+
             floor_choice = st.radio(
-                "🏢 Floor View Toggle:",
+                "🏢 **Floor View:**",
                 ["ALL FLOORS", "FF", "GF"],
                 horizontal=True,
                 key="floor_toggle",
             )
 
-        st.divider()
+            st.divider()
+
+            hide_zero_runs = st.toggle(
+                "🚫 Hide Non-Running Machines",
+                value=True,
+                help="Filters out idle machines with zero production",
+            )
+
+            st.divider()
+
+            if st.button("⚙️ Change Uploaded Files", use_container_width=True):
+                st.session_state["app_launched"] = False
+                st.session_state.pop("ff_bytes", None)
+                st.session_state.pop("gf_bytes", None)
+                st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
             st.warning(
@@ -759,9 +788,47 @@ else:
             # ============================================
             if nav_choice == "📅 Daily Data":
                 all_dates = sorted(list(df_active["Date"].unique()))
-                selected_date = st.selectbox(
-                    "📅 Select Operational Date:", all_dates
-                )
+
+                # SINGLE-ROW TOP CONTROL BAR
+                col_nav1, col_nav2, col_nav3 = st.columns([3.5, 1.2, 1.3])
+
+                with col_nav1:
+                    daily_mode = st.radio(
+                        "Daily View Mode:",
+                        [
+                            "📊 Linewise",
+                            "🏭 MC Wise",
+                            "📏 Sizewise",
+                            "📦 Job-Order Wise",
+                        ],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                    )
+
+                with col_nav2:
+                    selected_date = st.selectbox(
+                        "Operational Date",
+                        all_dates,
+                        label_visibility="collapsed",
+                    )
+
+                with col_nav3:
+                    if not df_typo_audit.empty:
+                        with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
+                            st.markdown("#### 🔍 Data Quality & Typo Audit Log")
+                            st.caption(
+                                "Flagged entries auto-remapped to keep app running."
+                                " Please fix source Excel files:"
+                            )
+                            st.dataframe(
+                                df_typo_audit,
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                    else:
+                        st.button("🟢 All Data Valid", disabled=True)
+
+                st.divider()
 
                 df_daily_raw = df_active[
                     df_active["Date"] == selected_date
@@ -811,17 +878,6 @@ else:
                 )
 
                 st.divider()
-
-                daily_mode = st.radio(
-                    "Daily View Mode:",
-                    [
-                        "📊 Linewise",
-                        "🏭 MC Wise",
-                        "📏 Sizewise",
-                        "📦 Job-Order Wise (Daily Active)",
-                    ],
-                    horizontal=True,
-                )
 
                 if daily_mode == "📊 Linewise":
                     st.markdown("### 📈 Line-Wise Performance Summary")
@@ -973,7 +1029,7 @@ else:
                         "text/csv",
                     )
 
-                elif daily_mode == "📦 Job-Order Wise (Daily Active)":
+                elif daily_mode == "📦 Job-Order Wise":
                     st.markdown("### 📦 Active Orders Run On Selected Date")
 
                     search_term = st.text_input(
@@ -1078,25 +1134,42 @@ else:
             elif nav_choice == "📊 As of Data (MTD)":
                 all_dates = sorted(list(df_active["Date"].unique()))
 
-                latest_date_str = all_dates[-1]
-                latest_dt = pd.to_datetime(
-                    latest_date_str, format="%d-%m-%Y", errors="coerce"
-                )
-                if pd.notna(latest_dt):
-                    start_date_str = f"01-{latest_dt.month:02d}-{latest_dt.year}"
-                else:
-                    start_date_str = all_dates[0]
+                col_mtd1, col_mtd2, col_mtd3 = st.columns([3.5, 1.2, 1.3])
 
-                st.markdown(
-                    f"### 📊 As-Of Production Period: **{start_date_str}** to"
-                    f" **{latest_date_str}**"
-                )
+                with col_mtd1:
+                    mtd_mode = st.radio(
+                        "As-Of View Mode:",
+                        [
+                            "📊 Linewise",
+                            "📏 Sizewise",
+                            "📦 Job-Order Wise",
+                        ],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                    )
 
-                as_of_date = st.select_slider(
-                    "📅 Adjust As-Of Cutoff Date:",
-                    options=all_dates,
-                    value=latest_date_str,
-                )
+                with col_mtd2:
+                    as_of_date = st.selectbox(
+                        "As-Of Cutoff Date",
+                        all_dates,
+                        index=len(all_dates) - 1,
+                        label_visibility="collapsed",
+                    )
+
+                with col_mtd3:
+                    if not df_typo_audit.empty:
+                        with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
+                            st.markdown("#### 🔍 Data Quality & Typo Audit Log")
+                            st.caption("Flagged source Excel entries:")
+                            st.dataframe(
+                                df_typo_audit,
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                    else:
+                        st.button("🟢 All Data Valid", disabled=True)
+
+                st.divider()
 
                 df_mtd = df_active[df_active["Date"] <= as_of_date].copy()
 
@@ -1126,16 +1199,6 @@ else:
                 )
 
                 st.divider()
-
-                mtd_mode = st.radio(
-                    "As-Of View Mode:",
-                    [
-                        "📊 Linewise",
-                        "📏 Sizewise",
-                        "📦 Job-Order Wise (Cumulative)",
-                    ],
-                    horizontal=True,
-                )
 
                 if mtd_mode == "📊 Linewise":
                     st.markdown(
@@ -1207,7 +1270,7 @@ else:
                         "text/csv",
                     )
 
-                elif mtd_mode == "📦 Job-Order Wise (Cumulative)":
+                elif mtd_mode == "📦 Job-Order Wise":
                     st.markdown(
                         "### 📦 Master Order Completion Summary (As of"
                         f" {as_of_date})"
