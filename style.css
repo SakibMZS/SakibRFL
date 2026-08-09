@@ -157,7 +157,6 @@ header[data-testid="stHeader"] {
 /* =========================================================
    6. NATIVE SIDEBAR
    VISUAL STYLING ONLY.
-   DO NOT ALTER ITS SIZE, POSITION OR STATE.
    ========================================================= */
 
 section[data-testid="stSidebar"] {
@@ -175,12 +174,11 @@ section[data-testid="stSidebar"] {
         6px 0 24px rgba(15, 23, 42, 0.045) !important;
 }
 
-/* Reduce only the empty top space inside the native sidebar */
+/* Pull sidebar content directly flush to top edge */
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
-    padding-top: 0.5rem !important;
+    padding-top: 0.25rem !important;
 }
-
 
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
@@ -193,23 +191,29 @@ section[data-testid="stSidebar"] h6 {
     color: var(--text) !important;
 }
 
-
-section[data-testid="stSidebar"] h3 {
-    font-weight: 800 !important;
-    letter-spacing: -0.025em !important;
-}
-
-
 section[data-testid="stSidebar"] label {
     color: #334155 !important;
     font-weight: 600 !important;
 }
+
 /* Sidebar logo branding styling (side-by-side) */
+section[data-testid="stSidebar"] [data-testid="stImage"] {
+    display: flex !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 section[data-testid="stSidebar"] [data-testid="stImage"] img {
     max-height: 52px !important;
     width: auto !important;
     object-fit: contain !important;
     margin: 0 !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stColumn"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stColumn"] h3 {
@@ -218,6 +222,7 @@ section[data-testid="stSidebar"] [data-testid="stColumn"] h3 {
     margin: 0 !important;
     padding: 0 !important;
     line-height: 1.2 !important;
+    letter-spacing: -0.025em !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stColumn"] p {
