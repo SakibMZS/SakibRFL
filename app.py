@@ -875,9 +875,12 @@ else:
         )
 
         with st.sidebar:
-            st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
-            st.caption("Active Production Session")
-            st.divider()
+    # Render logo image centered or fitting sidebar width
+    st.image("logo.png", use_container_width=True)  # Or provide image URL / SVG path
+    
+    st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
+    st.caption("Active Production Session")
+    st.divider()
 
             nav_choice = st.radio(
                 "📍 **Select Module:**",
