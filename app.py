@@ -25,6 +25,10 @@ def load_css(file_name="style.css"):
 
 load_css("style.css")
 
+# Initialize Typo Overrides in Session State
+if "typo_overrides" not in st.session_state:
+    st.session_state["typo_overrides"] = {}
+
 # ============================================
 # SECTION 2: EXCEL CONFIGURATION & SIZING
 # ============================================
@@ -84,8 +88,11 @@ def derive_line_group(floor_code, mc_sl):
 # SECTION 3: DATA PARSING & TYPO AUDIT ENGINE
 # ============================================
 @st.cache_data
-def load_and_parse_floor_data(file_bytes, floor_label):
+def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     """Parses raw Excel floor production sheets, computes capacity, and logs typo exceptions."""
+    if typo_overrides is None:
+        typo_overrides = {}
+
     file_stream = io.BytesIO(file_bytes)
     xls = pd.ExcelFile(file_stream)
 
@@ -131,8 +138,8 @@ def load_and_parse_floor_data(file_bytes, floor_label):
 
         df = df[df["MC SL"].notna() & df["Order Name"].notna()].copy()
 
-        for _, row in df.iterrows():
-            mc_sl = str(row.get("MC SL")).strip()
+        for idx, row in df.iterrows():
+            raw_mc_sl = str(row.get("MC SL")).strip()
             order = str(row.get("Order Name")).strip()
             item = str(row.get("Item Name", "")).strip()
 
@@ -150,6 +157,17 @@ def load_and_parse_floor_data(file_bytes, floor_label):
                     else "-"
                 )
 
+            # Check for Session-Based Typo Overrides
+            override_key = f"{dt_str_clean}_{floor_label}_{raw_mc_sl}_{order}_{idx}"
+            if override_key in typo_overrides:
+                mc_sl = typo_overrides[override_key].get("mc_sl", raw_mc_sl)
+                ct_override = typo_overrides[override_key].get("ct", None)
+                cavity_override = typo_overrides[override_key].get("cavity", None)
+            else:
+                mc_sl = raw_mc_sl
+                ct_override = None
+                cavity_override = None
+
             cust_prefix = (
                 order.split("-")[0].strip().upper() if "-" in order else order
             )
@@ -157,25 +175,38 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             line_group = derive_line_group(floor_label, mc_sl)
 
             # Audit Check 1: Machine Serial Typo (e.g., '119' or '121' instead of standard sizes)
-            if "119" in mc_sl or "121" in mc_sl:
+            if "119" in raw_mc_sl or "121" in raw_mc_sl:
                 typo_logs.append({
+                    "Key": override_key,
                     "Date": dt_str_clean,
                     "Floor": floor_label,
-                    "Machine SL": mc_sl,
+                    "Machine SL": raw_mc_sl,
                     "Order Name": order,
-                    "Issue Detected": f"Machine SL typo '{mc_sl}' found",
+                    "Acc Code": acc_code,
+                    "Issue Detected": f"Machine SL typo '{raw_mc_sl}' found",
                     "Applied Resolution": f"Auto-remapped to size class '{mc_size}'",
+                    "Current MC SL": mc_sl,
+                    "Current CT": row.get("CT", 0.0),
+                    "Current Cavity": row.get("Cavity", 0.0),
                 })
 
             ct = (
-                pd.to_numeric(row.get("CT"), errors="coerce")
-                if pd.notna(row.get("CT"))
-                else 0.0
+                float(ct_override)
+                if ct_override is not None
+                else (
+                    pd.to_numeric(row.get("CT"), errors="coerce")
+                    if pd.notna(row.get("CT"))
+                    else 0.0
+                )
             )
             cavity = (
-                pd.to_numeric(row.get("Cavity"), errors="coerce")
-                if pd.notna(row.get("Cavity"))
-                else 0.0
+                float(cavity_override)
+                if cavity_override is not None
+                else (
+                    pd.to_numeric(row.get("Cavity"), errors="coerce")
+                    if pd.notna(row.get("Cavity"))
+                    else 0.0
+                )
             )
             unit_wt_kg = (
                 pd.to_numeric(row.get("Unit Wt"), errors="coerce")
@@ -226,14 +257,19 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             # Audit Check 2: Missing CT/Cavity on active production runs
             if (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0):
                 typo_logs.append({
+                    "Key": override_key,
                     "Date": dt_str_clean,
                     "Floor": floor_label,
-                    "Machine SL": mc_sl,
+                    "Machine SL": raw_mc_sl,
                     "Order Name": order,
+                    "Acc Code": acc_code,
                     "Issue Detected": (
                         f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
                     ),
                     "Applied Resolution": "Flagged for source Excel correction",
+                    "Current MC SL": mc_sl,
+                    "Current CT": ct,
+                    "Current Cavity": cavity,
                 })
 
             std_cap_shift = (
@@ -663,9 +699,21 @@ def clean_and_format_dataframe(df):
     for col in df_clean.columns:
         col_lower = col.lower()
         if df_clean[col].dtype in ["float64", "float32"]:
-            if "good" in col_lower or "rej" in col_lower or "pcs" in col_lower or "qty" in col_lower or "production" in col_lower or "due" in col_lower:
+            if (
+                "good" in col_lower
+                or "rej" in col_lower
+                or "pcs" in col_lower
+                or "qty" in col_lower
+                or "production" in col_lower
+                or "due" in col_lower
+                or "output" in col_lower
+            ):
                 df_clean[col] = df_clean[col].apply(
-                    lambda x: f"{int(round(x)):,}" if pd.notna(x) and str(x) != "-" else "-"
+                    lambda x: (
+                        f"{int(round(x)):,}"
+                        if pd.notna(x) and str(x) != "-"
+                        else "-"
+                    )
                 )
             else:
                 df_clean[col] = df_clean[col].apply(
@@ -683,7 +731,14 @@ def column_visibility_selector(df, key_prefix=""):
     """Manages column visibility selector with default exclusions."""
     all_cols = df.columns.tolist()
 
-    excluded_defaults = ["Entry Count", "Is Mixed", "Is Completed"]
+    excluded_defaults = [
+        "Entry Count",
+        "Is Mixed",
+        "Is Completed",
+        "Last Run Date",
+        "Last MC Assigned",
+        "Last Day Output (Pcs)",
+    ]
     default_cols = [c for c in all_cols if c not in excluded_defaults]
 
     if f"{key_prefix}_visible_cols" not in st.session_state:
@@ -776,15 +831,21 @@ else:
     all_parsed_dfs = []
     all_audit_dfs = []
 
+    typo_overrides = st.session_state.get("typo_overrides", {})
+
     if "ff_bytes" in st.session_state:
-        df_ff, df_ff_audit = load_and_parse_floor_data(st.session_state["ff_bytes"], "FF")
+        df_ff, df_ff_audit = load_and_parse_floor_data(
+            st.session_state["ff_bytes"], "FF", typo_overrides
+        )
         if not df_ff.empty:
             all_parsed_dfs.append(df_ff)
         if not df_ff_audit.empty:
             all_audit_dfs.append(df_ff_audit)
 
     if "gf_bytes" in st.session_state:
-        df_gf, df_gf_audit = load_and_parse_floor_data(st.session_state["gf_bytes"], "GF")
+        df_gf, df_gf_audit = load_and_parse_floor_data(
+            st.session_state["gf_bytes"], "GF", typo_overrides
+        )
         if not df_gf.empty:
             all_parsed_dfs.append(df_gf)
         if not df_gf_audit.empty:
@@ -840,6 +901,7 @@ else:
                 st.session_state["app_launched"] = False
                 st.session_state.pop("ff_bytes", None)
                 st.session_state.pop("gf_bytes", None)
+                st.session_state.pop("typo_overrides", None)
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
@@ -868,6 +930,60 @@ else:
                 ].copy()
             else:
                 df_active = df_curr.copy()
+
+            # Helper renderer for Typo Correction Popover
+            def render_typo_popover():
+                if not df_typo_audit.empty:
+                    with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
+                        st.markdown("#### 🔍 Data Quality & In-App Typo Correction")
+                        st.caption(
+                            "Override flagged typos below to re-parse live calculations:"
+                        )
+
+                        for idx_t, t_row in df_typo_audit.iterrows():
+                            t_key = t_row["Key"]
+                            with st.expander(
+                                f"📍 {t_row['Date']} | {t_row['Floor']} - {t_row['Machine SL']} ({t_row['Order Name']})"
+                            ):
+                                st.write(f"**Issue:** {t_row['Issue Detected']}")
+
+                                col_t1, col_t2, col_t3 = st.columns(3)
+                                with col_t1:
+                                    new_mc = st.text_input(
+                                        "Machine SL",
+                                        value=str(t_row["Current MC SL"]),
+                                        key=f"mc_{t_key}",
+                                    )
+                                with col_t2:
+                                    new_ct = st.number_input(
+                                        "CT (s)",
+                                        value=float(t_row["Current CT"]),
+                                        key=f"ct_{t_key}",
+                                    )
+                                with col_t3:
+                                    new_cav = st.number_input(
+                                        "Cavity",
+                                        value=float(t_row["Current Cavity"]),
+                                        key=f"cav_{t_key}",
+                                    )
+
+                                if st.button("💾 Apply Correction", key=f"btn_{t_key}"):
+                                    if "typo_overrides" not in st.session_state:
+                                        st.session_state["typo_overrides"] = {}
+                                    st.session_state["typo_overrides"][t_key] = {
+                                        "mc_sl": new_mc,
+                                        "ct": new_ct,
+                                        "cavity": new_cav,
+                                    }
+                                    st.success("Correction saved! Refreshing console...")
+                                    st.rerun()
+
+                        st.divider()
+                        if st.button("🔄 Reset All Corrections", use_container_width=True):
+                            st.session_state["typo_overrides"] = {}
+                            st.rerun()
+                else:
+                    st.button("🟢 All Data Valid", disabled=True)
 
             # ============================================
             # SECTION 8: MODULE 1 — DAILY DATA
@@ -899,20 +1015,7 @@ else:
                     )
 
                 with col_nav3:
-                    if not df_typo_audit.empty:
-                        with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
-                            st.markdown("#### 🔍 Data Quality & Typo Audit Log")
-                            st.caption(
-                                "Flagged entries auto-remapped to keep app running."
-                                " Please fix source Excel files:"
-                            )
-                            st.dataframe(
-                                df_typo_audit,
-                                use_container_width=True,
-                                hide_index=True,
-                            )
-                    else:
-                        st.button("🟢 All Data Valid", disabled=True)
+                    render_typo_popover()
 
                 st.divider()
 
@@ -1243,17 +1346,7 @@ else:
                     )
 
                 with col_mtd3:
-                    if not df_typo_audit.empty:
-                        with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
-                            st.markdown("#### 🔍 Data Quality & Typo Audit Log")
-                            st.caption("Flagged source Excel entries:")
-                            st.dataframe(
-                                df_typo_audit,
-                                use_container_width=True,
-                                hide_index=True,
-                            )
-                    else:
-                        st.button("🟢 All Data Valid", disabled=True)
+                    render_typo_popover()
 
                 st.divider()
 
@@ -1364,54 +1457,64 @@ else:
                         f" {as_of_date})"
                     )
 
-                    df_cutoff_date = df_mtd[df_mtd["Date"] == as_of_date].copy()
-
+                    # Gather every unique item run up to as_of_date
                     job_records = []
-                    if not df_cutoff_date.empty:
-                        for (cust, ord_name, acc_cd), grp in df_cutoff_date.groupby(
-                            ["Customer", "Order Name", "Acc Code"]
-                        ):
-                            itm_name = grp["Item Name"].iloc[0]
-                            order_qty = grp["Demand Qty"].sum()
-                            due_prod_present = grp["Due Prod Present"].sum()
+                    for (cust, ord_name, acc_cd), grp in df_mtd.groupby(
+                        ["Customer", "Order Name", "Acc Code"]
+                    ):
+                        # Get most recent run sheet entry on or before cutoff date
+                        latest_run = grp.sort_values("DateObj").iloc[-1]
+                        last_run_date = latest_run["Date"]
+                        itm_name = latest_run["Item Name"]
+
+                        # Check if running on cutoff date sheet specifically
+                        cutoff_grp = grp[grp["Date"] == as_of_date]
+
+                        if not cutoff_grp.empty:
+                            order_qty = cutoff_grp["Demand Qty"].sum()
+                            due_prod_present = cutoff_grp["Due Prod Present"].sum()
                             as_of_prod = order_qty - due_prod_present
+                            last_mcs = ", ".join(sorted(cutoff_grp["Machine"].unique()))
+                            last_day_output = cutoff_grp["Last Day Prod Col"].sum()
+                        else:
+                            # Item stopped running before cutoff date
+                            order_qty = grp["Demand Qty"].max()
+                            as_of_prod = grp["Total Good"].sum()
+                            due_prod_present = max(0.0, order_qty - as_of_prod)
+                            last_mcs = ", ".join(sorted(latest_run["Machine"].split(",")))
+                            last_day_output = latest_run["Last Day Prod Col"]
 
-                            tot_prod_ton_cum = df_mtd[
-                                (df_mtd["Order Name"] == ord_name)
-                                & (df_mtd["Acc Code"] == acc_cd)
-                            ]["Total Prod Ton"].sum()
+                        tot_prod_ton_cum = grp["Total Prod Ton"].sum()
+                        tot_runtime_cum = grp["Total Runtime (Hrs)"].sum()
 
-                            tot_runtime_cum = df_mtd[
-                                (df_mtd["Order Name"] == ord_name)
-                                & (df_mtd["Acc Code"] == acc_cd)
-                            ]["Total Runtime (Hrs)"].sum()
+                        as_of_pct = (
+                            (as_of_prod / order_qty * 100)
+                            if order_qty > 0
+                            else 0.0
+                        )
 
-                            mc_pos = ", ".join(sorted(grp["Machine"].unique()))
-                            as_of_pct = (
-                                (as_of_prod / order_qty * 100)
-                                if order_qty > 0
-                                else 0.0
-                            )
-
-                            job_records.append({
-                                "Customer": cust,
-                                "Order Name": ord_name,
-                                "Acc Code": acc_cd,
-                                "Item Name": itm_name,
-                                "Order Qty": order_qty,
-                                "Due Production": round(due_prod_present, 2),
-                                "As of Production": round(as_of_prod, 2),
-                                "As of %": f"{as_of_pct:.2f}%",
-                                "Total Prod Ton": round(tot_prod_ton_cum, 2),
-                                "Assigned Machines": mc_pos,
-                                "Total Runtime (Hrs)": round(tot_runtime_cum, 2),
-                                "Is Completed": due_prod_present <= 0 or as_of_pct >= 100.0,
-                            })
+                        job_records.append({
+                            "Customer": cust,
+                            "Order Name": ord_name,
+                            "Acc Code": acc_cd,
+                            "Item Name": itm_name,
+                            "Order Qty": order_qty,
+                            "Due Production": round(due_prod_present, 2),
+                            "As of Production": round(as_of_prod, 2),
+                            "As of %": f"{as_of_pct:.2f}%",
+                            "Total Prod Ton": round(tot_prod_ton_cum, 2),
+                            "Assigned Machines": last_mcs,
+                            "Total Runtime (Hrs)": round(tot_runtime_cum, 2),
+                            "Last Run Date": last_run_date,
+                            "Last MC Assigned": last_mcs,
+                            "Last Day Output (Pcs)": round(last_day_output, 2),
+                            "Is Completed": due_prod_present <= 0 or as_of_pct >= 100.0,
+                        })
 
                     df_job_mtd = pd.DataFrame(job_records)
 
                     if df_job_mtd.empty:
-                        st.info("No active job orders logged for the selected cutoff date.")
+                        st.info("No active or completed job orders logged up to the selected cutoff date.")
                     else:
                         st_tab1, st_tab2 = st.tabs([
                             f"🔄 Active Orders ({len(df_job_mtd[~df_job_mtd['Is Completed']])})",
@@ -1451,6 +1554,7 @@ else:
                                     "As of Production",
                                     "Total Prod Ton",
                                     "Total Runtime (Hrs)",
+                                    "Last Day Output (Pcs)",
                                 ],
                                 [],
                             )
@@ -1503,6 +1607,7 @@ else:
                                         "As of Production",
                                         "Total Prod Ton",
                                         "Total Runtime (Hrs)",
+                                        "Last Day Output (Pcs)",
                                     ],
                                     [],
                                 )
