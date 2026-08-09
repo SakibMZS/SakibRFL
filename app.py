@@ -508,12 +508,13 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
 
-
 def column_visibility_selector(df, key_prefix=""):
     all_cols = df.columns.tolist()
-    default_cols = [
-        c for c in all_cols if c not in ["Entry Count", "Is Mixed"]
-    ]
+
+    # Columns excluded from default table view
+    excluded_defaults = ["Entry Count", "Is Mixed", "Line Group", "MC Size"]
+
+    default_cols = [c for c in all_cols if c not in excluded_defaults]
 
     if f"{key_prefix}_visible_cols" not in st.session_state:
         st.session_state[f"{key_prefix}_visible_cols"] = default_cols
