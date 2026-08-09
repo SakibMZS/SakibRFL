@@ -174,22 +174,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
 
-            # Audit Check 1: Machine Serial Typo (e.g., '119' or '121' instead of standard sizes)
-            if "119" in raw_mc_sl or "121" in raw_mc_sl:
-                typo_logs.append({
-                    "Key": override_key,
-                    "Date": dt_str_clean,
-                    "Floor": floor_label,
-                    "Machine SL": raw_mc_sl,
-                    "Order Name": order,
-                    "Acc Code": acc_code,
-                    "Issue Detected": f"Machine SL typo '{raw_mc_sl}' found",
-                    "Applied Resolution": f"Auto-remapped to size class '{mc_size}'",
-                    "Current MC SL": mc_sl,
-                    "Current CT": row.get("CT", 0.0),
-                    "Current Cavity": row.get("Cavity", 0.0),
-                })
-
             ct = (
                 float(ct_override)
                 if ct_override is not None
@@ -254,8 +238,16 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             if pd.isna(b_rej):
                 b_rej = 0.0
 
-            # Audit Check 2: Missing CT/Cavity on active production runs
-            if (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0):
+            # EVALUATE AUDIT CONDITIONS POST-OVERRIDE
+            is_mc_typo = "119" in mc_sl or "121" in mc_sl
+            is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
+
+            if is_mc_typo or is_missing_params:
+                issue_msg = (
+                    f"Machine SL typo '{mc_sl}' found"
+                    if is_mc_typo
+                    else f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
+                )
                 typo_logs.append({
                     "Key": override_key,
                     "Date": dt_str_clean,
@@ -263,10 +255,8 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                     "Machine SL": raw_mc_sl,
                     "Order Name": order,
                     "Acc Code": acc_code,
-                    "Issue Detected": (
-                        f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
-                    ),
-                    "Applied Resolution": "Flagged for source Excel correction",
+                    "Issue Detected": issue_msg,
+                    "Applied Resolution": "Flagged for override or source fix",
                     "Current MC SL": mc_sl,
                     "Current CT": ct,
                     "Current Cavity": cavity,
