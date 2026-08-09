@@ -204,6 +204,18 @@ section[data-testid="stSidebar"] label {
     color: #334155 !important;
     font-weight: 600 !important;
 }
+/* Sidebar logo branding styling */
+section[data-testid="stSidebar"] [data-testid="stImage"] {
+    display: flex !important;
+    justify-content: center !important;
+    margin-bottom: 0.25rem !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stImage"] img {
+    max-height: 70px !important; /* Prevents oversized logos */
+    width: auto !important;
+    object-fit: contain !important;
+}
 
 
 /* =========================================================
