@@ -38,11 +38,13 @@
     box-sizing: border-box;
 }
 
-/* Completely remove default Streamlit top header bar (Share, Star, GitHub, Edit menu) */
+/* Completely drop default Streamlit top header & developer toolbar */
 header[data-testid="stHeader"] {
     display: none !important;
     visibility: hidden !important;
     height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* --- SECTION 3: GLOBAL TYPOGRAPHY & ICON ISOLATION --- */
@@ -86,10 +88,21 @@ i.material-icons {
 
 /* --- SECTION 5: LOCKED PERMANENT SIDEBAR --- */
 [data-testid="stSidebar"] {
+    display: block !important;
+    visibility: visible !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
     background: linear-gradient(180deg, #f8fbff 0%, #edf3f9 58%, #e9f1f8 100%) !important;
     border-right: 1px solid var(--border) !important;
     box-shadow: 6px 0 24px rgba(15, 23, 42, 0.045) !important;
-    min-width: 280px !important;
+}
+
+[data-testid="stSidebarUserContent"],
+[data-testid="stSidebarNav"],
+[data-testid="stSidebar"] > div {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 [data-testid="stSidebar"] > div:first-child {
@@ -110,7 +123,7 @@ i.material-icons {
     font-weight: 600 !important;
 }
 
-/* Hide collapse button so sidebar stays permanently expanded */
+/* Hide collapse button completely */
 [data-testid="stSidebarCollapseButton"] {
     display: none !important;
     visibility: hidden !important;
