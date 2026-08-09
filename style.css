@@ -75,20 +75,23 @@
 
 
 /* =========================================================
-   SECTION 3: STREAMLIT TOP HEADER
-   Hide the top header/toolbar only.
-   Native sidebar is intentionally untouched.
+   SECTION 3: STREAMLIT TOP HEADER / TOOLBAR
+   Only the top UI is affected here.
+   The sidebar is NOT affected.
    ========================================================= */
 
+/* Remove the visible Streamlit header background */
 header[data-testid="stHeader"] {
     background: transparent !important;
 }
 
+/* Hide the Streamlit toolbar */
 [data-testid="stToolbar"] {
     display: none !important;
     visibility: hidden !important;
 }
 
+/* Hide header decoration only */
 header[data-testid="stHeader"] [data-testid="stDecoration"] {
     display: none !important;
     visibility: hidden !important;
@@ -97,8 +100,13 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
 
 /* =========================================================
    IMPORTANT:
-   NO stSidebarCollapseButton RULE HERE.
-   NO sidebar display/position/width/transform RULE HERE.
+   There are deliberately NO rules here for:
+
+   [data-testid="stSidebar"]
+   [data-testid="stSidebarCollapseButton"]
+   [data-testid="collapsedControl"]
+
+   Sidebar visibility/state is controlled by Streamlit.
    ========================================================= */
 
 
@@ -116,7 +124,7 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
 }
 
 
-/* Preserve Streamlit Material icons */
+/* Preserve Streamlit Material Icons */
 
 .stApp [data-testid="stIconMaterial"],
 .stApp i.material-icons,
@@ -176,8 +184,8 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
 
 /* =========================================================
    SECTION 6: NATIVE STREAMLIT SIDEBAR
-   Only visual styling.
-   Native layout and collapse behavior untouched.
+   VISUAL STYLING ONLY.
+   NO VISIBILITY / POSITION / WIDTH / COLLAPSE CONTROL.
    ========================================================= */
 
 section[data-testid="stSidebar"] {
@@ -195,6 +203,8 @@ section[data-testid="stSidebar"] {
         6px 0 24px rgba(15, 23, 42, 0.045) !important;
 }
 
+
+/* Sidebar typography */
 
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
