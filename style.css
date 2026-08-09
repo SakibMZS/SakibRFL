@@ -38,6 +38,18 @@
     box-sizing: border-box;
 }
 
+/* --- HIDE DEFAULT STREAMLIT TOP HEADER & TOOLBAR --- */
+header[data-testid="stHeader"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+}
+
+/* Reduces top space left behind after hiding header */
+.block-container {
+    padding-top: 0.5rem !important;
+}
+
 /* --- SECTION 3: GLOBAL TYPOGRAPHY --- */
 .stApp p, .stApp label, .stApp span, .stApp div, 
 .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
