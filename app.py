@@ -1,6 +1,3 @@
-# ============================================
-# SECTION 1: IMPORTS & STREAMLIT SETUP
-# ============================================
 import io
 import os
 import re
@@ -16,12 +13,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-
 def load_css(file_name="style.css"):
     if os.path.exists(file_name):
         with open(file_name) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
 
 load_css("style.css")
 
@@ -44,7 +39,6 @@ EXCEL_SIZES = [
 ]
 SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
 
-
 def extract_excel_mc_size(mc_sl, size_col_val=None):
     """Extracts machine tonnage size class with typo resilience (e.g., 'B8-119' -> '120')."""
     if pd.notna(size_col_val):
@@ -63,7 +57,6 @@ def extract_excel_mc_size(mc_sl, size_col_val=None):
             return sz
     return "Other"
 
-
 def derive_line_group(floor_code, mc_sl):
     mc_str = str(mc_sl).strip().upper()
     prefix = mc_str[0] if len(mc_str) > 0 else ""
@@ -78,7 +71,6 @@ def derive_line_group(floor_code, mc_sl):
         line_code = "Line Other"
 
     return f"{floor_code} {line_code}"
-
 
 # ============================================
 # SECTION 3: DATA PARSING & TYPO AUDIT ENGINE
@@ -320,7 +312,6 @@ def load_and_parse_floor_data(file_bytes, floor_label):
 
     return df_res, df_audit
 
-
 def consolidate_daily_machines(df_day):
     """Consolidates machine performance per day with runtime-weighted CT and cavity averages."""
     records = []
@@ -394,7 +385,6 @@ def consolidate_daily_machines(df_day):
         })
     return pd.DataFrame(records)
 
-
 def compute_line_summary(df_subset):
     records = []
     for lg, grp in df_subset.groupby("Line Group"):
@@ -421,7 +411,6 @@ def compute_line_summary(df_subset):
             "Ton Ach %": f"{ach_ton:.2f}%",
         })
     return pd.DataFrame(records)
-
 
 def compute_size_summary(df_subset, mode="daily"):
     """
@@ -491,7 +480,6 @@ def compute_size_summary(df_subset, mode="daily"):
         })
 
     return pd.DataFrame(records)
-
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
     """Adds a complete Sub-Total summary row calculating sums, averages, and overall percentages."""
@@ -563,7 +551,6 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
 
-
 # ============================================
 # SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
 # ============================================
@@ -591,7 +578,6 @@ def clean_and_format_dataframe(df):
             )
 
     return df_clean
-
 
 def column_visibility_selector(df, key_prefix=""):
     """Manages column visibility selector with default exclusions."""
@@ -622,7 +608,6 @@ def column_visibility_selector(df, key_prefix=""):
 
     selected = st.session_state[f"{key_prefix}_visible_cols"]
     return [c for c in selected if c in df.columns]
-
 
 # ============================================
 # SECTION 5: SESSION STATE INITIALIZATION
@@ -684,9 +669,51 @@ if not st.session_state["app_launched"]:
                 st.rerun()
 
 # ============================================
-# SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
+# SECTION 7: SIDEBAR - ALWAYS VISIBLE
 # ============================================
-else:
+with st.sidebar:
+    st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
+    st.caption("Active Production Session")
+    st.divider()
+
+    nav_choice = st.radio(
+        "📍 **Select Module:**",
+        [
+            "📅 Daily Data",
+            "📊 As of Data (MTD)",
+            "🌗 Shiftwise Data",
+        ],
+    )
+
+    st.divider()
+
+    floor_choice = st.radio(
+        "🏢 **Floor View:**",
+        ["ALL FLOORS", "FF", "GF"],
+        horizontal=True,
+        key="floor_toggle",
+    )
+
+    st.divider()
+
+    hide_zero_runs = st.toggle(
+        "🚫 Hide Non-Running Machines",
+        value=True,
+        help="Filters out idle machines with zero production",
+    )
+
+    st.divider()
+
+    if st.button("⚙️ Change Uploaded Files", use_container_width=True):
+        st.session_state["app_launched"] = False
+        st.session_state.pop("ff_bytes", None)
+        st.session_state.pop("gf_bytes", None)
+        st.rerun()
+
+# ============================================
+# SECTION 8: MAIN DASHBOARD CONSOLE
+# ============================================
+if st.session_state["app_launched"]:
     all_parsed_dfs = []
     all_audit_dfs = []
 
@@ -717,45 +744,6 @@ else:
             else pd.DataFrame()
         )
 
-        with st.sidebar:
-            st.markdown("### 🏭 **PLASTIC-3 CONSOLE**")
-            st.caption("Active Production Session")
-            st.divider()
-
-            nav_choice = st.radio(
-                "📍 **Select Module:**",
-                [
-                    "📅 Daily Data",
-                    "📊 As of Data (MTD)",
-                    "🌗 Shiftwise Data",
-                ],
-            )
-
-            st.divider()
-
-            floor_choice = st.radio(
-                "🏢 **Floor View:**",
-                ["ALL FLOORS", "FF", "GF"],
-                horizontal=True,
-                key="floor_toggle",
-            )
-
-            st.divider()
-
-            hide_zero_runs = st.toggle(
-                "🚫 Hide Non-Running Machines",
-                value=True,
-                help="Filters out idle machines with zero production",
-            )
-
-            st.divider()
-
-            if st.button("⚙️ Change Uploaded Files", use_container_width=True):
-                st.session_state["app_launched"] = False
-                st.session_state.pop("ff_bytes", None)
-                st.session_state.pop("gf_bytes", None)
-                st.rerun()
-
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
             st.warning(
                 "⚠️ **First Floor (FF) file is not uploaded.** Please click '⚙️"
@@ -784,7 +772,7 @@ else:
                 df_active = df_curr.copy()
 
             # ============================================
-            # SECTION 8: MODULE 1 — DAILY DATA
+            # SECTION 9: MODULE 1 — DAILY DATA
             # ============================================
             if nav_choice == "📅 Daily Data":
                 all_dates = sorted(list(df_active["Date"].unique()))
@@ -1129,7 +1117,7 @@ else:
                     )
 
             # ============================================
-            # SECTION 9: MODULE 2 — AS OF DATA (MTD)
+            # SECTION 10: MODULE 2 — AS OF DATA (MTD)
             # ============================================
             elif nav_choice == "📊 As of Data (MTD)":
                 all_dates = sorted(list(df_active["Date"].unique()))
@@ -1357,7 +1345,7 @@ else:
                     )
 
             # ============================================
-            # SECTION 10: MODULE 3 — SHIFTWISE DATA
+            # SECTION 11: MODULE 3 — SHIFTWISE DATA
             # ============================================
             elif nav_choice == "🌗 Shiftwise Data":
                 shift_mode = st.radio(
