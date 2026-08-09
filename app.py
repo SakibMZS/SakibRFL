@@ -685,6 +685,13 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
         if "As of %" in df.columns:
             tot_row["As of %"] = f"{ach:.2f}%"
 
+    if "Last Day Cap (Pcs)" in df.columns and "Last Day Output (Pcs)" in df.columns:
+        c_p = pd.to_numeric(df["Last Day Cap (Pcs)"], errors="coerce").sum()
+        o_p = pd.to_numeric(df["Last Day Output (Pcs)"], errors="coerce").sum()
+        u_p = (o_p / c_p * 100) if c_p > 0 else 0.0
+        if "Last Day Util %" in df.columns:
+            tot_row["Last Day Util %"] = f"{u_p:.2f}%"
+
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
 
@@ -707,6 +714,7 @@ def clean_and_format_dataframe(df):
                 or "production" in col_lower
                 or "due" in col_lower
                 or "output" in col_lower
+                or "cap" in col_lower
             ):
                 df_clean[col] = df_clean[col].apply(
                     lambda x: (
@@ -737,7 +745,9 @@ def column_visibility_selector(df, key_prefix=""):
         "Is Completed",
         "Last Run Date",
         "Last MC Assigned",
+        "Last Day Cap (Pcs)",
         "Last Day Output (Pcs)",
+        "Last Day Util %",
     ]
     default_cols = [c for c in all_cols if c not in excluded_defaults]
 
@@ -1221,11 +1231,7 @@ else:
                 elif daily_mode == "📦 Job-Order Wise":
                     st.markdown("### 📦 Active Orders Run On Selected Date")
 
-                    search_term = st.text_input(
-                        "🔍 Search Job Order or Item Name:",
-                        "",
-                        placeholder="Type order name or item description...",
-                    )
+                    col_top1, col_top2 = st.columns([1.2, 2.5])
 
                     records_job_day = []
                     for (
@@ -1276,6 +1282,15 @@ else:
 
                     job_day = pd.DataFrame(records_job_day)
 
+                    with col_top2:
+                        search_term = st.text_input(
+                            "Search Daily Orders",
+                            "",
+                            placeholder="🔍 Search Job Order or Item Name...",
+                            label_visibility="collapsed",
+                            key="search_daily_job",
+                        )
+
                     if search_term.strip():
                         term = search_term.strip().lower()
                         job_day = job_day[
@@ -1301,9 +1316,11 @@ else:
                         [],
                     )
 
-                    v_cols = column_visibility_selector(
-                        job_day_tot, "daily_job"
-                    )
+                    with col_top1:
+                        v_cols = column_visibility_selector(
+                            job_day_tot, "daily_job"
+                        )
+
                     st.dataframe(
                         clean_and_format_dataframe(job_day_tot[v_cols]),
                         use_container_width=True,
@@ -1473,12 +1490,15 @@ else:
                             as_of_prod = order_qty - due_prod_present
                             last_mcs = ", ".join(sorted(cutoff_grp["Machine"].unique()))
                             last_day_output = cutoff_grp["Last Day Prod Col"].sum()
+                            last_day_cap = cutoff_grp["Daily Cap Pcs"].sum()
                         else:
                             order_qty = grp["Demand Qty"].max()
                             as_of_prod = grp["Total Good"].sum()
                             due_prod_present = max(0.0, order_qty - as_of_prod)
-                            last_mcs = ", ".join(sorted(grp[grp["Date"] == last_run_date]["Machine"].unique()))
-                            last_day_output = grp[grp["Date"] == last_run_date]["Last Day Prod Col"].sum()
+                            last_date_runs = grp[grp["Date"] == last_run_date]
+                            last_mcs = ", ".join(sorted(last_date_runs["Machine"].unique()))
+                            last_day_output = last_date_runs["Last Day Prod Col"].sum()
+                            last_day_cap = last_date_runs["Daily Cap Pcs"].sum()
 
                         tot_prod_ton_cum = grp["Total Prod Ton"].sum()
                         tot_runtime_cum = grp["Total Runtime (Hrs)"].sum()
@@ -1486,6 +1506,12 @@ else:
                         as_of_pct = (
                             (as_of_prod / order_qty * 100)
                             if order_qty > 0
+                            else 0.0
+                        )
+
+                        last_day_util = (
+                            (last_day_output / last_day_cap * 100)
+                            if last_day_cap > 0
                             else 0.0
                         )
 
@@ -1500,7 +1526,9 @@ else:
                             "As of %": f"{as_of_pct:.2f}%",
                             "Last Run Date": last_run_date,
                             "Last MC Assigned": last_mcs,
+                            "Last Day Cap (Pcs)": round(last_day_cap, 2),
                             "Last Day Output (Pcs)": round(last_day_output, 2),
+                            "Last Day Util %": f"{last_day_util:.2f}%",
                             "Total Prod Ton": round(tot_prod_ton_cum, 2),
                             "Total Runtime (Hrs)": round(tot_runtime_cum, 2),
                             "Is Completed": due_prod_present <= 0 or as_of_pct >= 100.0,
@@ -1516,18 +1544,24 @@ else:
                             f"✅ Completed Orders ({len(df_job_mtd[df_job_mtd['Is Completed']])})",
                         ])
 
-                        search_term_mtd = st.text_input(
-                            "🔍 Search Cumulative Job Order or Item Name:",
-                            "",
-                            placeholder="Type order name or item description...",
-                        )
-
                         with st_tab1:
+                            col_top1, col_top2 = st.columns([1.2, 2.5])
+
                             df_active_jobs = df_job_mtd[
                                 ~df_job_mtd["Is Completed"]
                             ].copy()
-                            if search_term_mtd.strip():
-                                term = search_term_mtd.strip().lower()
+
+                            with col_top2:
+                                search_active = st.text_input(
+                                    "Search Active Orders",
+                                    "",
+                                    placeholder="🔍 Search Job Order or Item Name...",
+                                    label_visibility="collapsed",
+                                    key="search_active_mtd",
+                                )
+
+                            if search_active.strip():
+                                term = search_active.strip().lower()
                                 df_active_jobs = df_active_jobs[
                                     df_active_jobs["Order Name"]
                                     .str.lower()
@@ -1549,14 +1583,17 @@ else:
                                     "As of Production",
                                     "Total Prod Ton",
                                     "Total Runtime (Hrs)",
+                                    "Last Day Cap (Pcs)",
                                     "Last Day Output (Pcs)",
                                 ],
                                 [],
                             )
 
-                            v_cols = column_visibility_selector(
-                                df_active_tot, "mtd_job_active"
-                            )
+                            with col_top1:
+                                v_cols = column_visibility_selector(
+                                    df_active_tot, "mtd_job_active"
+                                )
+
                             st.dataframe(
                                 clean_and_format_dataframe(
                                     df_active_tot[v_cols]
@@ -1573,11 +1610,23 @@ else:
                             )
 
                         with st_tab2:
+                            col_top1_d, col_top2_d = st.columns([1.2, 2.5])
+
                             df_done_jobs = df_job_mtd[
                                 df_job_mtd["Is Completed"]
                             ].copy()
-                            if search_term_mtd.strip():
-                                term = search_term_mtd.strip().lower()
+
+                            with col_top2_d:
+                                search_done = st.text_input(
+                                    "Search Done Orders",
+                                    "",
+                                    placeholder="🔍 Search Job Order or Item Name...",
+                                    label_visibility="collapsed",
+                                    key="search_done_mtd",
+                                )
+
+                            if search_done.strip():
+                                term = search_done.strip().lower()
                                 df_done_jobs = df_done_jobs[
                                     df_done_jobs["Order Name"]
                                     .str.lower()
@@ -1602,14 +1651,17 @@ else:
                                         "As of Production",
                                         "Total Prod Ton",
                                         "Total Runtime (Hrs)",
+                                        "Last Day Cap (Pcs)",
                                         "Last Day Output (Pcs)",
                                     ],
                                     [],
                                 )
 
-                                v_cols = column_visibility_selector(
-                                    df_done_tot, "mtd_job_done"
-                                )
+                                with col_top1_d:
+                                    v_cols = column_visibility_selector(
+                                        df_done_tot, "mtd_job_done"
+                                    )
+
                                 st.dataframe(
                                     clean_and_format_dataframe(
                                         df_done_tot[v_cols]
