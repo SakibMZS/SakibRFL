@@ -1,12 +1,12 @@
 /* =========================================================
-   PLASTIC-3 CONSOLE — STYLING SHEET
+   PLASTIC-3 CONSOLE — style.css
    ========================================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 
 /* =========================================================
-   SECTION 1: DESIGN SYSTEM VARIABLES
+   1. DESIGN SYSTEM
    ========================================================= */
 
 :root {
@@ -24,10 +24,7 @@
 
     --blue: #2563eb;
     --blue-dark: #1d4ed8;
-    --blue-soft: #eff6ff;
-
     --green: #059669;
-    --green-soft: #ecfdf5;
 
     --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
     --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.08);
@@ -37,7 +34,7 @@
 
 
 /* =========================================================
-   SECTION 2: APP CANVAS
+   2. APP
    ========================================================= */
 
 .stApp {
@@ -58,14 +55,14 @@
             var(--bg) 100%
         ) !important;
 
+    color: var(--text) !important;
+
     font-family:
         'Inter',
         -apple-system,
         BlinkMacSystemFont,
         'Segoe UI',
         sans-serif !important;
-
-    color: var(--text) !important;
 }
 
 .stApp,
@@ -75,43 +72,18 @@
 
 
 /* =========================================================
-   SECTION 3: STREAMLIT TOP HEADER / TOOLBAR
-   Only the top UI is affected here.
-   The sidebar is NOT affected.
+   3. STREAMLIT HEADER
+   Completely remove the default top header.
+   Sidebar is not affected.
    ========================================================= */
 
-/* Remove the visible Streamlit header background */
 header[data-testid="stHeader"] {
-    background: transparent !important;
-}
-
-/* Hide the Streamlit toolbar */
-[data-testid="stToolbar"] {
     display: none !important;
-    visibility: hidden !important;
-}
-
-/* Hide header decoration only */
-header[data-testid="stHeader"] [data-testid="stDecoration"] {
-    display: none !important;
-    visibility: hidden !important;
 }
 
 
 /* =========================================================
-   IMPORTANT:
-   There are deliberately NO rules here for:
-
-   [data-testid="stSidebar"]
-   [data-testid="stSidebarCollapseButton"]
-   [data-testid="collapsedControl"]
-
-   Sidebar visibility/state is controlled by Streamlit.
-   ========================================================= */
-
-
-/* =========================================================
-   SECTION 4: GLOBAL TYPOGRAPHY
+   4. TYPOGRAPHY
    ========================================================= */
 
 .stApp * {
@@ -124,7 +96,7 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
 }
 
 
-/* Preserve Streamlit Material Icons */
+/* Preserve Material icons */
 
 .stApp [data-testid="stIconMaterial"],
 .stApp i.material-icons,
@@ -168,7 +140,7 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
 
 
 /* =========================================================
-   SECTION 5: MAIN CONTENT SPACING
+   5. MAIN CONTENT
    ========================================================= */
 
 .block-container {
@@ -183,9 +155,9 @@ header[data-testid="stHeader"] [data-testid="stDecoration"] {
 
 
 /* =========================================================
-   SECTION 6: NATIVE STREAMLIT SIDEBAR
+   6. NATIVE SIDEBAR
    VISUAL STYLING ONLY.
-   NO VISIBILITY / POSITION / WIDTH / COLLAPSE CONTROL.
+   DO NOT ALTER ITS SIZE, POSITION OR STATE.
    ========================================================= */
 
 section[data-testid="stSidebar"] {
@@ -203,8 +175,6 @@ section[data-testid="stSidebar"] {
         6px 0 24px rgba(15, 23, 42, 0.045) !important;
 }
 
-
-/* Sidebar typography */
 
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
@@ -231,7 +201,7 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 7: SETUP CARDS
+   7. SETUP CARDS
    ========================================================= */
 
 .setup-card {
@@ -267,7 +237,7 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 8: INPUTS
+   8. INPUTS
    ========================================================= */
 
 [data-baseweb="select"] > div,
@@ -275,11 +245,9 @@ section[data-testid="stSidebar"] label {
 [data-testid="stNumberInput"] input,
 [data-testid="stDateInput"] input {
     background: #ffffff !important;
-
     color: var(--text) !important;
 
     border: 1px solid var(--border-strong) !important;
-
     border-radius: 10px !important;
 }
 
@@ -292,7 +260,7 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 9: BUTTONS
+   9. BUTTONS
    ========================================================= */
 
 .stButton > button,
@@ -301,7 +269,6 @@ section[data-testid="stSidebar"] label {
     min-height: 2.55rem !important;
 
     border-radius: 9px !important;
-
     border: 1px solid #cbd5e1 !important;
 
     background:
@@ -347,7 +314,6 @@ section[data-testid="stSidebar"] label {
         ) !important;
 
     border-color: #1d4ed8 !important;
-
     color: #ffffff !important;
 
     box-shadow:
@@ -362,7 +328,7 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 10: POPOVERS
+   10. POPOVERS
    ========================================================= */
 
 [data-testid="stPopover"] {
@@ -373,11 +339,8 @@ section[data-testid="stSidebar"] label {
 
 [data-testid="stPopover"] > button {
     display: inline-flex !important;
-
     align-items: center !important;
     justify-content: center !important;
-
-    position: relative !important;
 
     width: auto !important;
     min-width: 130px !important;
@@ -388,12 +351,10 @@ section[data-testid="stSidebar"] label {
     overflow: hidden !important;
 
     border-radius: 9px !important;
+    border: 1px solid var(--border-strong) !important;
 
     background: #ffffff !important;
-
     color: #334155 !important;
-
-    border: 1px solid var(--border-strong) !important;
 
     font-weight: 600 !important;
 }
@@ -405,7 +366,7 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 11: FILE UPLOADER
+   11. FILE UPLOADER
    ========================================================= */
 
 [data-testid="stFileUploader"] {
@@ -417,7 +378,6 @@ section[data-testid="stSidebar"] label {
         ) !important;
 
     border: 1px dashed #9fb3c8 !important;
-
     border-radius: 12px !important;
 
     padding: 1rem !important;
@@ -430,7 +390,7 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 12: METRICS
+   12. METRICS
    ========================================================= */
 
 [data-testid="stMetric"] {
@@ -442,7 +402,6 @@ section[data-testid="stSidebar"] label {
         ) !important;
 
     border: 1px solid var(--border) !important;
-
     border-radius: 13px !important;
 
     padding: 0.85rem 1rem !important;
@@ -455,19 +414,17 @@ section[data-testid="stSidebar"] label {
 
 [data-testid="stMetricValue"] {
     font-size: 1.55rem !important;
-
     font-weight: 800 !important;
 
     letter-spacing: -0.02em !important;
 
     white-space: nowrap !important;
-
     overflow: visible !important;
 }
 
 
 /* =========================================================
-   SECTION 13: RADIO NAVIGATION
+   13. RADIO CONTROLS
    ========================================================= */
 
 [data-testid="stRadio"] > div[role="radiogroup"] {
@@ -512,25 +469,23 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 14: DATAFRAME / TABLE
+   14. DATAFRAME
    ========================================================= */
 
 [data-testid="stDataFrame"] {
     display: flex !important;
-
     justify-content: center !important;
 
     width: 100% !important;
 
     border: 1px solid var(--border) !important;
-
     border-radius: 12px !important;
 
     overflow: hidden !important;
 
-    box-shadow: var(--shadow-sm) !important;
-
     background: #ffffff !important;
+
+    box-shadow: var(--shadow-sm) !important;
 }
 
 
@@ -542,13 +497,12 @@ section[data-testid="stSidebar"] label {
 [data-testid="stDataFrame"] div[role="columnheader"],
 [data-testid="stDataFrame"] div[role="columnheader"] * {
     text-align: center !important;
-
     justify-content: center !important;
 }
 
 
 /* =========================================================
-   SECTION 15: ALERTS
+   15. ALERTS
    ========================================================= */
 
 [data-testid="stAlert"] {
@@ -561,14 +515,13 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 16: EXPANDERS
+   16. EXPANDERS
    ========================================================= */
 
 [data-testid="stExpander"] {
     background: #ffffff !important;
 
     border: 1px solid var(--border) !important;
-
     border-radius: 11px !important;
 
     box-shadow: var(--shadow-sm) !important;
@@ -576,14 +529,13 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 17: PLOTLY CHARTS
+   17. PLOTLY
    ========================================================= */
 
 .stPlotlyChart {
     background: #ffffff !important;
 
     border: 1px solid var(--border) !important;
-
     border-radius: 13px !important;
 
     padding: 0.4rem !important;
@@ -595,19 +547,18 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 18: WIDGET LABELS
+   18. WIDGET LABELS
    ========================================================= */
 
 [data-testid="stWidgetLabel"] p,
 [data-testid="stWidgetLabel"] label {
     color: #334155 !important;
-
     font-weight: 650 !important;
 }
 
 
 /* =========================================================
-   SECTION 19: SCROLLBARS
+   19. SCROLLBARS
    ========================================================= */
 
 ::-webkit-scrollbar {
@@ -623,7 +574,6 @@ section[data-testid="stSidebar"] label {
 
 ::-webkit-scrollbar-thumb {
     background: #b7c5d5;
-
     border-radius: 10px;
 }
 
@@ -634,7 +584,7 @@ section[data-testid="stSidebar"] label {
 
 
 /* =========================================================
-   SECTION 20: RESPONSIVE
+   20. RESPONSIVE
    ========================================================= */
 
 @media (max-width: 900px) {
