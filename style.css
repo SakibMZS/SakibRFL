@@ -228,6 +228,7 @@ div[data-testid="stPopover"] button {
 }
 
 /* --- SECTION 8: TABLE ALIGNMENT & FONT SIZE --- */
+/* --- SECTION 8: TABLE ALIGNMENT & FONT SIZE --- */
 [data-testid="stDataFrame"] {
     display: flex !important;
     justify-content: center !important;
@@ -237,8 +238,16 @@ div[data-testid="stPopover"] button {
     font-size: 0.75rem !important;
 }
 
-/* Force Table Header Titles to Center Align */
+/* Force Table Header Titles & Data Cells to Center Align Numbers */
 [data-testid="stDataFrame"] div[role="columnheader"] {
     text-align: center !important;
     justify-content: center !important;
+}
+
+/* Center aligns numeric data canvas cells */
+[data-testid="stDataFrame"] div[role="gridcell"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
 }
