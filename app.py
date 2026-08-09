@@ -1457,17 +1457,14 @@ else:
                         f" {as_of_date})"
                     )
 
-                    # Gather every unique item run up to as_of_date
                     job_records = []
                     for (cust, ord_name, acc_cd), grp in df_mtd.groupby(
                         ["Customer", "Order Name", "Acc Code"]
                     ):
-                        # Get most recent run sheet entry on or before cutoff date
                         latest_run = grp.sort_values("DateObj").iloc[-1]
                         last_run_date = latest_run["Date"]
                         itm_name = latest_run["Item Name"]
 
-                        # Check if running on cutoff date sheet specifically
                         cutoff_grp = grp[grp["Date"] == as_of_date]
 
                         if not cutoff_grp.empty:
@@ -1477,12 +1474,11 @@ else:
                             last_mcs = ", ".join(sorted(cutoff_grp["Machine"].unique()))
                             last_day_output = cutoff_grp["Last Day Prod Col"].sum()
                         else:
-                            # Item stopped running before cutoff date
                             order_qty = grp["Demand Qty"].max()
                             as_of_prod = grp["Total Good"].sum()
                             due_prod_present = max(0.0, order_qty - as_of_prod)
-                            last_mcs = ", ".join(sorted(latest_run["Machine"].split(",")))
-                            last_day_output = latest_run["Last Day Prod Col"]
+                            last_mcs = ", ".join(sorted(grp[grp["Date"] == last_run_date]["Machine"].unique()))
+                            last_day_output = grp[grp["Date"] == last_run_date]["Last Day Prod Col"].sum()
 
                         tot_prod_ton_cum = grp["Total Prod Ton"].sum()
                         tot_runtime_cum = grp["Total Runtime (Hrs)"].sum()
@@ -1502,12 +1498,11 @@ else:
                             "Due Production": round(due_prod_present, 2),
                             "As of Production": round(as_of_prod, 2),
                             "As of %": f"{as_of_pct:.2f}%",
-                            "Total Prod Ton": round(tot_prod_ton_cum, 2),
-                            "Assigned Machines": last_mcs,
-                            "Total Runtime (Hrs)": round(tot_runtime_cum, 2),
                             "Last Run Date": last_run_date,
                             "Last MC Assigned": last_mcs,
                             "Last Day Output (Pcs)": round(last_day_output, 2),
+                            "Total Prod Ton": round(tot_prod_ton_cum, 2),
+                            "Total Runtime (Hrs)": round(tot_runtime_cum, 2),
                             "Is Completed": due_prod_present <= 0 or as_of_pct >= 100.0,
                         })
 
