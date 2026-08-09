@@ -515,38 +515,63 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 # ============================================
 # SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
 # ============================================
-def format_table_alignment(df):
+def clean_and_format_dataframe(df):
     """
-    Rounds numerical metrics to 2 decimal places (or integers for piece counts)
-    and formats data with explicit string alignment for Streamlit rendering.
+    Cleans data types, rounds numeric values, and prepares
+    clean dataframes for Streamlit rendering.
     """
-    df_fmt = df.copy()
+    df_clean = df.copy()
 
-    # Format numeric float columns to 2 decimal places
-    for col in df_fmt.columns:
-        if df_fmt[col].dtype in ["float64", "float32"]:
-            df_fmt[col] = df_fmt[col].apply(
-                lambda x: f"{x:.2f}" if pd.notna(x) and isinstance(x, (int, float)) else x
+    for col in df_clean.columns:
+        if df_clean[col].dtype in ["float64", "float32"]:
+            df_clean[col] = df_clean[col].round(2)
+        elif df_clean[col].dtype in ["int64", "int32"]:
+            df_clean[col] = df_clean[col].astype(int)
+
+    return df_clean
+
+
+def get_column_configurations(df):
+    """
+    Returns Streamlit native column configurations:
+    - Text/Mixed columns -> Left aligned
+    - Numbers, Quantities & Percentages -> Center aligned with proper formatting
+    """
+    config = {}
+
+    for col in df.columns:
+        col_lower = col.lower()
+
+        if "%" in col or "ach" in col_lower or "util" in col_lower:
+            config[col] = st.column_config.Column(
+                col,
+                width="medium",
             )
-        elif df_fmt[col].dtype in ["int64", "int32"]:
-            if "Good" in col or "Rejection" in col or "Pcs" in col or "QTY" in col:
-                df_fmt[col] = df_fmt[col].apply(
-                    lambda x: f"{x:,}" if pd.notna(x) else x
-                )
+        elif (
+            df[col].dtype in ["float64", "float32", "int64", "int32"]
+            or "qty" in col_lower
+            or "pcs" in col_lower
+            or "ton" in col_lower
+            or "good" in col_lower
+            or "rej" in col_lower
+            or "runtime" in col_lower
+            or "uptime" in col_lower
+            or "ct" in col_lower
+            or "cavity" in col_lower
+            or "cap" in col_lower
+            or "demand" in col_lower
+        ):
+            config[col] = st.column_config.NumberColumn(
+                col,
+                format="%.2f" if df[col].dtype in ["float64", "float32"] else "%d",
+            )
+        else:
+            config[col] = st.column_config.TextColumn(
+                col,
+            )
 
-    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-    text_cols = df_fmt.select_dtypes(include=["object", "string"]).columns.tolist()
+    return config
 
-    center_cols = numeric_cols + [
-        c for c in text_cols if "%" in c or "Ach" in c or "Util" in c or any(char.isdigit() for char in str(c))
-    ]
-    left_cols = [c for c in text_cols if c not in center_cols]
-
-    return df_fmt.style.set_properties(
-        **{"text-align": "center !important"}, subset=[c for c in center_cols if c in df_fmt.columns]
-    ).set_properties(
-        **{"text-align": "left !important"}, subset=[c for c in left_cols if c in df_fmt.columns]
-    )
 
 def column_visibility_selector(df, key_prefix=""):
     """Manages column visibility selector with default exclusions."""
@@ -827,7 +852,8 @@ else:
                         df_line_day_tot, "daily_line"
                     )
                     st.dataframe(
-                        format_table_alignment(df_line_day_tot[v_cols]),
+                        clean_and_format_dataframe(df_line_day_tot[v_cols]),
+                        column_config=get_column_configurations(df_line_day_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -859,7 +885,8 @@ else:
                         df_daily_totals, "daily_mc"
                     )
                     st.dataframe(
-                        format_table_alignment(df_daily_totals[v_cols]),
+                        clean_and_format_dataframe(df_daily_totals[v_cols]),
+                        column_config=get_column_configurations(df_daily_totals[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -900,7 +927,21 @@ else:
                         ].round(2)
 
                         st.dataframe(
-                            format_table_alignment(
+                            clean_and_format_dataframe(
+                                sub_raw[[
+                                    "Floor",
+                                    "Order Name",
+                                    "Item Name",
+                                    "CT",
+                                    "Cavity",
+                                    "Shift A Good",
+                                    "Shift B Good",
+                                    "Total Good",
+                                    "Runtime (Hrs)",
+                                    "Daily Prod (Ton)",
+                                ]]
+                            ),
+                            column_config=get_column_configurations(
                                 sub_raw[[
                                     "Floor",
                                     "Order Name",
@@ -940,7 +981,8 @@ else:
                         df_size_day_tot, "daily_size"
                     )
                     st.dataframe(
-                        format_table_alignment(df_size_day_tot[v_cols]),
+                        clean_and_format_dataframe(df_size_day_tot[v_cols]),
+                        column_config=get_column_configurations(df_size_day_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1039,7 +1081,8 @@ else:
                         job_day_tot, "daily_job"
                     )
                     st.dataframe(
-                        format_table_alignment(job_day_tot[v_cols]),
+                        clean_and_format_dataframe(job_day_tot[v_cols]),
+                        column_config=get_column_configurations(job_day_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1139,7 +1182,8 @@ else:
                         df_line_mtd_tot, "mtd_line"
                     )
                     st.dataframe(
-                        format_table_alignment(df_line_mtd_tot[v_cols]),
+                        clean_and_format_dataframe(df_line_mtd_tot[v_cols]),
+                        column_config=get_column_configurations(df_line_mtd_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1175,7 +1219,8 @@ else:
                         df_size_mtd_tot, "mtd_size"
                     )
                     st.dataframe(
-                        format_table_alignment(df_size_mtd_tot[v_cols]),
+                        clean_and_format_dataframe(df_size_mtd_tot[v_cols]),
+                        column_config=get_column_configurations(df_size_mtd_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1261,7 +1306,8 @@ else:
                         job_agg_tot, "mtd_job"
                     )
                     st.dataframe(
-                        format_table_alignment(job_agg_tot[v_cols]),
+                        clean_and_format_dataframe(job_agg_tot[v_cols]),
+                        column_config=get_column_configurations(job_agg_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -1347,7 +1393,8 @@ else:
                         shift_daily_tot, "daily_shift"
                     )
                     st.dataframe(
-                        format_table_alignment(shift_daily_tot[v_cols]),
+                        clean_and_format_dataframe(shift_daily_tot[v_cols]),
+                        column_config=get_column_configurations(shift_daily_tot[v_cols]),
                         use_container_width=True,
                         hide_index=True,
                     )
