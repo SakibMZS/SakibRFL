@@ -875,15 +875,14 @@ else:
         )
 
         with st.sidebar:
-    # Side-by-side header flush at top
-    col_logo, col_text = st.columns([1, 2.3], gap="small", vertical_alignment="center")
-    with col_logo:
-        st.image("logo.png", use_container_width=True)
-    with col_text:
-        st.markdown("### **PLASTIC-3 CONSOLE**")
-        st.caption("Active Production Session")
+            col_logo, col_text = st.columns([1, 2.3], gap="small", vertical_alignment="center")
+            with col_logo:
+                st.image("logo.png", use_container_width=True)
+            with col_text:
+                st.markdown("### **PLASTIC-3 CONSOLE**")
+                st.caption("Active Production Session")
 
-    st.divider()
+            st.divider()
 
             nav_choice = st.radio(
                 "📍 **Select Module:**",
