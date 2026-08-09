@@ -348,10 +348,10 @@ def consolidate_daily_machines(df_day):
             "Entry Count": len(group),
             "Cavity": round(weighted_cavity, 2),
             "CT": round(weighted_ct, 2),
-            "Shift A Good": tot_a_good,
-            "Shift B Good": tot_b_good,
-            "Total Good": tot_good,
-            "Total Rejections": tot_bad,
+            "Shift A Good": round(tot_a_good, 2),
+            "Shift B Good": round(tot_b_good, 2),
+            "Total Good": round(tot_good, 2),
+            "Total Rejections": round(tot_bad, 2),
             "Shift A Runtime": round(a_runtime, 2),
             "Shift B Runtime": round(b_runtime, 2),
             "Total Runtime (Hrs)": round(mc_tot_runtime, 2),
@@ -467,7 +467,7 @@ def compute_size_summary(df_subset, mode="daily"):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
-    """Adds a Sub-Total row averaging non-zero active size classes for Run Hour Average."""
+    """Adds a complete Sub-Total summary row calculating sums, averages, and overall percentages."""
     if df.empty:
         return df
 
@@ -478,22 +478,28 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
         if c == label_col:
             tot_row[c] = "Sub Total"
         elif c in sum_cols:
-            val = df[c].sum()
+            val = pd.to_numeric(df[c], errors="coerce").sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
         elif c in avg_cols:
-            non_zero = df[df[c] > 0][c]
+            non_zero = pd.to_numeric(df[df[c] > 0][c], errors="coerce")
             tot_row[c] = (
                 round(non_zero.mean(), 2) if not non_zero.empty else 0.0
             )
         else:
             tot_row[c] = "-"
 
+    # Overall Achievement % Calculations
     if "Total Cap (Pcs)" in df.columns and "Total Prod (Pcs)" in df.columns:
         tc_p = pd.to_numeric(df["Total Cap (Pcs)"], errors="coerce").sum()
         tp_p = pd.to_numeric(df["Total Prod (Pcs)"], errors="coerce").sum()
         ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
         if "% OF Ach Pcs" in df.columns:
             tot_row["% OF Ach Pcs"] = f"{ach:.2f}%"
+
+    if "Cap (Pcs)" in df.columns and "Prod (Pcs)" in df.columns:
+        tc_p = pd.to_numeric(df["Cap (Pcs)"], errors="coerce").sum()
+        tp_p = pd.to_numeric(df["Prod (Pcs)"], errors="coerce").sum()
+        ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
         if "Pcs Ach %" in df.columns:
             tot_row["Pcs Ach %"] = f"{ach:.2f}%"
 
@@ -506,6 +512,27 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
         if "Ton Ach %" in df.columns:
             tot_row["Ton Ach %"] = f"{ach:.2f}%"
 
+    if "Daily Cap (Pcs)" in df.columns and "Daily Prod (Pcs)" in df.columns:
+        dc_p = pd.to_numeric(df["Daily Cap (Pcs)"], errors="coerce").sum()
+        dp_p = pd.to_numeric(df["Daily Prod (Pcs)"], errors="coerce").sum()
+        ach = (dp_p / dc_p * 100) if dc_p > 0 else 0.0
+        if "Daily Util (Pcs %)" in df.columns:
+            tot_row["Daily Util (Pcs %)"] = f"{ach:.2f}%"
+
+    if "Daily Cap (Ton)" in df.columns and "Daily Prod (Ton)" in df.columns:
+        dc_t = pd.to_numeric(df["Daily Cap (Ton)"], errors="coerce").sum()
+        dp_t = pd.to_numeric(df["Daily Prod (Ton)"], errors="coerce").sum()
+        ach = (dp_t / dc_t * 100) if dc_t > 0 else 0.0
+        if "Daily Util (Ton %)" in df.columns:
+            tot_row["Daily Util (Ton %)"] = f"{ach:.2f}%"
+
+    if "Demand Qty" in df.columns and "Total Good" in df.columns:
+        dem = pd.to_numeric(df["Demand Qty"], errors="coerce").sum()
+        good = pd.to_numeric(df["Total Good"], errors="coerce").sum()
+        ach = (good / dem * 100) if dem > 0 else 0.0
+        if "Completion %" in df.columns:
+            tot_row["Completion %"] = f"{ach:.2f}%"
+
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
 
@@ -513,79 +540,36 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 # ============================================
 # SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
 # ============================================
-def display_custom_table(df):
+def clean_and_format_dataframe(df):
     """
-    Renders dataframes as styled HTML tables to ensure exact Excel alignment:
-    - Text/Mixed -> Left-aligned
-    - Numbers/Percentages -> Center-aligned
-    - Headers -> Centered with compact column widths
+    Rounds float metrics to 2 decimal places and formats piece counts,
+    ensuring clean native st.dataframe display without 6-decimal artifacts.
     """
     df_clean = df.copy()
 
-    # Format numbers cleanly
     for col in df_clean.columns:
+        col_lower = col.lower()
         if df_clean[col].dtype in ["float64", "float32"]:
-            df_clean[col] = df_clean[col].apply(
-                lambda x: f"{x:.2f}" if pd.notna(x) and str(x) != "-" else "-"
-            )
+            if "good" in col_lower or "rej" in col_lower or "pcs" in col_lower or "qty" in col_lower:
+                df_clean[col] = df_clean[col].apply(
+                    lambda x: f"{int(round(x)):,}" if pd.notna(x) and str(x) != "-" else "-"
+                )
+            else:
+                df_clean[col] = df_clean[col].apply(
+                    lambda x: f"{x:.2f}" if pd.notna(x) and str(x) != "-" else "-"
+                )
         elif df_clean[col].dtype in ["int64", "int32"]:
             df_clean[col] = df_clean[col].apply(
                 lambda x: f"{x:,}" if pd.notna(x) and str(x) != "-" else "-"
             )
 
-    # Determine alignment classes per column
-    align_styles = []
-    for idx, col in enumerate(df_clean.columns):
-        col_lower = col.lower()
-        if (
-            df[col].dtype in ["float64", "float32", "int64", "int32"]
-            or "%" in col
-            or "ach" in col_lower
-            or "util" in col_lower
-            or "qty" in col_lower
-            or "pcs" in col_lower
-            or "ton" in col_lower
-            or "good" in col_lower
-            or "rej" in col_lower
-            or "runtime" in col_lower
-            or "uptime" in col_lower
-            or "ct" in col_lower
-            or "cavity" in col_lower
-            or "cap" in col_lower
-        ):
-            align_styles.append({
-                "selector": f"td.col{idx}",
-                "props": [("text-align", "center")],
-            })
-        else:
-            align_styles.append({
-                "selector": f"td.col{idx}",
-                "props": [("text-align", "left")],
-            })
-
-    # Header centering style
-    align_styles.append({
-        "selector": "th",
-        "props": [("text-align", "center"), ("background-color", "#f1f5f9")],
-    })
-
-    # Render HTML table
-    html_table = (
-        df_clean.style.set_table_styles(align_styles)
-        .hide(axis="index")
-        .to_html()
-    )
-    st.markdown(
-        f'<div class="excel-table-container">{html_table}</div>',
-        unsafe_allow_html=True,
-    )
+    return df_clean
 
 
 def column_visibility_selector(df, key_prefix=""):
     """Manages column visibility selector with default exclusions."""
     all_cols = df.columns.tolist()
 
-    # Columns excluded from default table view
     excluded_defaults = ["Entry Count", "Is Mixed"]
     default_cols = [c for c in all_cols if c not in excluded_defaults]
 
@@ -859,7 +843,11 @@ else:
                     v_cols = column_visibility_selector(
                         df_line_day_tot, "daily_line"
                     )
-                    display_custom_table(df_line_day_tot[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(df_line_day_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export Daily Line Summary (CSV)",
@@ -874,8 +862,12 @@ else:
                         df_daily,
                         "Machine",
                         [
+                            "Shift A Good",
+                            "Shift B Good",
                             "Total Good",
                             "Total Rejections",
+                            "Shift A Runtime",
+                            "Shift B Runtime",
                             "Total Runtime (Hrs)",
                             "Weighted Cap Pcs",
                             "Weighted Cap Ton",
@@ -887,7 +879,11 @@ else:
                     v_cols = column_visibility_selector(
                         df_daily_totals, "daily_mc"
                     )
-                    display_custom_table(df_daily_totals[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(df_daily_totals[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export Daily Machine Summary (CSV)",
@@ -924,19 +920,23 @@ else:
                             "Total Runtime (Hrs)"
                         ].round(2)
 
-                        display_custom_table(
-                            sub_raw[[
-                                "Floor",
-                                "Order Name",
-                                "Item Name",
-                                "CT",
-                                "Cavity",
-                                "Shift A Good",
-                                "Shift B Good",
-                                "Total Good",
-                                "Runtime (Hrs)",
-                                "Daily Prod (Ton)",
-                            ]]
+                        st.dataframe(
+                            clean_and_format_dataframe(
+                                sub_raw[[
+                                    "Floor",
+                                    "Order Name",
+                                    "Item Name",
+                                    "CT",
+                                    "Cavity",
+                                    "Shift A Good",
+                                    "Shift B Good",
+                                    "Total Good",
+                                    "Runtime (Hrs)",
+                                    "Daily Prod (Ton)",
+                                ]]
+                            ),
+                            use_container_width=True,
+                            hide_index=True,
                         )
 
                 elif daily_mode == "📏 Sizewise":
@@ -960,7 +960,11 @@ else:
                     v_cols = column_visibility_selector(
                         df_size_day_tot, "daily_size"
                     )
-                    display_custom_table(df_size_day_tot[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(df_size_day_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export Daily Size Summary (CSV)",
@@ -1055,7 +1059,11 @@ else:
                     v_cols = column_visibility_selector(
                         job_day_tot, "daily_job"
                     )
-                    display_custom_table(job_day_tot[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(job_day_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export Daily Active Job Summary (CSV)",
@@ -1151,7 +1159,11 @@ else:
                     v_cols = column_visibility_selector(
                         df_line_mtd_tot, "mtd_line"
                     )
-                    display_custom_table(df_line_mtd_tot[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(df_line_mtd_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export As-Of Line Summary (CSV)",
@@ -1165,7 +1177,6 @@ else:
                         f"### 📏 Machine Size Summary (As of {as_of_date})"
                     )
 
-                    # Computes As-Of Size Summary matching Sheet2 cumulative machine-days standard
                     df_size_mtd = compute_size_summary(df_mtd, mode="as_of")
                     df_size_mtd_tot = add_total_row(
                         df_size_mtd,
@@ -1183,7 +1194,11 @@ else:
                     v_cols = column_visibility_selector(
                         df_size_mtd_tot, "mtd_size"
                     )
-                    display_custom_table(df_size_mtd_tot[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(df_size_mtd_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export As-Of Size Summary (CSV)",
@@ -1265,7 +1280,11 @@ else:
                     v_cols = column_visibility_selector(
                         job_agg_tot, "mtd_job"
                     )
-                    display_custom_table(job_agg_tot[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(job_agg_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export Master Job Summary (CSV)",
@@ -1347,7 +1366,11 @@ else:
                     v_cols = column_visibility_selector(
                         shift_daily_tot, "daily_shift"
                     )
-                    display_custom_table(shift_daily_tot[v_cols])
+                    st.dataframe(
+                        clean_and_format_dataframe(shift_daily_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
                     st.download_button(
                         "📥 Export Daily Shiftwise Log (CSV)",
