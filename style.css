@@ -204,17 +204,26 @@ section[data-testid="stSidebar"] label {
     color: #334155 !important;
     font-weight: 600 !important;
 }
-/* Sidebar logo branding styling */
-section[data-testid="stSidebar"] [data-testid="stImage"] {
-    display: flex !important;
-    justify-content: center !important;
-    margin-bottom: 0.25rem !important;
-}
-
+/* Sidebar logo branding styling (side-by-side) */
 section[data-testid="stSidebar"] [data-testid="stImage"] img {
-    max-height: 70px !important; /* Prevents oversized logos */
+    max-height: 52px !important;
     width: auto !important;
     object-fit: contain !important;
+    margin: 0 !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stColumn"] h3 {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.2 !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stColumn"] p {
+    font-size: 0.75rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 
