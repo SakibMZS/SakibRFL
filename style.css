@@ -38,11 +38,11 @@
     box-sizing: border-box;
 }
 
-/* Make top header bar transparent without breaking layout context */
+/* Make top header bar transparent without breaking sidebar layout calculation */
 header[data-testid="stHeader"] {
     background: transparent !important;
     pointer-events: none !important;
-    height: 1rem !important;
+    height: 0.5rem !important;
     z-index: 10 !important;
 }
 
@@ -54,12 +54,10 @@ header[data-testid="stHeader"] > div:nth-child(2) {
 }
 
 /* --- SECTION 3: GLOBAL TYPOGRAPHY & ICON ISOLATION --- */
-/* Enforce Inter font everywhere EXCEPT Material Icon containers */
 .stApp *:not([data-testid="stIconMaterial"]):not(i):not([class*="icon"]):not(.material-icons) {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
-/* Preserve native font families for Streamlit Material Symbols */
 [data-testid="stIconMaterial"],
 span[class*="icon"],
 i.material-icons {
@@ -92,31 +90,21 @@ i.material-icons {
     padding-right: 2rem !important;
 }
 
-/* --- SECTION 5: LOCKED PERMANENT SIDEBAR (FORCE TRANSFORM RESET) --- */
+/* --- SECTION 5: NATURAL NATIVE SIDEBAR (EXPANDED & UN-COMPRESSED) --- */
 section[data-testid="stSidebar"] {
-    display: flex !important;
-    visibility: visible !important;
-    min-width: 280px !important;
-    max-width: 280px !important;
-    width: 280px !important;
-    transform: none !important;
-    margin-left: 0 !important;
-    left: 0 !important;
     background: linear-gradient(180deg, #f8fbff 0%, #edf3f9 58%, #e9f1f8 100%) !important;
     border-right: 1px solid var(--border) !important;
     box-shadow: 6px 0 24px rgba(15, 23, 42, 0.045) !important;
+    width: 21rem !important; /* Natural standard Streamlit sidebar width */
+    min-width: 21rem !important;
 }
 
-section[data-testid="stSidebar"] > div,
-div[data-testid="stSidebarContent"],
-div[data-testid="stSidebarUserContent"] {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    transform: none !important;
+/* Let inner sidebar elements fill full natural container width */
+section[data-testid="stSidebar"] [data-testid="stSidebarContent"],
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
     width: 100% !important;
-    position: relative !important;
-    left: 0 !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
 }
 
 section[data-testid="stSidebar"] > div:first-child {
