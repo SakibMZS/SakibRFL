@@ -24,7 +24,7 @@
     --radius: 14px;
 }
 
-/* --- SECTION 2: APP CANVAS & HEADER OVERRIDES --- */
+/* --- SECTION 2: APP CANVAS & DEFAULT HEADER REMOVAL --- */
 .stApp {
     background:
         radial-gradient(circle at 10% 0%, rgba(37,99,235,.07), transparent 28%),
@@ -38,42 +38,20 @@
     box-sizing: border-box;
 }
 
-/* Make top header bar container non-intrusive while anchoring sidebar toggle */
+/* Completely remove default Streamlit top header bar (Share, Star, GitHub, Edit menu) */
 header[data-testid="stHeader"] {
-    background: transparent !important;
-    height: 3rem !important;
-    z-index: 999999 !important;
-}
-
-/* Hide Streamlit default developer toolbar (Share, Star, GitHub, Edit menu) */
-[data-testid="stToolbar"],
-header[data-testid="stHeader"] > div:nth-child(2) {
     display: none !important;
     visibility: hidden !important;
-}
-
-/* FORCE SIDEBAR TOGGLE BUTTON TO STAY ANCHORED TOP-LEFT */
-[data-testid="stSidebarCollapseButton"],
-header[data-testid="stHeader"] [data-testid="stSidebarCollapseButton"],
-button[data-testid="baseButton-header"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: fixed !important;
-    top: 0.6rem !important;
-    left: 0.8rem !important;
-    z-index: 9999999 !important;
-    background: #ffffff !important;
-    border: 1px solid var(--border-strong) !important;
-    border-radius: 8px !important;
-    box-shadow: var(--shadow-sm) !important;
+    height: 0 !important;
 }
 
 /* --- SECTION 3: GLOBAL TYPOGRAPHY & ICON ISOLATION --- */
+/* Enforce Inter font everywhere EXCEPT Material Icon containers (fixes expand_more / upload text overlaps) */
 .stApp *:not([data-testid="stIconMaterial"]):not(i):not([class*="icon"]):not(.material-icons) {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
 
+/* Preserve native font families for Streamlit Material Symbols */
 [data-testid="stIconMaterial"],
 span[class*="icon"],
 i.material-icons {
@@ -100,17 +78,18 @@ i.material-icons {
 /* --- SECTION 4: CONTAINER SPACING & TOP PADDING --- */
 .block-container {
     max-width: 1540px !important;
-    padding-top: 3.5rem !important;
+    padding-top: 0.5rem !important;
     padding-bottom: 2.5rem !important;
     padding-left: 2rem !important;
     padding-right: 2rem !important;
 }
 
-/* --- SECTION 5: SIDEBAR STYLING --- */
+/* --- SECTION 5: LOCKED PERMANENT SIDEBAR --- */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #f8fbff 0%, #edf3f9 58%, #e9f1f8 100%) !important;
     border-right: 1px solid var(--border) !important;
     box-shadow: 6px 0 24px rgba(15, 23, 42, 0.045) !important;
+    min-width: 280px !important;
 }
 
 [data-testid="stSidebar"] > div:first-child {
@@ -129,6 +108,12 @@ i.material-icons {
 [data-testid="stSidebar"] label {
     color: #334155 !important;
     font-weight: 600 !important;
+}
+
+/* Hide collapse button so sidebar stays permanently expanded */
+[data-testid="stSidebarCollapseButton"] {
+    display: none !important;
+    visibility: hidden !important;
 }
 
 /* --- SECTION 6: INPUTS & SETUP CARDS --- */
