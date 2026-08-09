@@ -516,20 +516,37 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 # SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
 # ============================================
 def format_table_alignment(df):
-    """Aligns text/string columns to Left and numeric/metric columns to Center."""
-    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-    text_cols = df.select_dtypes(include=["object", "string"]).columns.tolist()
+    """
+    Rounds numerical metrics to 2 decimal places (or integers for piece counts)
+    and formats data with explicit string alignment for Streamlit rendering.
+    """
+    df_fmt = df.copy()
 
-    # Center percentage and metric strings, left-align standard text
+    # Format numeric float columns to 2 decimal places
+    for col in df_fmt.columns:
+        if df_fmt[col].dtype in ["float64", "float32"]:
+            df_fmt[col] = df_fmt[col].apply(
+                lambda x: f"{x:.2f}" if pd.notna(x) and isinstance(x, (int, float)) else x
+            )
+        elif df_fmt[col].dtype in ["int64", "int32"]:
+            if "Good" in col or "Rejection" in col or "Pcs" in col or "QTY" in col:
+                df_fmt[col] = df_fmt[col].apply(
+                    lambda x: f"{x:,}" if pd.notna(x) else x
+                )
+
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    text_cols = df_fmt.select_dtypes(include=["object", "string"]).columns.tolist()
+
     center_cols = numeric_cols + [
-        c for c in text_cols if "%" in c or "Ach" in c or "Util" in c
+        c for c in text_cols if "%" in c or "Ach" in c or "Util" in c or any(char.isdigit() for char in str(c))
     ]
     left_cols = [c for c in text_cols if c not in center_cols]
 
-    return df.style.set_properties(
-        **{"text-align": "center"}, subset=center_cols
-    ).set_properties(**{"text-align": "left"}, subset=left_cols)
-
+    return df_fmt.style.set_properties(
+        **{"text-align": "center !important"}, subset=[c for c in center_cols if c in df_fmt.columns]
+    ).set_properties(
+        **{"text-align": "left !important"}, subset=[c for c in left_cols if c in df_fmt.columns]
+    )
 
 def column_visibility_selector(df, key_prefix=""):
     """Manages column visibility selector with default exclusions."""
