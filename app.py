@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
     page_icon="🏭",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="locked",
 )
 
 
@@ -114,7 +114,6 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             for s, dt in valid_sheets
             if dt.month == latest_month and dt.year == latest_year
         ]
-        # Sort chronologically by date
         date_sheets.sort(key=lambda x: x[1])
     else:
         date_sheets = []
@@ -139,9 +138,17 @@ def load_and_parse_floor_data(file_bytes, floor_label):
 
             acc_code_val = row.get("Acc Code")
             try:
-                acc_code = str(int(float(acc_code_val))) if pd.notna(acc_code_val) else "-"
+                acc_code = (
+                    str(int(float(acc_code_val)))
+                    if pd.notna(acc_code_val)
+                    else "-"
+                )
             except (ValueError, TypeError):
-                acc_code = str(acc_code_val).strip() if pd.notna(acc_code_val) else "-"
+                acc_code = (
+                    str(acc_code_val).strip()
+                    if pd.notna(acc_code_val)
+                    else "-"
+                )
 
             cust_prefix = (
                 order.split("-")[0].strip().upper() if "-" in order else order
@@ -149,7 +156,7 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
 
-            # Audit Check 1: Machine Serial Typo
+            # Audit Check 1: Machine Serial Typo (e.g., '119' or '121' instead of standard sizes)
             if "119" in mc_sl or "121" in mc_sl:
                 typo_logs.append({
                     "Date": dt_str_clean,
@@ -241,7 +248,6 @@ def load_and_parse_floor_data(file_bytes, floor_label):
             if pd.isna(demand_qty):
                 demand_qty = 0.0
 
-            # Parse Up to Prod, Due Prod (Col N), Last Day Prod, Due Prod.1 (Col P)
             up_to_prod = (
                 pd.to_numeric(row.get("Up to Prod"), errors="coerce")
                 if pd.notna(row.get("Up to Prod"))
@@ -441,7 +447,7 @@ def consolidate_daily_machines(df_day):
     return pd.DataFrame(records)
 
 
-def compute_line_summary_daily(df_subset):
+def compute_line_summary(df_subset):
     """Computes daily line summary counting distinct active machines on that date."""
     records = []
     for lg, grp in df_subset.groupby("Line Group"):
@@ -961,7 +967,7 @@ else:
 
                 if daily_mode == "📊 Linewise":
                     st.markdown("### 📈 Line-Wise Performance Summary")
-                    df_line_day = compute_line_summary_daily(df_daily_raw)
+                    df_line_day = compute_line_summary(df_daily_raw)
                     df_line_day_tot = add_total_row(
                         df_line_day,
                         "Line Group",
@@ -1118,17 +1124,15 @@ else:
                         placeholder="Type order name or item description...",
                     )
 
-                    # Merged demand and production grouped by Order Name + Acc Code
                     records_job_day = []
                     for (
                         cust,
                         ord_name,
-                        acc_cd,
+                        itm_name,
                     ), grp in df_daily_raw.groupby(
-                        ["Customer", "Order Name", "Acc Code"]
+                        ["Customer", "Order Name", "Item Name"]
                     ):
-                        itm_name = grp["Item Name"].iloc[0]
-                        merged_demand = grp["Demand Qty"].sum()
+                        demand_val = grp["Demand Qty"].max()
                         tot_good_val = grp["Total Good"].sum()
                         tot_prod_ton_val = grp["Total Prod Ton"].sum()
                         cap_ton_val = grp["Weighted Cap Ton"].sum()
@@ -1152,9 +1156,8 @@ else:
                         records_job_day.append({
                             "Customer": cust,
                             "Order Name": ord_name,
-                            "Acc Code": acc_cd,
                             "Item Name": itm_name,
-                            "Demand Qty": merged_demand,
+                            "Demand Qty": demand_val,
                             "Total Good": tot_good_val,
                             "Total Prod Ton": round(tot_prod_ton_val, 2),
                             "Running Molds": mc_count,
@@ -1361,7 +1364,6 @@ else:
                         f" {as_of_date})"
                     )
 
-                    # Group by Order Name + Acc Code on the selected cutoff date
                     df_cutoff_date = df_mtd[df_mtd["Date"] == as_of_date].copy()
 
                     job_records = []
@@ -1370,13 +1372,8 @@ else:
                             ["Customer", "Order Name", "Acc Code"]
                         ):
                             itm_name = grp["Item Name"].iloc[0]
-                            # Merged demand across machines running this item
                             order_qty = grp["Demand Qty"].sum()
-
-                            # Present due production = Sum of Col P (Due Prod.1)
                             due_prod_present = grp["Due Prod Present"].sum()
-
-                            # As of Production = Order Qty - Present Due Production
                             as_of_prod = order_qty - due_prod_present
 
                             tot_prod_ton_cum = df_mtd[
