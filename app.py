@@ -868,6 +868,10 @@ else:
             else pd.DataFrame()
         )
 
+        # Store parsed dataset and ready flags for cross-page persistence
+        st.session_state["df_data_raw"] = df_data_raw
+        st.session_state["dashboard_ready"] = True
+
         with st.sidebar:
             col_logo, col_text = st.columns([1, 2.3], gap="small", vertical_alignment="center")
             with col_logo:
@@ -906,11 +910,18 @@ else:
 
             st.divider()
 
+            if st.button("📱 Launch SMS Module", use_container_width=True):
+                st.switch_page("pages/sms.py")
+
+            st.divider()
+
             if st.button("⚙️ Change Uploaded Files", use_container_width=True):
                 st.session_state["app_launched"] = False
                 st.session_state.pop("ff_bytes", None)
                 st.session_state.pop("gf_bytes", None)
                 st.session_state.pop("typo_overrides", None)
+                st.session_state.pop("df_data_raw", None)
+                st.session_state.pop("dashboard_ready", None)
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
