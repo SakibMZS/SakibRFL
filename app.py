@@ -1229,14 +1229,17 @@ else:
                     col_top1, col_top2 = st.columns([1.2, 2.5])
 
                     records_job_day = []
+                    # Group by Customer, Order Name, and Acc Code to aggregate split allocations
                     for (
                         cust,
                         ord_name,
-                        itm_name,
+                        acc_cd,
                     ), grp in df_daily_raw.groupby(
-                        ["Customer", "Order Name", "Item Name"]
+                        ["Customer", "Order Name", "Acc Code"]
                     ):
-                        demand_val = grp["Demand Qty"].max()
+                        itm_name = grp["Item Name"].iloc[0]
+                        # Sum demand across all machines running this item on the date
+                        merged_demand = grp["Demand Qty"].sum()
                         tot_good_val = grp["Total Good"].sum()
                         tot_prod_ton_val = grp["Total Prod Ton"].sum()
                         cap_ton_val = grp["Weighted Cap Ton"].sum()
@@ -1260,8 +1263,9 @@ else:
                         records_job_day.append({
                             "Customer": cust,
                             "Order Name": ord_name,
+                            "Acc Code": acc_cd,
                             "Item Name": itm_name,
-                            "Demand Qty": demand_val,
+                            "Demand Qty": merged_demand,
                             "Total Good": tot_good_val,
                             "Total Prod Ton": round(tot_prod_ton_val, 2),
                             "Running Molds": mc_count,
