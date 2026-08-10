@@ -139,7 +139,13 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
         df = df[df["MC SL"].notna() & df["Order Name"].notna()].copy()
 
         for idx, row in df.iterrows():
-            raw_mc_sl = str(row.get("MC SL")).strip()
+            # Clean raw machine string (remove .0 float artifacts and whitespace)
+            raw_val = row.get("MC SL")
+            if isinstance(raw_val, float) and raw_val.is_integer():
+                raw_mc_sl = str(int(raw_val)).strip()
+            else:
+                raw_mc_sl = str(raw_val).strip()
+
             order = str(row.get("Order Name")).strip()
             item = str(row.get("Item Name", "")).strip()
 
@@ -238,16 +244,16 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             if pd.isna(b_rej):
                 b_rej = 0.0
 
-            # EVALUATE AUDIT CONDITIONS POST-OVERRIDE
-            is_mc_typo = "119" in mc_sl or "121" in mc_sl
+            # EVALUATE AUDIT CONDITIONS POST-OVERRIDE (STRICT EXCEL_SIZES WHITELIST)
+            is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
 
-            if is_mc_typo or is_missing_params:
-                issue_msg = (
-                    f"Machine SL typo '{mc_sl}' found"
-                    if is_mc_typo
-                    else f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
-                )
+            if is_size_typo or is_missing_params:
+                if is_size_typo:
+                    issue_msg = f"Invalid Machine SL / Size '{mc_sl}' (Extracted Size: '{mc_size}')"
+                else:
+                    issue_msg = f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
+
                 typo_logs.append({
                     "Key": override_key,
                     "Date": dt_str_clean,
@@ -304,7 +310,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             if pd.isna(due_prod_present):
                 due_prod_present = 0.0
 
-            # Shift-proportional capacity scaling
             shifts_active = (1.0 if a_good > 0 else 0.0) + (
                 1.0 if b_good > 0 else 0.0
             )
@@ -371,7 +376,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     if df_res.empty:
         return df_res, df_audit
 
-    # Runtime-weighted multi-job entry weighting
     mc_totals = (
         df_res.groupby(["Floor", "Date", "Machine"])["Total Runtime (Hrs)"]
         .sum()
