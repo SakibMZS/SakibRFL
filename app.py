@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
     page_icon="🏭",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="locked",
 )
 
 
@@ -779,16 +779,6 @@ if "app_launched" not in st.session_state:
 # SECTION 6: LANDING SETUP SCREEN
 # ============================================
 if not st.session_state["app_launched"]:
-    # Hide default auto-generated multi-page sidebar navigation on landing setup screen
-    st.markdown(
-        """
-        <style>
-            [data-testid="stSidebarNav"] {display: none !important;}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
     st.markdown("## 🏭 **PLASTIC-3 CONSOLE SETUP**")
     st.markdown("##### Upload your production entry files to launch.")
     st.divider()
@@ -822,33 +812,26 @@ if not st.session_state["app_launched"]:
 
     st.divider()
 
-    # Full-width launch button across the horizontal container
-    if st.button("🚀 Launch Dashboard", type="primary", use_container_width=True):
-        if ff_file is None and gf_file is None:
-            st.error("Please upload at least one floor file to launch.")
-        else:
-            if ff_file is not None:
-                st.session_state["ff_bytes"] = ff_file.getvalue()
-            if gf_file is not None:
-                st.session_state["gf_bytes"] = gf_file.getvalue()
+    c_btn, _ = st.columns([1, 3])
+    with c_btn:
+        if st.button(
+            "🚀 Launch Dashboard", type="primary", use_container_width=True
+        ):
+            if ff_file is None and gf_file is None:
+                st.error("Please upload at least one floor file to launch.")
+            else:
+                if ff_file is not None:
+                    st.session_state["ff_bytes"] = ff_file.getvalue()
+                if gf_file is not None:
+                    st.session_state["gf_bytes"] = gf_file.getvalue()
 
-            st.session_state["app_launched"] = True
-            st.rerun()
+                st.session_state["app_launched"] = True
+                st.rerun()
 
 # ============================================
 # SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
 else:
-    # Hide default auto-generated multi-page list so only custom sidebar links are shown
-    st.markdown(
-        """
-        <style>
-            [data-testid="stSidebarNav"] {display: none !important;}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
     all_parsed_dfs = []
     all_audit_dfs = []
 
@@ -927,7 +910,6 @@ else:
 
             st.divider()
 
-            # Clean switch page button to navigate to SMS module without KeyError
             if st.button("📱 Launch SMS Module", use_container_width=True):
                 st.switch_page("pages/sms.py")
 
