@@ -108,20 +108,13 @@
 
 
 /* =========================================================
-3. STREAMLIT HEADER
-========================================================= */
+   3. STREAMLIT HEADER
+   ========================================================= */
 
 header[data-testid="stHeader"] {
-    background: transparent !important;
-}
-
-header[data-testid="stHeader"] [data-testid="stToolbar"] {
     display: none !important;
 }
 
-header[data-testid="stHeader"] [data-testid="stDecoration"] {
-    display: none !important;
-}
 
 /* =========================================================
    4. TYPOGRAPHY
