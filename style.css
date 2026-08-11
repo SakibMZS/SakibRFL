@@ -1,8 +1,8 @@
 /* =========================================================
    PLASTIC-3 CONSOLE
    Operations Console UI
+   CSS-only visual layer — no application logic changed
    ========================================================= */
-
 
 /* =========================================================
    1. DESIGN TOKENS
@@ -111,7 +111,7 @@
    3. STREAMLIT HEADER
    ========================================================= */
 
-header[data-testid="stHeader"] [data-testid="stToolbar"] {
+header[data-testid="stHeader"] {
     display: none !important;
 }
 
@@ -200,13 +200,6 @@ header[data-testid="stHeader"] [data-testid="stToolbar"] {
    6. SIDEBAR
    ========================================================= */
 
-/*
-   Streamlit controls the sidebar layout, width, scrolling,
-   and open/close behavior.
-
-   This CSS only controls the sidebar's visual appearance.
-*/
-
 section[data-testid="stSidebar"] {
     background:
         linear-gradient(
@@ -221,13 +214,24 @@ section[data-testid="stSidebar"] {
         5px 0 18px rgba(15, 23, 42, 0.045) !important;
 }
 
-/* Keep the existing top spacing behavior. */
+
+/* Eliminate the unnecessary top gap */
+
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
     padding-top: 0 !important;
 }
 
+
+/* Sidebar inner area */
+
+section[data-testid="stSidebar"] > div:first-child {
+    padding-top: 0 !important;
+}
+
+
 /* Sidebar text */
+
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] h1,
@@ -255,14 +259,12 @@ section[data-testid="stSidebar"] label {
 section[data-testid="stSidebar"] [data-testid="stColumn"] {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
-
     margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stImage"] {
     display: flex !important;
-
     align-items: center !important;
     justify-content: center !important;
 
@@ -315,6 +317,7 @@ section[data-testid="stSidebar"] hr {
     margin: 0.65rem 0 !important;
 }
 
+
 /* =========================================================
    7. SIDEBAR RADIO / NAVIGATION
    ========================================================= */
@@ -325,7 +328,6 @@ section[data-testid="stSidebar"]
 [data-testid="stRadio"] > div[role="radiogroup"] {
     display: flex !important;
     flex-direction: column !important;
-
     gap: 3px !important;
 
     padding: 3px !important;
@@ -382,7 +384,6 @@ section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label p,
-
 section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
@@ -427,7 +428,6 @@ section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label:has(input:checked) p,
-
 section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
@@ -497,7 +497,6 @@ input {
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label p,
-
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label span {
@@ -531,7 +530,6 @@ input {
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label:has(input:checked) p,
-
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label:has(input:checked) span {
@@ -687,6 +685,7 @@ input {
     color: var(--text-soft) !important;
 
     font-size: 0.8rem !important;
+
     font-weight: 650 !important;
 
     transition:
@@ -949,13 +948,26 @@ input {
 }
 
 
-/* Header formatting */
+/* Table text */
 
+[data-testid="stDataFrame"] * {
+    font-size: 0.76rem !important;
+}
+
+
+/* Column headers */
+
+[data-testid="stDataFrame"]
 div[role="columnheader"] {
     background: #f4f7fa !important;
 
     border-bottom: 1px solid var(--border) !important;
+}
 
+[data-testid="stDataFrame"]
+div[role="columnheader"],
+[data-testid="stDataFrame"]
+div[role="columnheader"] * {
     text-align: center !important;
 
     justify-content: center !important;
@@ -965,6 +977,10 @@ div[role="columnheader"] {
     font-weight: 700 !important;
 }
 
+
+/* Table cells */
+
+[data-testid="stDataFrame"]
 div[role="gridcell"] {
     color: var(--text) !important;
 }
@@ -1199,6 +1215,10 @@ select:focus-visible {
 
     [data-testid="stMetricValue"] {
         font-size: 1.18rem !important;
+    }
+
+    [data-testid="stDataFrame"] * {
+        font-size: 0.72rem !important;
     }
 }
 
