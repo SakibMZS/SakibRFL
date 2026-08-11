@@ -927,8 +927,9 @@ else:
 
             st.divider()
 
-            # Clean page link component to navigate to SMS module
-            st.page_link("pages/sms.py", label="📱 Launch SMS Module", use_container_width=True)
+           # NEW (Fixed):
+if st.button("📱 Launch SMS Module", use_container_width=True):
+    st.switch_page("pages/sms.py")
 
             st.divider()
 
