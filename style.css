@@ -201,40 +201,24 @@ header[data-testid="stHeader"] {
    ========================================================= */
 
 /*
-   The dashboard sidebar is fixed so it remains visible
-   while the dashboard content scrolls.
+   IMPORTANT
+   ---------------------------------------------------------
+   Do NOT use position: fixed here.
 
-   IMPORTANT:
-   The main application container below reserves the same
-   21rem width, preventing the fixed sidebar from covering
-   dashboard content.
+   Streamlit's native sidebar layout automatically reserves
+   space for the sidebar. Forcing the sidebar itself to fixed
+   positioning causes the dashboard body to render underneath
+   it.
+
+   We only force the sidebar to remain visible/expanded.
 */
-
-:root {
-    --dashboard-sidebar-width: 21rem;
-}
 
 
 section[data-testid="stSidebar"] {
-    position: fixed !important;
-
-    top: 0 !important;
-    left: 0 !important;
-
-    width: var(--dashboard-sidebar-width) !important;
-    min-width: var(--dashboard-sidebar-width) !important;
-    max-width: var(--dashboard-sidebar-width) !important;
-
-    height: 100vh !important;
-    min-height: 100vh !important;
-
     display: block !important;
+
     visibility: visible !important;
     opacity: 1 !important;
-
-    transform: translateX(0) !important;
-
-    z-index: 999999 !important;
 
     background:
         linear-gradient(
@@ -247,26 +231,19 @@ section[data-testid="stSidebar"] {
 
     box-shadow:
         5px 0 18px rgba(15, 23, 42, 0.045) !important;
-
-    overflow: hidden !important;
 }
 
 
 /*
-   Keep the actual sidebar content visible and scrollable.
+   Force the sidebar content to remain visible.
 */
 
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
-    width: 100% !important;
-    height: 100vh !important;
-
-    padding-top: 0 !important;
-
     visibility: visible !important;
     opacity: 1 !important;
 
-    transform: none !important;
+    padding-top: 0 !important;
 
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -274,79 +251,34 @@ section[data-testid="stSidebar"]
 
 
 /*
-   Keep the sidebar's inner wrapper visible.
+   Sidebar inner area.
 */
 
 section[data-testid="stSidebar"] > div:first-child {
-    width: 100% !important;
-    min-width: 100% !important;
-
-    height: 100% !important;
-
-    padding-top: 0 !important;
-
     visibility: visible !important;
     opacity: 1 !important;
 
-    transform: none !important;
+    padding-top: 0 !important;
 }
 
 
 /*
-   Prevent Streamlit's collapsed state from hiding it.
+   If Streamlit reports the sidebar as collapsed,
+   keep its contents visible.
+
+   We intentionally do NOT set position, width,
+   margin, padding, or transform here.
 */
 
 section[data-testid="stSidebar"][aria-expanded="false"] {
-    width: var(--dashboard-sidebar-width) !important;
-    min-width: var(--dashboard-sidebar-width) !important;
-    max-width: var(--dashboard-sidebar-width) !important;
-
     visibility: visible !important;
     opacity: 1 !important;
-
-    transform: translateX(0) !important;
 }
-
-
-/*
-   Keep sidebar content visible even when Streamlit reports
-   the sidebar as collapsed.
-*/
 
 section[data-testid="stSidebar"][aria-expanded="false"]
 [data-testid="stSidebarContent"] {
     visibility: visible !important;
     opacity: 1 !important;
-
-    transform: none !important;
-}
-
-
-/*
-   Reserve the sidebar's physical width for the dashboard
-   main content.
-
-   :has() makes this apply ONLY when a sidebar actually
-   exists. Therefore the landing page remains unchanged.
-*/
-
-.stApp:has(section[data-testid="stSidebar"])
-[data-testid="stAppViewContainer"] > .main {
-    padding-left: var(--dashboard-sidebar-width) !important;
-}
-
-
-/*
-   Keep the existing top spacing behavior.
-*/
-
-section[data-testid="stSidebar"]
-[data-testid="stSidebarContent"] {
-    padding-top: 0 !important;
-}
-
-section[data-testid="stSidebar"] > div:first-child {
-    padding-top: 0 !important;
 }
 
 
