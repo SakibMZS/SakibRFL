@@ -214,16 +214,6 @@ section[data-testid="stSidebar"] {
         5px 0 18px rgba(15, 23, 42, 0.045) !important;
 }
 
-st.markdown(
-    """
-    <style>
-        section[data-testid="stSidebar"] {display: none !important;}
-        [data-testid="stSidebarNav"] {display: none !important;}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 
 /* Eliminate the unnecessary top gap */
 
@@ -935,7 +925,7 @@ input {
 
 
 /* =========================================================
-   16. DATAFRAME / DATA TABLE
+   16. DATAFRAME / DATA TABLE (DECREASED FONT SIZE)
    ========================================================= */
 
 [data-testid="stDataFrame"] {
@@ -957,10 +947,10 @@ input {
 }
 
 
-/* Table text */
+/* Table text (decreased to 0.68rem) */
 
 [data-testid="stDataFrame"] * {
-    font-size: 0.76rem !important;
+    font-size: 0.68rem !important;
 }
 
 
@@ -984,6 +974,8 @@ div[role="columnheader"] * {
     color: #334155 !important;
 
     font-weight: 700 !important;
+
+    font-size: 0.70rem !important;
 }
 
 
@@ -1227,7 +1219,7 @@ select:focus-visible {
     }
 
     [data-testid="stDataFrame"] * {
-        font-size: 0.72rem !important;
+        font-size: 0.65rem !important;
     }
 }
 
