@@ -1,7 +1,6 @@
 /* =========================================================
    PLASTIC-3 CONSOLE
    Operations Console UI
-   CSS-only visual layer — no application logic changed
    ========================================================= */
 
 /* =========================================================
@@ -925,7 +924,7 @@ input {
 
 
 /* =========================================================
-   16. DATAFRAME / DATA TABLE (DECREASED FONT SIZE)
+   16. DATAFRAME / DATA TABLE (DECREASED CANVAS FONT SIZE)
    ========================================================= */
 
 [data-testid="stDataFrame"] {
@@ -947,41 +946,24 @@ input {
 }
 
 
-/* Table text (decreased to 0.68rem) */
+/* Specific Canvas DataGrid & Grid Cell Font Overrides */
 
-[data-testid="stDataFrame"] * {
-    font-size: 0.68rem !important;
+[data-testid="stDataFrame"] *,
+.glideDataGrid-container,
+div[role="gridcell"],
+div[role="columnheader"] {
+    font-size: 11px !important; /* Forces 11px font across table cells & canvas wrappers */
 }
 
-
-/* Column headers */
-
-[data-testid="stDataFrame"]
 div[role="columnheader"] {
     background: #f4f7fa !important;
-
     border-bottom: 1px solid var(--border) !important;
-}
-
-[data-testid="stDataFrame"]
-div[role="columnheader"],
-[data-testid="stDataFrame"]
-div[role="columnheader"] * {
     text-align: center !important;
-
     justify-content: center !important;
-
     color: #334155 !important;
-
     font-weight: 700 !important;
-
-    font-size: 0.70rem !important;
 }
 
-
-/* Table cells */
-
-[data-testid="stDataFrame"]
 div[role="gridcell"] {
     color: var(--text) !important;
 }
@@ -1218,8 +1200,10 @@ select:focus-visible {
         font-size: 1.18rem !important;
     }
 
-    [data-testid="stDataFrame"] * {
-        font-size: 0.65rem !important;
+    [data-testid="stDataFrame"] *,
+    .glideDataGrid-container,
+    div[role="gridcell"] {
+        font-size: 10px !important;
     }
 }
 
