@@ -214,6 +214,16 @@ section[data-testid="stSidebar"] {
         5px 0 18px rgba(15, 23, 42, 0.045) !important;
 }
 
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {display: none !important;}
+        [data-testid="stSidebarNav"] {display: none !important;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 /* Eliminate the unnecessary top gap */
 
