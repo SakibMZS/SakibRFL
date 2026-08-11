@@ -3,6 +3,7 @@
    Operations Console UI
    ========================================================= */
 
+
 /* =========================================================
    1. DESIGN TOKENS
    ========================================================= */
@@ -199,7 +200,25 @@ header[data-testid="stHeader"] {
    6. SIDEBAR
    ========================================================= */
 
+/*
+   IMPORTANT:
+   The dashboard sidebar is created by app.py only after
+   app_launched becomes True.
+
+   Keep the sidebar fixed so it remains visible while the
+   dashboard content scrolls.
+*/
+
 section[data-testid="stSidebar"] {
+    position: fixed !important;
+
+    top: 0 !important;
+    left: 0 !important;
+
+    height: 100vh !important;
+
+    z-index: 999999 !important;
+
     background:
         linear-gradient(
             180deg,
@@ -211,14 +230,24 @@ section[data-testid="stSidebar"] {
 
     box-shadow:
         5px 0 18px rgba(15, 23, 42, 0.045) !important;
+
+    overflow: hidden !important;
 }
 
 
-/* Eliminate the unnecessary top gap */
+/*
+   Sidebar scroll area.
+   The sidebar itself stays fixed while its contents can scroll.
+*/
 
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
+    height: 100vh !important;
+
     padding-top: 0 !important;
+
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 
@@ -258,12 +287,14 @@ section[data-testid="stSidebar"] label {
 section[data-testid="stSidebar"] [data-testid="stColumn"] {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+
     margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stImage"] {
     display: flex !important;
+
     align-items: center !important;
     justify-content: center !important;
 
@@ -327,6 +358,7 @@ section[data-testid="stSidebar"]
 [data-testid="stRadio"] > div[role="radiogroup"] {
     display: flex !important;
     flex-direction: column !important;
+
     gap: 3px !important;
 
     padding: 3px !important;
@@ -383,6 +415,7 @@ section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label p,
+
 section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
@@ -427,6 +460,7 @@ section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label:has(input:checked) p,
+
 section[data-testid="stSidebar"]
 [data-testid="stRadio"]
 > div[role="radiogroup"]
@@ -496,6 +530,7 @@ input {
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label p,
+
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label span {
@@ -529,6 +564,7 @@ input {
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label:has(input:checked) p,
+
 [data-testid="stRadio"]
 > div[role="radiogroup"]
 > label:has(input:checked) span {
@@ -950,10 +986,15 @@ input {
 
 div[role="columnheader"] {
     background: #f4f7fa !important;
+
     border-bottom: 1px solid var(--border) !important;
+
     text-align: center !important;
+
     justify-content: center !important;
+
     color: #334155 !important;
+
     font-weight: 700 !important;
 }
 
