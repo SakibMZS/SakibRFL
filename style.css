@@ -111,8 +111,12 @@
    3. STREAMLIT HEADER
    ========================================================= */
 
+/*
+   Keep Streamlit's native header so its sidebar open/close
+   control remains available. The sidebar itself is styled below.
+*/
 header[data-testid="stHeader"] {
-    display: none !important;
+    background: transparent !important;
 }
 
 
@@ -201,25 +205,12 @@ header[data-testid="stHeader"] {
    ========================================================= */
 
 /*
-   IMPORTANT
-   ---------------------------------------------------------
-   Do NOT use position: fixed here.
-
-   Streamlit's native sidebar layout automatically reserves
-   space for the sidebar. Forcing the sidebar itself to fixed
-   positioning causes the dashboard body to render underneath
-   it.
-
-   We only force the sidebar to remain visible/expanded.
+   Streamlit controls the sidebar layout, width, visibility, and
+   open/close state. This CSS only controls its visual appearance
+   and internal spacing.
 */
 
-
 section[data-testid="stSidebar"] {
-    display: block !important;
-
-    visibility: visible !important;
-    opacity: 1 !important;
-
     background:
         linear-gradient(
             180deg,
@@ -234,56 +225,18 @@ section[data-testid="stSidebar"] {
 }
 
 
-/*
-   Force the sidebar content to remain visible.
-*/
-
+/* Sidebar content spacing */
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
-    visibility: visible !important;
-    opacity: 1 !important;
-
     padding-top: 0 !important;
-
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
 }
-
-
-/*
-   Sidebar inner area.
-*/
 
 section[data-testid="stSidebar"] > div:first-child {
-    visibility: visible !important;
-    opacity: 1 !important;
-
     padding-top: 0 !important;
-}
-
-
-/*
-   If Streamlit reports the sidebar as collapsed,
-   keep its contents visible.
-
-   We intentionally do NOT set position, width,
-   margin, padding, or transform here.
-*/
-
-section[data-testid="stSidebar"][aria-expanded="false"] {
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-section[data-testid="stSidebar"][aria-expanded="false"]
-[data-testid="stSidebarContent"] {
-    visibility: visible !important;
-    opacity: 1 !important;
 }
 
 
 /* Sidebar text */
-
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] h1,
@@ -297,7 +250,6 @@ section[data-testid="stSidebar"] h6 {
 
 
 /* Sidebar labels */
-
 section[data-testid="stSidebar"] label {
     color: var(--text-soft) !important;
     font-weight: 600 !important;
@@ -370,6 +322,7 @@ section[data-testid="stSidebar"] hr {
     border-top-color: var(--border) !important;
     margin: 0.65rem 0 !important;
 }
+
 
 /* =========================================================
    7. SIDEBAR RADIO / NAVIGATION
