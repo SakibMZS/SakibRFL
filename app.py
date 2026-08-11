@@ -927,9 +927,9 @@ else:
 
             st.divider()
 
-           # NEW (Fixed):
-if st.button("📱 Launch SMS Module", use_container_width=True):
-    st.switch_page("pages/sms.py")
+            # Clean switch page button to navigate to SMS module without KeyError
+            if st.button("📱 Launch SMS Module", use_container_width=True):
+                st.switch_page("pages/sms.py")
 
             st.divider()
 
