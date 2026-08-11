@@ -201,9 +201,19 @@ header[data-testid="stHeader"] {
    ========================================================= */
 
 /*
-   The sidebar is created only inside dashboard_view().
-   Keep it permanently visible and fixed on the dashboard.
+   The dashboard sidebar is fixed so it remains visible
+   while the dashboard content scrolls.
+
+   IMPORTANT:
+   The main application container below reserves the same
+   21rem width, preventing the fixed sidebar from covering
+   dashboard content.
 */
+
+:root {
+    --dashboard-sidebar-width: 21rem;
+}
+
 
 section[data-testid="stSidebar"] {
     position: fixed !important;
@@ -211,9 +221,9 @@ section[data-testid="stSidebar"] {
     top: 0 !important;
     left: 0 !important;
 
-    width: 21rem !important;
-    min-width: 21rem !important;
-    max-width: 21rem !important;
+    width: var(--dashboard-sidebar-width) !important;
+    min-width: var(--dashboard-sidebar-width) !important;
+    max-width: var(--dashboard-sidebar-width) !important;
 
     height: 100vh !important;
     min-height: 100vh !important;
@@ -287,9 +297,9 @@ section[data-testid="stSidebar"] > div:first-child {
 */
 
 section[data-testid="stSidebar"][aria-expanded="false"] {
-    width: 21rem !important;
-    min-width: 21rem !important;
-    max-width: 21rem !important;
+    width: var(--dashboard-sidebar-width) !important;
+    min-width: var(--dashboard-sidebar-width) !important;
+    max-width: var(--dashboard-sidebar-width) !important;
 
     visibility: visible !important;
     opacity: 1 !important;
@@ -299,7 +309,7 @@ section[data-testid="stSidebar"][aria-expanded="false"] {
 
 
 /*
-   Keep content visible even when Streamlit reports
+   Keep sidebar content visible even when Streamlit reports
    the sidebar as collapsed.
 */
 
@@ -313,7 +323,21 @@ section[data-testid="stSidebar"][aria-expanded="false"]
 
 
 /*
-   Eliminate the unnecessary top gap.
+   Reserve the sidebar's physical width for the dashboard
+   main content.
+
+   :has() makes this apply ONLY when a sidebar actually
+   exists. Therefore the landing page remains unchanged.
+*/
+
+.stApp:has(section[data-testid="stSidebar"])
+[data-testid="stAppViewContainer"] > .main {
+    padding-left: var(--dashboard-sidebar-width) !important;
+}
+
+
+/*
+   Keep the existing top spacing behavior.
 */
 
 section[data-testid="stSidebar"]
