@@ -13,6 +13,7 @@ st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
     page_icon="🏭",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -1734,10 +1735,12 @@ def dashboard_view():
 # ============================================
 p_setup = st.Page(setup_view, title="Setup", icon="🏭")
 p_dashboard = st.Page(dashboard_view, title="Console", icon="📊")
+p_sms = st.Page("pages/sms.py", title="SMS Module", icon="📱")
 
 if not st.session_state["app_launched"]:
     pg = st.navigation([p_setup], position="hidden")
 else:
-    pg = st.navigation([p_dashboard], position="hidden")
+    # Explicitly register both the Dashboard page and SMS Page in the navigation engine
+    pg = st.navigation([p_dashboard, p_sms], position="hidden")
 
 pg.run()
