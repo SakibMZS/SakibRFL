@@ -111,23 +111,14 @@
 3. STREAMLIT HEADER
 ========================================================= */
 
-/*
-Keep Streamlit's header container alive because it contains
-the native sidebar collapse / expand controls.
-
-Hide only the application toolbar/navigation clutter.
-*/
-
 header[data-testid="stHeader"] {
     background: transparent !important;
 }
 
-/* Hide Streamlit's top-right toolbar */
 header[data-testid="stHeader"] [data-testid="stToolbar"] {
     display: none !important;
 }
 
-/* Hide the decorative header decoration */
 header[data-testid="stHeader"] [data-testid="stDecoration"] {
     display: none !important;
 }
