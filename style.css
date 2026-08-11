@@ -201,12 +201,8 @@ header[data-testid="stHeader"] {
    ========================================================= */
 
 /*
-   IMPORTANT:
-   The dashboard sidebar is created by app.py only after
-   app_launched becomes True.
-
-   Keep the sidebar fixed so it remains visible while the
-   dashboard content scrolls.
+   The sidebar is created only inside dashboard_view().
+   Keep it permanently visible and fixed on the dashboard.
 */
 
 section[data-testid="stSidebar"] {
@@ -215,7 +211,18 @@ section[data-testid="stSidebar"] {
     top: 0 !important;
     left: 0 !important;
 
+    width: 21rem !important;
+    min-width: 21rem !important;
+    max-width: 21rem !important;
+
     height: 100vh !important;
+    min-height: 100vh !important;
+
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    transform: translateX(0) !important;
 
     z-index: 999999 !important;
 
@@ -236,22 +243,83 @@ section[data-testid="stSidebar"] {
 
 
 /*
-   Sidebar scroll area.
-   The sidebar itself stays fixed while its contents can scroll.
+   Keep the actual sidebar content visible and scrollable.
 */
 
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
+    width: 100% !important;
     height: 100vh !important;
 
     padding-top: 0 !important;
+
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    transform: none !important;
 
     overflow-y: auto !important;
     overflow-x: hidden !important;
 }
 
 
-/* Sidebar inner area */
+/*
+   Keep the sidebar's inner wrapper visible.
+*/
+
+section[data-testid="stSidebar"] > div:first-child {
+    width: 100% !important;
+    min-width: 100% !important;
+
+    height: 100% !important;
+
+    padding-top: 0 !important;
+
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    transform: none !important;
+}
+
+
+/*
+   Prevent Streamlit's collapsed state from hiding it.
+*/
+
+section[data-testid="stSidebar"][aria-expanded="false"] {
+    width: 21rem !important;
+    min-width: 21rem !important;
+    max-width: 21rem !important;
+
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    transform: translateX(0) !important;
+}
+
+
+/*
+   Keep content visible even when Streamlit reports
+   the sidebar as collapsed.
+*/
+
+section[data-testid="stSidebar"][aria-expanded="false"]
+[data-testid="stSidebarContent"] {
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    transform: none !important;
+}
+
+
+/*
+   Eliminate the unnecessary top gap.
+*/
+
+section[data-testid="stSidebar"]
+[data-testid="stSidebarContent"] {
+    padding-top: 0 !important;
+}
 
 section[data-testid="stSidebar"] > div:first-child {
     padding-top: 0 !important;
@@ -346,7 +414,6 @@ section[data-testid="stSidebar"] hr {
     border-top-color: var(--border) !important;
     margin: 0.65rem 0 !important;
 }
-
 
 /* =========================================================
    7. SIDEBAR RADIO / NAVIGATION
