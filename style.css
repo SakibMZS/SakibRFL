@@ -924,7 +924,7 @@ input {
 
 
 /* =========================================================
-   16. DATAFRAME / DATA TABLE (DECREASED CANVAS FONT SIZE)
+   16. DATAFRAME / DATA TABLE
    ========================================================= */
 
 [data-testid="stDataFrame"] {
@@ -946,14 +946,7 @@ input {
 }
 
 
-/* Specific Canvas DataGrid & Grid Cell Font Overrides */
-
-[data-testid="stDataFrame"] *,
-.glideDataGrid-container,
-div[role="gridcell"],
-div[role="columnheader"] {
-    font-size: 11px !important; /* Forces 11px font across table cells & canvas wrappers */
-}
+/* Header formatting */
 
 div[role="columnheader"] {
     background: #f4f7fa !important;
@@ -1198,12 +1191,6 @@ select:focus-visible {
 
     [data-testid="stMetricValue"] {
         font-size: 1.18rem !important;
-    }
-
-    [data-testid="stDataFrame"] *,
-    .glideDataGrid-container,
-    div[role="gridcell"] {
-        font-size: 10px !important;
     }
 }
 
