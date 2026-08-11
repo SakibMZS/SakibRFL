@@ -779,10 +779,11 @@ if "app_launched" not in st.session_state:
 # SECTION 6: LANDING SETUP SCREEN
 # ============================================
 if not st.session_state["app_launched"]:
-    # Hide default auto-generated multi-page sidebar navigation on landing setup screen
+    # Hide sidebar container & nav on initial setup screen
     st.markdown(
         """
         <style>
+            section[data-testid="stSidebar"] {display: none !important;}
             [data-testid="stSidebarNav"] {display: none !important;}
         </style>
         """,
@@ -822,7 +823,7 @@ if not st.session_state["app_launched"]:
 
     st.divider()
 
-    # Full-width launch button across the horizontal container
+    # Full-width launch button across container
     if st.button("🚀 Launch Dashboard", type="primary", use_container_width=True):
         if ff_file is None and gf_file is None:
             st.error("Please upload at least one floor file to launch.")
@@ -839,7 +840,7 @@ if not st.session_state["app_launched"]:
 # SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
 else:
-    # Hide default auto-generated multi-page list so only custom sidebar links are shown
+    # Hide default auto-generated multi-page navigation list
     st.markdown(
         """
         <style>
