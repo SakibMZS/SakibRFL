@@ -111,12 +111,8 @@
    3. STREAMLIT HEADER
    ========================================================= */
 
-/*
-   Keep Streamlit's native header so its sidebar open/close
-   control remains available. The sidebar itself is styled below.
-*/
 header[data-testid="stHeader"] {
-    background: transparent !important;
+    display: none !important;
 }
 
 
@@ -205,9 +201,10 @@ header[data-testid="stHeader"] {
    ========================================================= */
 
 /*
-   Streamlit controls the sidebar layout, width, visibility, and
-   open/close state. This CSS only controls its visual appearance
-   and internal spacing.
+   Streamlit controls the sidebar layout, width, scrolling,
+   and open/close behavior.
+
+   This CSS only controls the sidebar's visual appearance.
 */
 
 section[data-testid="stSidebar"] {
@@ -224,17 +221,11 @@ section[data-testid="stSidebar"] {
         5px 0 18px rgba(15, 23, 42, 0.045) !important;
 }
 
-
-/* Sidebar content spacing */
+/* Keep the existing top spacing behavior. */
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
     padding-top: 0 !important;
 }
-
-section[data-testid="stSidebar"] > div:first-child {
-    padding-top: 0 !important;
-}
-
 
 /* Sidebar text */
 section[data-testid="stSidebar"] p,
@@ -250,6 +241,7 @@ section[data-testid="stSidebar"] h6 {
 
 
 /* Sidebar labels */
+
 section[data-testid="stSidebar"] label {
     color: var(--text-soft) !important;
     font-weight: 600 !important;
@@ -322,7 +314,6 @@ section[data-testid="stSidebar"] hr {
     border-top-color: var(--border) !important;
     margin: 0.65rem 0 !important;
 }
-
 
 /* =========================================================
    7. SIDEBAR RADIO / NAVIGATION
