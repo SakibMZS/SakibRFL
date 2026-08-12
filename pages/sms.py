@@ -30,7 +30,7 @@ if not st.session_state.get("dashboard_ready", False) or "df_data_raw" not in st
 df_local = st.session_state["df_data_raw"]
 
 # ---------------------------------------------------------
-# SMS DATA PARSING ENGINES (FIXED WITH io.BytesIO)
+# SMS DATA PARSING ENGINES
 # ---------------------------------------------------------
 @st.cache_data
 def parse_oee_report(file_bytes):
@@ -40,7 +40,6 @@ def parse_oee_report(file_bytes):
     df_raw["Date_Clean"] = pd.to_datetime(df_raw["Date"]).dt.strftime("%d-%m-%Y")
     df_raw["Machine_Clean"] = df_raw["Machine"].astype(str).str.strip()
 
-    # Map machine using bridge registry / typo-resilient resolver
     df_raw["Position"] = df_raw["Machine_Clean"].apply(
         lambda m: resolve_machine_info(m)["position"] if resolve_machine_info(m) else m
     )
@@ -59,12 +58,10 @@ def parse_rejection_report(file_bytes):
     df_raw["Date_Clean"] = pd.to_datetime(df_raw["Added Date"]).dt.strftime("%d-%m-%Y")
     df_raw["Machine_Clean"] = df_raw["Machine"].astype(str).str.strip()
 
-    # Map machine using bridge registry / typo-resilient resolver
     df_raw["Position"] = df_raw["Machine_Clean"].apply(
         lambda m: resolve_machine_info(m)["position"] if resolve_machine_info(m) else m
     )
 
-    # Actual Pcs = Quantity * 1000
     df_raw["Actual_Pcs"] = pd.to_numeric(df_raw["Quantity"], errors="coerce").fillna(0.0) * 1000.0
     df_raw["Weight_Kg"] = pd.to_numeric(df_raw["Weight"], errors="coerce").fillna(0.0)
     df_raw["Cause"] = df_raw["Cause"].astype(str).str.strip()
@@ -73,17 +70,33 @@ def parse_rejection_report(file_bytes):
     return df_raw
 
 # ---------------------------------------------------------
-# UI HEADER & FILE UPLOAD SECTION
+# INDEPENDENT SMS SIDEBAR
 # ---------------------------------------------------------
-col_title, col_nav = st.columns([4, 1], vertical_alignment="center")
-with col_title:
-    st.title("📱 **SMART MANUFACTURING SYSTEM (SMS) ANALYTICS**")
-    st.caption("Cross-reference official SMS OEE & Rejection exports with local shop floor performance.")
+with st.sidebar:
+    st.image("logo.png", use_container_width=True) if os.path.exists("logo.png") else None
+    st.markdown("### **SMS CONSOLE**")
+    st.caption("Smart Manufacturing System Analytics")
+    st.divider()
 
-with col_nav:
-    if st.button("⬅️ Main Console", use_container_width=True):
+    sms_nav = st.radio(
+        "📍 **Select SMS Module:**",
+        [
+            "⚠️ Daily >50 Pcs Audit",
+            "📊 OEE Analysis",
+            "🚨 Rejection Analysis",
+        ]
+    )
+
+    st.divider()
+
+    if st.button("⬅️ Main Operations Console", use_container_width=True):
         st.switch_page("app.py")
 
+# ---------------------------------------------------------
+# UI HEADER & FILE UPLOADER
+# ---------------------------------------------------------
+st.title("📱 **SMART MANUFACTURING SYSTEM (SMS) ANALYTICS**")
+st.caption("Cross-reference official SMS OEE & Rejection exports with local shop floor performance.")
 st.divider()
 
 col1, col2 = st.columns(2)
@@ -96,13 +109,11 @@ if not oee_file and not rej_file:
     st.info("👆 Please upload at least one SMS export (OEE or Rejection Report) to launch analysis.")
     st.stop()
 
-# Load Parsed Datasets
+# Parse Uploaded Data
 df_oee = parse_oee_report(oee_file.getvalue()) if oee_file else pd.DataFrame()
 df_rej = parse_rejection_report(rej_file.getvalue()) if rej_file else pd.DataFrame()
 
-# ---------------------------------------------------------
-# CROSS-SYSTEM DATE ALIGNMENT AUDIT
-# ---------------------------------------------------------
+# Date Audit
 local_dates = set(df_local["Date"].unique())
 oee_dates = set(df_oee["Date_Clean"].unique()) if not df_oee.empty else set()
 rej_dates = set(df_rej["Date_Clean"].unique()) if not df_rej.empty else set()
@@ -111,26 +122,17 @@ missing_oee_dates = sorted(list(local_dates - oee_dates))
 missing_rej_dates = sorted(list(local_dates - rej_dates))
 
 if missing_oee_dates:
-    st.warning(f"⚠️ **OEE Data Gap Detected**: {len(missing_oee_dates)} date(s) from local floor data are missing in the OEE upload ({', '.join(missing_oee_dates)}).")
+    st.warning(f"⚠️ **OEE Data Gap Detected**: {len(missing_oee_dates)} date(s) missing from OEE upload ({', '.join(missing_oee_dates)}).")
 
 if missing_rej_dates:
-    st.warning(f"⚠️ **Rejection Data Gap Detected**: {len(missing_rej_dates)} date(s) from local floor data are missing in the Rejection upload ({', '.join(missing_rej_dates)}).")
+    st.warning(f"⚠️ **Rejection Data Gap Detected**: {len(missing_rej_dates)} date(s) missing from Rejection upload ({', '.join(missing_rej_dates)}).")
 
 st.divider()
 
 # ---------------------------------------------------------
-# MODULE TABS
+# DYNAMIC MODULE ROUTING (CONTROLLED BY SMS SIDEBAR)
 # ---------------------------------------------------------
-tab_thresh, tab_oee, tab_rej = st.tabs([
-    "⚠️ Daily >50 Pcs Rejection Audit",
-    "📊 OEE Analysis",
-    "🚨 Rejection Analysis"
-])
-
-# ---------------------------------------------------------
-# TAB 1: DAILY >50 PCS REJECTION AUDIT
-# ---------------------------------------------------------
-with tab_thresh:
+if sms_nav == "⚠️ Daily >50 Pcs Audit":
     if df_rej.empty:
         st.info("Upload Rejection Report to view Daily Threshold Audit.")
     else:
@@ -177,16 +179,12 @@ with tab_thresh:
                 "text/csv"
             )
 
-# ---------------------------------------------------------
-# TAB 2: OEE ANALYSIS (EXCLUDES 0 AVAILABILITY)
-# ---------------------------------------------------------
-with tab_oee:
+elif sms_nav == "📊 OEE Analysis":
     if df_oee.empty:
         st.info("Upload OEE Report to view OEE Analytics.")
     else:
         st.markdown("### 📊 OEE & Equipment Efficiency Summary")
 
-        # Exclude machines with 0 availability from daily OEE averages
         df_oee_active = df_oee[df_oee["Availability"] > 0].copy()
 
         c1, c2, c3, c4 = st.columns(4)
@@ -203,10 +201,7 @@ with tab_oee:
 
         st.dataframe(oee_mc_summary, use_container_width=True, hide_index=True)
 
-# ---------------------------------------------------------
-# TAB 3: REJECTION ANALYSIS
-# ---------------------------------------------------------
-with tab_rej:
+elif sms_nav == "🚨 Rejection Analysis":
     if df_rej.empty:
         st.info("Upload Rejection Report to view Defect Analytics.")
     else:
