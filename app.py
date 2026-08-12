@@ -779,6 +779,12 @@ if "app_launched" not in st.session_state:
 # SECTION 6: LANDING SETUP SCREEN
 # ============================================
 if not st.session_state["app_launched"]:
+    # Marker used only to control native Streamlit sidebar visibility.
+    st.markdown(
+        '<div class="landing-page-marker"></div>',
+        unsafe_allow_html=True,
+    )
+
     st.markdown("## 🏭 **PLASTIC-3 CONSOLE SETUP**")
     st.markdown("##### Upload your production entry files to launch.")
     st.divider()
@@ -832,6 +838,12 @@ if not st.session_state["app_launched"]:
 # SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
 else:
+    # Marker used only to identify the active dashboard state for CSS.
+    st.markdown(
+        '<div class="dashboard-page-marker"></div>',
+        unsafe_allow_html=True,
+    )
+
     all_parsed_dfs = []
     all_audit_dfs = []
 
