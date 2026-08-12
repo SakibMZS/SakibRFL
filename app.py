@@ -818,22 +818,21 @@ if not st.session_state["app_launched"]:
 
     st.divider()
 
-    c_btn, _ = st.columns([1, 3])
-    with c_btn:
-        if st.button(
-            "🚀 Launch Dashboard", type="primary", use_container_width=True
-        ):
-            if ff_file is None and gf_file is None:
-                st.error("Please upload at least one floor file to launch.")
-            else:
-                if ff_file is not None:
-                    st.session_state["ff_bytes"] = ff_file.getvalue()
-                if gf_file is not None:
-                    st.session_state["gf_bytes"] = gf_file.getvalue()
+    if st.button(
+    "🚀 Launch Dashboard",
+    type="primary",
+    use_container_width=True,
+):
+    if ff_file is None and gf_file is None:
+        st.error("Please upload at least one floor file to launch.")
+    else:
+        if ff_file is not None:
+            st.session_state["ff_bytes"] = ff_file.getvalue()
+        if gf_file is not None:
+            st.session_state["gf_bytes"] = gf_file.getvalue()
 
-                st.session_state["app_launched"] = True
-                st.rerun()
-
+        st.session_state["app_launched"] = True
+        st.rerun()
 # ============================================
 # SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
