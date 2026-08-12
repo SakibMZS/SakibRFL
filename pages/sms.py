@@ -30,7 +30,7 @@ if not st.session_state.get("dashboard_ready", False) or "df_data_raw" not in st
 df_local = st.session_state["df_data_raw"]
 
 # ---------------------------------------------------------
-# SMS DATA PARSING ENGINES
+# SMS DATA PARSING ENGINES (WITH CACHING)
 # ---------------------------------------------------------
 @st.cache_data
 def parse_oee_report(file_bytes):
@@ -75,7 +75,7 @@ def parse_rejection_report(file_bytes):
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
-        
+
     st.markdown("### **SMS CONSOLE**")
     st.caption("Smart Manufacturing System Analytics")
     st.divider()
@@ -91,31 +91,50 @@ with st.sidebar:
 
     st.divider()
 
+    if st.button("🔄 Reset SMS Uploads", use_container_width=True):
+        st.session_state.pop("sms_oee_bytes", None)
+        st.session_state.pop("sms_rej_bytes", None)
+        st.rerun()
+
+    st.divider()
+
     if st.button("⬅️ Main Operations Console", use_container_width=True):
         st.switch_page("app.py")
-        
+
 # ---------------------------------------------------------
-# UI HEADER & FILE UPLOADER
+# UI HEADER & FILE UPLOADER WITH SESSION PERSISTENCE
 # ---------------------------------------------------------
 st.title("📱 **SMART MANUFACTURING SYSTEM (SMS) ANALYTICS**")
 st.caption("Cross-reference official SMS OEE & Rejection exports with local shop floor performance.")
 st.divider()
 
 col1, col2 = st.columns(2)
-with col1:
-    oee_file = st.file_uploader("Upload SMS OEE Report (.xlsx)", type=["xlsx", "xls"], key="sms_oee")
-with col2:
-    rej_file = st.file_uploader("Upload SMS Rejection Report (.xlsx)", type=["xlsx", "xls"], key="sms_rej")
 
-if not oee_file and not rej_file:
+with col1:
+    oee_file = st.file_uploader("Upload SMS OEE Report (.xlsx)", type=["xlsx", "xls"], key="sms_oee_input")
+    if oee_file is not None:
+        st.session_state["sms_oee_bytes"] = oee_file.getvalue()
+
+with col2:
+    rej_file = st.file_uploader("Upload SMS Rejection Report (.xlsx)", type=["xlsx", "xls"], key="sms_rej_input")
+    if rej_file is not None:
+        st.session_state["sms_rej_bytes"] = rej_file.getvalue()
+
+# Retrieve stored bytes from session state if available
+oee_bytes = st.session_state.get("sms_oee_bytes", None)
+rej_bytes = st.session_state.get("sms_rej_bytes", None)
+
+if oee_bytes is None and rej_bytes is None:
     st.info("👆 Please upload at least one SMS export (OEE or Rejection Report) to launch analysis.")
     st.stop()
 
-# Parse Uploaded Data
-df_oee = parse_oee_report(oee_file.getvalue()) if oee_file else pd.DataFrame()
-df_rej = parse_rejection_report(rej_file.getvalue()) if rej_file else pd.DataFrame()
+# Parse Datasets from Session State Bytes
+df_oee = parse_oee_report(oee_bytes) if oee_bytes is not None else pd.DataFrame()
+df_rej = parse_rejection_report(rej_bytes) if rej_bytes is not None else pd.DataFrame()
 
-# Date Audit
+# ---------------------------------------------------------
+# CROSS-SYSTEM DATE ALIGNMENT AUDIT
+# ---------------------------------------------------------
 local_dates = set(df_local["Date"].unique())
 oee_dates = set(df_oee["Date_Clean"].unique()) if not df_oee.empty else set()
 rej_dates = set(df_rej["Date_Clean"].unique()) if not df_rej.empty else set()
