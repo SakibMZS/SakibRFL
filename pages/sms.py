@@ -1,3 +1,4 @@
+import io
 import os
 import pandas as pd
 import plotly.express as px
@@ -13,7 +14,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# Load custom stylesheet
+# Load custom styling
 if os.path.exists("style.css"):
     with open("style.css") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -29,11 +30,11 @@ if not st.session_state.get("dashboard_ready", False) or "df_data_raw" not in st
 df_local = st.session_state["df_data_raw"]
 
 # ---------------------------------------------------------
-# SMS DATA PARSING ENGINES
+# SMS DATA PARSING ENGINES (FIXED WITH io.BytesIO)
 # ---------------------------------------------------------
 @st.cache_data
 def parse_oee_report(file_bytes):
-    df_raw = pd.read_excel(file_bytes, header=10)
+    df_raw = pd.read_excel(io.BytesIO(file_bytes), header=10)
     df_raw = df_raw.dropna(subset=["Date", "Machine"]).copy()
 
     df_raw["Date_Clean"] = pd.to_datetime(df_raw["Date"]).dt.strftime("%d-%m-%Y")
@@ -52,7 +53,7 @@ def parse_oee_report(file_bytes):
 
 @st.cache_data
 def parse_rejection_report(file_bytes):
-    df_raw = pd.read_excel(file_bytes, header=7)
+    df_raw = pd.read_excel(io.BytesIO(file_bytes), header=7)
     df_raw = df_raw.dropna(subset=["Machine", "Item"]).copy()
 
     df_raw["Date_Clean"] = pd.to_datetime(df_raw["Added Date"]).dt.strftime("%d-%m-%Y")
