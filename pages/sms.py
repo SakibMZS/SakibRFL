@@ -73,7 +73,9 @@ def parse_rejection_report(file_bytes):
 # INDEPENDENT SMS SIDEBAR
 # ---------------------------------------------------------
 with st.sidebar:
-    st.image("logo.png", use_container_width=True) if os.path.exists("logo.png") else None
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+        
     st.markdown("### **SMS CONSOLE**")
     st.caption("Smart Manufacturing System Analytics")
     st.divider()
@@ -91,7 +93,7 @@ with st.sidebar:
 
     if st.button("⬅️ Main Operations Console", use_container_width=True):
         st.switch_page("app.py")
-
+        
 # ---------------------------------------------------------
 # UI HEADER & FILE UPLOADER
 # ---------------------------------------------------------
