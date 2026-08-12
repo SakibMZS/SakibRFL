@@ -927,18 +927,18 @@ else:
 
             st.divider()
 
-           if st.button("⚙️ Change Uploaded Files", use_container_width=True):
+            if st.button("⚙️ Change Uploaded Files", use_container_width=True):
                 st.session_state["app_launched"] = False
                 st.session_state.pop("ff_bytes", None)
                 st.session_state.pop("gf_bytes", None)
                 st.session_state.pop("typo_overrides", None)
                 st.session_state.pop("df_data_raw", None)
                 st.session_state.pop("dashboard_ready", None)
-                
+
                 # Clear SMS session data
                 st.session_state.pop("sms_oee_bytes", None)
                 st.session_state.pop("sms_rej_bytes", None)
-                
+
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
