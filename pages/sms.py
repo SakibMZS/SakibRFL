@@ -29,6 +29,36 @@ if not st.session_state.get("dashboard_ready", False) or "df_data_raw" not in st
 
 df_local = st.session_state["df_data_raw"]
 
+# Helper to add summary row (Sum or Average) at the bottom of dataframes
+def add_total_summary_row(df, label_col, sum_cols=None, avg_cols=None):
+    if df.empty:
+        return df
+    
+    if sum_cols is None:
+        sum_cols = []
+    if avg_cols is None:
+        avg_cols = []
+
+    res_df = df.copy()
+    summary_row = {}
+
+    for col in df.columns:
+        if col == label_col:
+            summary_row[col] = "Sub Total / Avg"
+        elif col in sum_cols:
+            val = pd.to_numeric(df[col].astype(str).str.replace(",", ""), errors="coerce").sum()
+            summary_row[col] = round(val, 2)
+        elif col in avg_cols:
+            non_zero = pd.to_numeric(df[col].astype(str).str.replace("%", "").str.replace(",", ""), errors="coerce")
+            non_zero = non_zero[non_zero > 0]
+            val = non_zero.mean() if not non_zero.empty else 0.0
+            summary_row[col] = round(val, 2)
+        else:
+            summary_row[col] = "-"
+
+    summary_df = pd.DataFrame([summary_row])
+    return pd.concat([res_df, summary_df], ignore_index=True)
+
 # ---------------------------------------------------------
 # SMS DATA PARSING ENGINES
 # ---------------------------------------------------------
@@ -68,7 +98,7 @@ def parse_rejection_report(file_bytes):
     df_raw["Weight_Kg"] = pd.to_numeric(df_raw["Weight"], errors="coerce").fillna(0.0)
     df_raw["Cause"] = df_raw["Cause"].astype(str).str.strip()
     df_raw["Item"] = df_raw["Item"].astype(str).str.strip()
-    df_raw["Added By"] = df_raw["Added By"].astype(str).str.strip()
+    df_raw["Sr Operator"] = df_raw["Added By"].astype(str).str.strip()
 
     return df_raw
 
@@ -185,13 +215,22 @@ if sms_main_nav == "📊 OEE Analysis":
         # Exclude machines with 0 Availability
         df_oee_active = df_oee[df_oee["Availability"] > 0].copy()
 
-        # 5 KPI Cards Strip
+        # Context-Aware KPI Strip (Dynamic for As-Of vs Daily)
+        if oee_sub_nav == "📅 Datewise OEE":
+            all_oee_dates = sorted(list(df_oee_active["Date_Clean"].unique()))
+            sel_oee_date = st.selectbox("Select Operational Date:", all_oee_dates, key="sel_oee_dt")
+            df_kpi_scope = df_oee_active[df_oee_active["Date_Clean"] == sel_oee_date].copy()
+            kpi_title_suffix = f"({sel_oee_date})"
+        else:
+            df_kpi_scope = df_oee_active.copy()
+            kpi_title_suffix = "(As-Of MTD)"
+
         k1, k2, c3, c4, k5 = st.columns(5)
-        k1.metric("Active Run Records", f"{len(df_oee_active):,}")
-        k2.metric("Avg Availability", f"{df_oee_active['Availability'].mean():.2f}%")
-        c3.metric("Avg Performance", f"{df_oee_active['Performance'].mean():.2f}%")
-        c4.metric("Avg Quality", f"{df_oee_active['Quality'].mean():.2f}%")
-        k5.metric("Avg OEE", f"{df_oee_active['OEE'].mean():.2f}%")
+        k1.metric(f"Active Records {kpi_title_suffix}", f"{len(df_kpi_scope):,}")
+        k2.metric("Avg Availability", f"{df_kpi_scope['Availability'].mean():.2f}%")
+        c3.metric("Avg Performance", f"{df_kpi_scope['Performance'].mean():.2f}%")
+        c4.metric("Avg Quality", f"{df_kpi_scope['Quality'].mean():.2f}%")
+        k5.metric("Avg OEE", f"{df_kpi_scope['OEE'].mean():.2f}%")
 
         st.divider()
 
@@ -200,29 +239,45 @@ if sms_main_nav == "📊 OEE Analysis":
             oee_mc_summary = df_oee_active.groupby(["Position", "Machine_Clean"])[
                 ["Availability", "Performance", "Quality", "OEE"]
             ].mean().round(2).reset_index()
-            st.dataframe(oee_mc_summary, use_container_width=True, hide_index=True)
+
+            oee_mc_summary_tot = add_total_summary_row(
+                oee_mc_summary,
+                label_col="Position",
+                avg_cols=["Availability", "Performance", "Quality", "OEE"]
+            )
+            st.dataframe(oee_mc_summary_tot, use_container_width=True, hide_index=True)
 
         elif oee_sub_nav == "📅 Datewise OEE":
-            st.markdown("### 📅 Operational Datewise OEE Breakdown")
-            all_oee_dates = sorted(list(df_oee_active["Date_Clean"].unique()))
-            sel_oee_date = st.selectbox("Select Operational Date:", all_oee_dates, key="sel_oee_dt")
+            st.markdown(f"### 📅 Operational OEE Breakdown ({sel_oee_date})")
+            oee_day_summary = df_kpi_scope[["Position", "Machine_Clean", "Availability", "Performance", "Quality", "OEE"]].reset_index(drop=True)
 
-            df_oee_day = df_oee_active[df_oee_active["Date_Clean"] == sel_oee_date].copy()
-            oee_day_summary = df_oee_day[["Position", "Machine_Clean", "Availability", "Performance", "Quality", "OEE"]].reset_index(drop=True)
-            st.dataframe(oee_day_summary, use_container_width=True, hide_index=True)
+            oee_day_summary_tot = add_total_summary_row(
+                oee_day_summary,
+                label_col="Position",
+                avg_cols=["Availability", "Performance", "Quality", "OEE"]
+            )
+            st.dataframe(oee_day_summary_tot, use_container_width=True, hide_index=True)
 
         elif oee_sub_nav == "📈 See Graph (Everyday OEE)":
             st.markdown("### 📈 Everyday OEE Trend (Day-by-Day)")
 
-            # Daily mean calculations
+            # Daily mean calculations for trend graph
             df_trend = df_oee_active.groupby(["Date_Obj", "Date_Clean"])[
                 ["Availability", "Performance", "Quality", "OEE"]
             ].mean().reset_index().sort_values("Date_Obj")
 
+            df_trend_melted = df_trend.melt(
+                id_vars=["Date_Clean", "Date_Obj"],
+                value_vars=["Availability", "Performance", "Quality", "OEE"],
+                var_name="Metric",
+                value_name="Percentage"
+            )
+
             fig_oee_trend = px.line(
-                df_trend,
+                df_trend_melted,
                 x="Date_Clean",
-                y=["Availability", "Performance", "Quality", "OEE"],
+                y="Percentage",
+                color="Metric",
                 title="Everyday OEE Trend Analysis",
                 markers=True,
                 color_discrete_map={
@@ -232,10 +287,16 @@ if sms_main_nav == "📊 OEE Analysis":
                     "OEE": "#f59e0b"
                 }
             )
+            
+            fig_oee_trend.for_each_trace(
+                lambda trace: trace.update(line=dict(dash="dash", width=3)) if trace.name == "OEE" else trace.update(line=dict(width=2.5))
+            )
+
             fig_oee_trend.update_layout(
-                yaxis_title="Percentage (%)",
+                yaxis=dict(range=[40, 100], title="Percentage (%)"),
                 xaxis_title="Operational Date",
-                hovermode="x unified"
+                hovermode="x unified",
+                template="plotly_dark"
             )
             st.plotly_chart(fig_oee_trend, use_container_width=True)
 
@@ -251,19 +312,29 @@ elif sms_main_nav == "🚨 Rejection Analysis":
         # Top Sub-module Selector
         rej_sub_nav = st.radio(
             "Select Rejection View:",
-            ["📊 As-Of Summary", "⚠️ >50 Pcs Threshold Audit", "📅 Datewise Summary", "👤 Added By Performance"],
+            ["📊 As-Of Summary", "⚠️ >50 Pcs Threshold Audit", "📅 Datewise Summary", "👤 Sr Operator Wise"],
             horizontal=True,
             label_visibility="collapsed"
         )
         st.divider()
 
-        tot_pcs = df_rej["Actual_Pcs"].sum()
-        tot_wt = df_rej["Weight_Kg"].sum()
+        # Context-Aware KPI Strip
+        if rej_sub_nav in ["⚠️ >50 Pcs Threshold Audit", "📅 Datewise Summary"]:
+            all_rej_dates = sorted(list(df_rej["Date_Clean"].unique()))
+            sel_rej_date = st.selectbox("Select Operational Date:", all_rej_dates, key="sel_rej_dt_kpi")
+            df_rej_kpi = df_rej[df_rej["Date_Clean"] == sel_rej_date].copy()
+            kpi_title_suffix = f"({sel_rej_date})"
+        else:
+            df_rej_kpi = df_rej.copy()
+            kpi_title_suffix = "(As-Of MTD)"
+
+        tot_pcs = df_rej_kpi["Actual_Pcs"].sum()
+        tot_wt = df_rej_kpi["Weight_Kg"].sum()
 
         r1, r2, r3 = st.columns(3)
-        r1.metric("Total Rejection", f"{int(round(tot_pcs)):,} Pcs")
+        r1.metric(f"Total Rejection {kpi_title_suffix}", f"{int(round(tot_pcs)):,} Pcs")
         r2.metric("Total Scrap Weight", f"{tot_wt:.2f} Kg")
-        r3.metric("Defect Entries Logged", f"{len(df_rej):,}")
+        r3.metric("Defect Entries Logged", f"{len(df_rej_kpi):,}")
 
         st.divider()
 
@@ -280,17 +351,18 @@ elif sms_main_nav == "🚨 Rejection Analysis":
             )
             st.plotly_chart(fig_cause, use_container_width=True)
 
-            st.dataframe(cause_summary, use_container_width=True, hide_index=True)
+            cause_summary_tot = add_total_summary_row(
+                cause_summary,
+                label_col="Cause",
+                sum_cols=["Actual_Pcs", "Weight_Kg"]
+            )
+            st.dataframe(cause_summary_tot, use_container_width=True, hide_index=True)
 
         elif rej_sub_nav == "⚠️ >50 Pcs Threshold Audit":
-            st.markdown("### ⚠️ Machines Exceeding 50 Pcs Rejection on Selected Date")
-            all_rej_dates = sorted(list(df_rej["Date_Clean"].unique()))
-            sel_rej_date = st.selectbox("Select Operational Date:", all_rej_dates, key="thresh_dt")
-
-            df_day_rej = df_rej[df_rej["Date_Clean"] == sel_rej_date].copy()
+            st.markdown(f"### ⚠️ Machines Exceeding 50 Pcs Rejection ({sel_rej_date})")
 
             summary_records = []
-            for (pos, mc), grp in df_day_rej.groupby(["Position", "Machine_Clean"]):
+            for (pos, mc), grp in df_rej_kpi.groupby(["Position", "Machine_Clean"]):
                 tot_day_pcs = grp["Actual_Pcs"].sum()
                 if tot_day_pcs > 50:
                     causes = ", ".join(sorted(grp["Cause"].unique()))
@@ -308,26 +380,67 @@ elif sms_main_nav == "🚨 Rejection Analysis":
                 st.success(f"🎉 No machines exceeded 50 pcs rejection on {sel_rej_date}!")
             else:
                 df_thresh = df_thresh.sort_values("Qty", ascending=False).reset_index(drop=True)
-                st.dataframe(df_thresh, use_container_width=True, hide_index=True)
+                df_thresh_tot = add_total_summary_row(
+                    df_thresh,
+                    label_col="Position",
+                    sum_cols=["Qty"]
+                )
+                st.dataframe(df_thresh_tot, use_container_width=True, hide_index=True)
 
         elif rej_sub_nav == "📅 Datewise Summary":
-            st.markdown("### 📅 Daily Rejection Logs & Mold Breakdown")
-            all_rej_dates = sorted(list(df_rej["Date_Clean"].unique()))
-            sel_rej_date = st.selectbox("Select Operational Date:", all_rej_dates, key="dtwise_rej_dt")
+            st.markdown(f"### 📅 Analytical Daily Rejection & Defect Breakdown ({sel_rej_date})")
 
-            df_day_logs = df_rej[df_rej["Date_Clean"] == sel_rej_date].copy()
-            st.dataframe(
-                df_day_logs[["Position", "Machine_Clean", "Item", "Actual_Pcs", "Weight_Kg", "Cause", "Added By"]],
-                use_container_width=True,
-                hide_index=True
-            )
+            t_mc, t_cause, t_raw = st.tabs(["🏭 Machine & Mold Rejection", "🚨 Cause Breakdown", "📋 Detailed Defect Logs"])
 
-        elif rej_sub_nav == "👤 Added By Performance":
-            st.markdown("### 👤 User Logging Performance (As-Of)")
-            user_summary = df_rej.groupby("Added By").agg(
+            with t_mc:
+                df_mc_summary = df_rej_kpi.groupby(["Position", "Machine_Clean", "Item"]).agg(
+                    Defect_Pcs=("Actual_Pcs", lambda x: int(round(x.sum()))),
+                    Scrap_Kg=("Weight_Kg", lambda x: round(x.sum(), 2)),
+                    Primary_Causes=("Cause", lambda x: ", ".join(sorted(x.unique()))),
+                    Logged_By=("Sr Operator", lambda x: ", ".join(sorted(x.unique())))
+                ).reset_index().sort_values("Defect_Pcs", ascending=False)
+
+                df_mc_tot = add_total_summary_row(
+                    df_mc_summary,
+                    label_col="Position",
+                    sum_cols=["Defect_Pcs", "Scrap_Kg"]
+                )
+                st.dataframe(df_mc_tot, use_container_width=True, hide_index=True)
+
+            with t_cause:
+                df_cause_day = df_rej_kpi.groupby("Cause").agg(
+                    Defect_Pcs=("Actual_Pcs", lambda x: int(round(x.sum()))),
+                    Scrap_Kg=("Weight_Kg", lambda x: round(x.sum(), 2)),
+                    Affected_Machines=("Position", lambda x: ", ".join(sorted(x.unique())))
+                ).reset_index().sort_values("Defect_Pcs", ascending=False)
+
+                df_cause_tot = add_total_summary_row(
+                    df_cause_day,
+                    label_col="Cause",
+                    sum_cols=["Defect_Pcs", "Scrap_Kg"]
+                )
+                st.dataframe(df_cause_tot, use_container_width=True, hide_index=True)
+
+            with t_raw:
+                df_raw_logs = df_rej_kpi[["Position", "Machine_Clean", "Item", "Actual_Pcs", "Weight_Kg", "Cause", "Sr Operator"]].copy()
+                df_raw_tot = add_total_summary_row(
+                    df_raw_logs,
+                    label_col="Position",
+                    sum_cols=["Actual_Pcs", "Weight_Kg"]
+                )
+                st.dataframe(df_raw_tot, use_container_width=True, hide_index=True)
+
+        elif rej_sub_nav == "👤 Sr Operator Wise":
+            st.markdown("### 👤 Sr Operator Logging Performance (As-Of)")
+            user_summary = df_rej.groupby("Sr Operator").agg(
                 Logged_Entries=("Actual_Pcs", "count"),
                 Total_Scrap_Pcs=("Actual_Pcs", lambda x: int(round(x.sum()))),
                 Total_Scrap_Kg=("Weight_Kg", lambda x: round(x.sum(), 2))
             ).reset_index().sort_values("Logged_Entries", ascending=False)
 
-            st.dataframe(user_summary, use_container_width=True, hide_index=True)
+            user_summary_tot = add_total_summary_row(
+                user_summary,
+                label_col="Sr Operator",
+                sum_cols=["Logged_Entries", "Total_Scrap_Pcs", "Total_Scrap_Kg"]
+            )
+            st.dataframe(user_summary_tot, use_container_width=True, hide_index=True)
