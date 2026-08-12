@@ -197,8 +197,25 @@ header[data-testid="stHeader"] {
 
 
 /* =========================================================
-   6. SIDEBAR
-   ========================================================= */
+6. SIDEBAR
+========================================================= */
+
+/*
+Dashboard:
+    Keep the native sidebar visible because the application
+    explicitly renders its own controls through st.sidebar.
+
+Landing:
+    Completely remove the native sidebar so there is no:
+    - gray sidebar
+    - blank sidebar
+    - sidebar border
+    - reserved sidebar area
+*/
+
+/* ---------------------------------------------------------
+Native sidebar visual styling
+--------------------------------------------------------- */
 
 section[data-testid="stSidebar"] {
     background:
@@ -214,23 +231,73 @@ section[data-testid="stSidebar"] {
         5px 0 18px rgba(15, 23, 42, 0.045) !important;
 }
 
+/* ---------------------------------------------------------
+LANDING PAGE — COMPLETELY REMOVE SIDEBAR
+--------------------------------------------------------- */
 
-/* Eliminate the unnecessary top gap */
+body:has(.landing-page-marker)
+section[data-testid="stSidebar"] {
+    display: none !important;
+}
+
+/* Remove the collapsed-sidebar control as well. */
+body:has(.landing-page-marker)
+[data-testid="stSidebarCollapsedControl"] {
+    display: none !important;
+}
+
+/* Prevent residual horizontal space reserved for sidebar. */
+body:has(.landing-page-marker)
+[data-testid="stAppViewContainer"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+
+body:has(.landing-page-marker)
+[data-testid="stMain"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+
+/* ---------------------------------------------------------
+AUTOMATIC MULTIPAGE NAVIGATION
+---------------------------------------------------------
+
+The project contains:
+
+    pages/sms.py
+
+Streamlit therefore creates its own automatic page-navigation
+area inside the native sidebar.
+
+We do not need that navigation because the application already
+has its own sidebar controls and its own SMS launch button.
+
+This hides ONLY Streamlit's automatic page navigation.
+It does NOT hide the sidebar itself.
+*/
+
+section[data-testid="stSidebar"]
+[data-testid="stSidebarNav"] {
+    display: none !important;
+}
+
+/* ---------------------------------------------------------
+Sidebar content positioning
+--------------------------------------------------------- */
 
 section[data-testid="stSidebar"]
 [data-testid="stSidebarContent"] {
     padding-top: 0 !important;
 }
 
-
-/* Sidebar inner area */
-
 section[data-testid="stSidebar"] > div:first-child {
     padding-top: 0 !important;
 }
 
-
-/* Sidebar text */
+/* ---------------------------------------------------------
+Sidebar text
+--------------------------------------------------------- */
 
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] label,
@@ -243,18 +310,14 @@ section[data-testid="stSidebar"] h6 {
     color: var(--text) !important;
 }
 
-
-/* Sidebar labels */
-
 section[data-testid="stSidebar"] label {
     color: var(--text-soft) !important;
     font-weight: 600 !important;
 }
 
-
 /* ---------------------------------------------------------
-   Sidebar branding
-   --------------------------------------------------------- */
+Sidebar branding
+--------------------------------------------------------- */
 
 section[data-testid="stSidebar"] [data-testid="stColumn"] {
     padding-top: 0 !important;
@@ -307,16 +370,14 @@ section[data-testid="stSidebar"] [data-testid="stColumn"] p {
     color: var(--text-muted) !important;
 }
 
-
 /* ---------------------------------------------------------
-   Sidebar separators
-   --------------------------------------------------------- */
+Sidebar separators
+--------------------------------------------------------- */
 
 section[data-testid="stSidebar"] hr {
     border-top-color: var(--border) !important;
     margin: 0.65rem 0 !important;
 }
-
 
 /* =========================================================
    7. SIDEBAR RADIO / NAVIGATION
