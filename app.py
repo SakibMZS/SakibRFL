@@ -85,11 +85,11 @@ def derive_line_group(floor_code, mc_sl):
 
 
 # ============================================
-# SECTION 3: DATA PARSING & TYPO AUDIT ENGINE
+# SECTION 3: DATA PARSING & SHIFT-ISOLATED ENGINE
 # ============================================
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
-    """Parses raw Excel floor production sheets, computes capacity, and logs typo exceptions."""
+    """Parses raw Excel floor production sheets, applies shift-isolated capacity, and logs typo exceptions."""
     if typo_overrides is None:
         typo_overrides = {}
 
@@ -139,7 +139,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
         df = df[df["MC SL"].notna() & df["Order Name"].notna()].copy()
 
         for idx, row in df.iterrows():
-            # Clean raw machine string (remove .0 float artifacts and whitespace)
             raw_val = row.get("MC SL")
             if isinstance(raw_val, float) and raw_val.is_integer():
                 raw_mc_sl = str(int(raw_val)).strip()
@@ -204,12 +203,9 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 else 0.0
             )
 
-            if pd.isna(ct):
-                ct = 0.0
-            if pd.isna(cavity):
-                cavity = 0.0
-            if pd.isna(unit_wt_kg):
-                unit_wt_kg = 0.0
+            if pd.isna(ct): ct = 0.0
+            if pd.isna(cavity): cavity = 0.0
+            if pd.isna(unit_wt_kg): unit_wt_kg = 0.0
 
             a_good = (
                 pd.to_numeric(row.get("A-Good"), errors="coerce")
@@ -221,10 +217,8 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 if pd.notna(row.get("A-Rejec"))
                 else 0.0
             )
-            if pd.isna(a_good):
-                a_good = 0.0
-            if pd.isna(a_rej):
-                a_rej = 0.0
+            if pd.isna(a_good): a_good = 0.0
+            if pd.isna(a_rej): a_rej = 0.0
 
             b_good = (
                 pd.to_numeric(row.get("B-Good"), errors="coerce")
@@ -239,12 +233,10 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 if pd.notna(b_rej_val)
                 else 0.0
             )
-            if pd.isna(b_good):
-                b_good = 0.0
-            if pd.isna(b_rej):
-                b_rej = 0.0
+            if pd.isna(b_good): b_good = 0.0
+            if pd.isna(b_rej): b_rej = 0.0
 
-            # EVALUATE AUDIT CONDITIONS POST-OVERRIDE (STRICT EXCEL_SIZES WHITELIST)
+            # EVALUATE AUDIT CONDITIONS
             is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
 
@@ -272,52 +264,11 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
             )
 
-            demand_qty = (
-                pd.to_numeric(row.get("Demand"), errors="coerce")
-                if pd.notna(row.get("Demand"))
-                else 0.0
-            )
-            if pd.isna(demand_qty):
-                demand_qty = 0.0
-
-            up_to_prod = (
-                pd.to_numeric(row.get("Up to Prod"), errors="coerce")
-                if pd.notna(row.get("Up to Prod"))
-                else 0.0
-            )
-            due_prod_prev = (
-                pd.to_numeric(row.get("Due Prod"), errors="coerce")
-                if pd.notna(row.get("Due Prod"))
-                else 0.0
-            )
-            last_day_prod_col = (
-                pd.to_numeric(row.get("Last Day Prod"), errors="coerce")
-                if pd.notna(row.get("Last Day Prod"))
-                else 0.0
-            )
-            due_prod_present = (
-                pd.to_numeric(row.get("Due Prod.1"), errors="coerce")
-                if pd.notna(row.get("Due Prod.1"))
-                else 0.0
-            )
-
-            if pd.isna(up_to_prod):
-                up_to_prod = 0.0
-            if pd.isna(due_prod_prev):
-                due_prod_prev = 0.0
-            if pd.isna(last_day_prod_col):
-                last_day_prod_col = 0.0
-            if pd.isna(due_prod_present):
-                due_prod_present = 0.0
-
-            shifts_active = (1.0 if a_good > 0 else 0.0) + (
-                1.0 if b_good > 0 else 0.0
-            )
-            if shifts_active == 0.0 and (a_rej > 0 or b_rej > 0):
-                shifts_active = 1.0
-
-            act_cap_day_pcs = std_cap_shift * shifts_active
-            act_cap_day_ton = (act_cap_day_pcs * unit_wt_kg) / 1000.0
+            demand_qty = pd.to_numeric(row.get("Demand"), errors="coerce") or 0.0
+            up_to_prod = pd.to_numeric(row.get("Up to Prod"), errors="coerce") or 0.0
+            due_prod_prev = pd.to_numeric(row.get("Due Prod"), errors="coerce") or 0.0
+            last_day_prod_col = pd.to_numeric(row.get("Last Day Prod"), errors="coerce") or 0.0
+            due_prod_present = pd.to_numeric(row.get("Due Prod.1"), errors="coerce") or 0.0
 
             a_runtime = (
                 (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
@@ -354,8 +305,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 "CT": ct,
                 "Unit Wt (kg)": unit_wt_kg,
                 "STD Cap/Shift": std_cap_shift,
-                "Daily Cap Pcs": act_cap_day_pcs,
-                "Daily Cap Ton": act_cap_day_ton,
                 "Shift A Good": a_good,
                 "Shift A Rej": a_rej,
                 "Shift A Runtime": a_runtime,
@@ -376,29 +325,33 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     if df_res.empty:
         return df_res, df_audit
 
-    mc_totals = (
-        df_res.groupby(["Floor", "Date", "Machine"])["Total Runtime (Hrs)"]
-        .sum()
-        .reset_index()
-        .rename(columns={"Total Runtime (Hrs)": "MC_Daily_Runtime"})
+    # -------------------------------------------------------------
+    # EXACT SHIFT-ISOLATED PROPORTIONAL CAPACITY (Matching Details!L:L)
+    # -------------------------------------------------------------
+    df_res["Helper"] = df_res["Floor"].astype(str) + "|" + df_res["Machine"].astype(str) + "|" + df_res["Date"].astype(str)
+    
+    s_col = df_res["Shift A Runtime"].fillna(0)
+    t_col = df_res["Shift B Runtime"].fillna(0)
+    k_col = df_res["STD Cap/Shift"].fillna(0)
+    
+    sum_s_map = df_res.groupby("Helper")["Shift A Runtime"].transform("sum")
+    sum_t_map = df_res.groupby("Helper")["Shift B Runtime"].transform("sum")
+    
+    cap_a = np.where(
+        sum_s_map > 0,
+        np.where(sum_s_map > 12.01, k_col * (s_col > 0).astype(float), k_col * (s_col / sum_s_map)),
+        0.0
     )
-    df_res = df_res.merge(mc_totals, on=["Floor", "Date", "Machine"])
-
-    df_res["Runtime Weight"] = df_res.apply(
-        lambda r: (
-            r["Total Runtime (Hrs)"] / r["MC_Daily_Runtime"]
-            if r["MC_Daily_Runtime"] > 0
-            else 1.0
-        ),
-        axis=1,
+    cap_b = np.where(
+        sum_t_map > 0,
+        np.where(sum_t_map > 12.01, k_col * (t_col > 0).astype(float), k_col * (t_col / sum_t_map)),
+        0.0
     )
-
-    df_res["Weighted Cap Ton"] = (
-        df_res["Daily Cap Ton"] * df_res["Runtime Weight"]
-    )
-    df_res["Weighted Cap Pcs"] = (
-        df_res["Daily Cap Pcs"] * df_res["Runtime Weight"]
-    )
+    
+    df_res["Weighted Cap Pcs"] = cap_a + cap_b
+    df_res["Weighted Cap Ton"] = (df_res["Weighted Cap Pcs"] * df_res["Unit Wt (kg)"]) / 1000.0
+    df_res["Daily Cap Pcs"] = df_res["Weighted Cap Pcs"]
+    df_res["Daily Cap Ton"] = df_res["Weighted Cap Ton"]
 
     return df_res, df_audit
 
@@ -541,7 +494,6 @@ def compute_size_summary(df_subset, mode="daily"):
     - Daily Mode: MC QTY = Unique running machines on selected date.
     - As-Of Mode: MC QTY = Cumulative running machine-days across period.
     """
-    days_count = df_subset["Date"].nunique()
     records = []
 
     for sz in EXCEL_SIZES:
@@ -568,11 +520,7 @@ def compute_size_summary(df_subset, mode="daily"):
             run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
         else:
             mc_qty = grp["Machine"].nunique()
-            run_hr_avg = (
-                tot_runtime / (mc_qty * days_count)
-                if (mc_qty > 0 and days_count > 0)
-                else 0.0
-            )
+            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
 
         if tot_runtime > 0:
             avg_ct = (
@@ -606,7 +554,7 @@ def compute_size_summary(df_subset, mode="daily"):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
-    """Adds a complete Sub-Total summary row calculating sums, averages, and overall percentages."""
+    """Adds a complete Sub-Total summary row calculating sums, Excel-matched unweighted averages, and percentages."""
     if df.empty:
         return df
 
@@ -620,6 +568,7 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
             val = pd.to_numeric(df[c], errors="coerce").sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
         elif c in avg_cols:
+            # Matches Excel =IFERROR(AVERAGEIF(E3:E14, "<>0"), 0)
             non_zero = pd.to_numeric(df[df[c] > 0][c], errors="coerce")
             tot_row[c] = (
                 round(non_zero.mean(), 2) if not non_zero.empty else 0.0
@@ -779,7 +728,6 @@ if "app_launched" not in st.session_state:
 # SECTION 6: LANDING SETUP SCREEN
 # ============================================
 if not st.session_state["app_launched"]:
-    # Marker used only to control native Streamlit sidebar visibility.
     st.markdown(
         '<div class="landing-page-marker"></div>',
         unsafe_allow_html=True,
@@ -838,7 +786,6 @@ if not st.session_state["app_launched"]:
 # SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
 else:
-    # Marker used only to identify the active dashboard state for CSS.
     st.markdown(
         '<div class="dashboard-page-marker"></div>',
         unsafe_allow_html=True,
@@ -880,7 +827,6 @@ else:
             else pd.DataFrame()
         )
 
-        # Store parsed dataset and ready flags for cross-page persistence
         st.session_state["df_data_raw"] = df_data_raw
         st.session_state["dashboard_ready"] = True
 
@@ -934,11 +880,8 @@ else:
                 st.session_state.pop("typo_overrides", None)
                 st.session_state.pop("df_data_raw", None)
                 st.session_state.pop("dashboard_ready", None)
-
-                # Clear SMS session data
                 st.session_state.pop("sms_oee_bytes", None)
                 st.session_state.pop("sms_rej_bytes", None)
-
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
@@ -968,7 +911,6 @@ else:
             else:
                 df_active = df_curr.copy()
 
-            # Helper renderer for Typo Correction Popover
             def render_typo_popover():
                 if not df_typo_audit.empty:
                     with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
@@ -1028,7 +970,6 @@ else:
             if nav_choice == "📅 Daily Data":
                 all_dates = sorted(list(df_active["Date"].unique()))
 
-                # SINGLE-ROW TOP CONTROL BAR
                 col_nav1, col_nav2, col_nav3 = st.columns([3.5, 1.2, 1.3])
 
                 with col_nav1:
@@ -1261,7 +1202,6 @@ else:
                     col_top1, col_top2 = st.columns([1.2, 2.5])
 
                     records_job_day = []
-                    # Group by Customer, Order Name, and Acc Code to aggregate split allocations
                     for (
                         cust,
                         ord_name,
@@ -1270,7 +1210,6 @@ else:
                         ["Customer", "Order Name", "Acc Code"]
                     ):
                         itm_name = grp["Item Name"].iloc[0]
-                        # Sum demand across all machines running this item on the date
                         merged_demand = grp["Demand Qty"].sum()
                         tot_good_val = grp["Total Good"].sum()
                         tot_prod_ton_val = grp["Total Prod Ton"].sum()
