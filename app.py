@@ -33,6 +33,73 @@ if "typo_overrides" not in st.session_state:
 # ============================================
 # SECTION 2: EXCEL CONFIGURATION & SIZING
 # ============================================
+MACHINE_MASTER = [
+    # --- FIRST FLOOR (FF) ---
+    {"smart_manu": "IMM-160-6",   "position": "A1-160",      "short_name": "A1", "floor": "FF"},
+    {"smart_manu": "IMM-120-20",  "position": "A2-120",      "short_name": "A2", "floor": "FF"},
+    {"smart_manu": "IMM-120-28",  "position": "A3-120",      "short_name": "A3", "floor": "FF"},
+    {"smart_manu": "IMM-120-29",  "position": "A4-120",      "short_name": "A4", "floor": "FF"},
+    {"smart_manu": "IMM-160-7",   "position": "A5-160",      "short_name": "A5", "floor": "FF"},
+    {"smart_manu": "IMM-160-12",  "position": "A6-160",      "short_name": "A6", "floor": "FF"},
+    {"smart_manu": "IMM-160-48",  "position": "A7-160",      "short_name": "A7", "floor": "FF"},
+    {"smart_manu": "IMM-120-11",  "position": "B1-120",      "short_name": "B1", "floor": "FF"},
+    {"smart_manu": "IMM-120-15",  "position": "B2-120",      "short_name": "B2", "floor": "FF"},
+    {"smart_manu": "IMM-120-14",  "position": "B3-120",      "short_name": "B3", "floor": "FF"},
+    {"smart_manu": "IMM-120-75",  "position": "B4-120",      "short_name": "B4", "floor": "FF"},
+    {"smart_manu": "IMM-90-8",    "position": "B5-90PC",     "short_name": "B5", "floor": "FF"},
+    {"smart_manu": "IMM-90-9",    "position": "B6-90PC",     "short_name": "B6", "floor": "FF"},
+    {"smart_manu": "IMM-120-32",  "position": "B7-120PC",    "short_name": "B7", "floor": "FF"},
+    {"smart_manu": "IMM-120-27",  "position": "B8-120PC",    "short_name": "B8", "floor": "FF"},
+    {"smart_manu": "IMM-120-4",   "position": "C1-120",      "short_name": "C1", "floor": "FF"},
+    {"smart_manu": "IMM-160-17",  "position": "C2-160",      "short_name": "C2", "floor": "FF"},
+    {"smart_manu": "IMM-120-22",  "position": "C3-120",      "short_name": "C3", "floor": "FF"},
+    {"smart_manu": "IMM-120-46",  "position": "C4-120PC",    "short_name": "C4", "floor": "FF"},
+    {"smart_manu": "IMM-90-4",    "position": "C5-90",       "short_name": "C5", "floor": "FF"},
+    {"smart_manu": "IMM-120-47",  "position": "C6-120",      "short_name": "C6", "floor": "FF"},
+    {"smart_manu": "IMM-160-51",  "position": "C7-160",      "short_name": "C7", "floor": "FF"},
+    {"smart_manu": "IMM-160-39",  "position": "D1-160",      "short_name": "D1", "floor": "FF"},
+    {"smart_manu": "IMM-160-79",  "position": "D2-160",      "short_name": "D2", "floor": "FF"},
+    {"smart_manu": "IMM-160-80",  "position": "D3-160",      "short_name": "D3", "floor": "FF"},
+
+    # --- GROUND FLOOR (GF) ---
+    {"smart_manu": "IMM-280R-25", "position": "A1-280TC",    "short_name": "A1", "floor": "GF"},
+    {"smart_manu": "IMM-380-5",   "position": "A2-380",      "short_name": "A2", "floor": "GF"},
+    {"smart_manu": "IMM-380-81",  "position": "A3-380 (PC)", "short_name": "A3", "floor": "GF"},
+    {"smart_manu": "IMM-380-80",  "position": "A4-380",      "short_name": "A4", "floor": "GF"},
+    {"smart_manu": "IMM-330-4",   "position": "A5-HP-330",   "short_name": "A5", "floor": "GF"},
+    {"smart_manu": "IMM-470-5",   "position": "B1-470",      "short_name": "B1", "floor": "GF"},
+    {"smart_manu": "IMM-380-6",   "position": "B2-380",      "short_name": "B2", "floor": "GF"},
+    {"smart_manu": "IMM-530-15",  "position": "B3-530",      "short_name": "B3", "floor": "GF"},
+    {"smart_manu": "IMM-530-16",  "position": "B4-530",      "short_name": "B4", "floor": "GF"},
+    {"smart_manu": "IMM-530-22",  "position": "B5-530",      "short_name": "B5", "floor": "GF"},
+    {"smart_manu": "IMM-380-4",   "position": "B6-380",      "short_name": "B6", "floor": "GF"},
+    {"smart_manu": "IMM-800-30",  "position": "C1-800-30",   "short_name": "C1", "floor": "GF"},
+    {"smart_manu": "IMM-800-31",  "position": "C2-800-31",   "short_name": "C2", "floor": "GF"},
+    {"smart_manu": "IMM-270-1",   "position": "C3-270-1",    "short_name": "C3", "floor": "GF"},
+    {"smart_manu": "IMM-380-73",  "position": "C4-380-73",   "short_name": "C4", "floor": "GF"},
+    {"smart_manu": "IMM-380-44",  "position": "C5-380-44",   "short_name": "C5", "floor": "GF"},
+    {"smart_manu": "IMM-280R-3",  "position": "C6-280TC",    "short_name": "C6", "floor": "GF"},
+    {"smart_manu": "IMM-280R-24", "position": "D1-280TC",    "short_name": "D1", "floor": "GF"},
+    {"smart_manu": "IMM-250-106", "position": "D2-MA2-250",  "short_name": "D2", "floor": "GF"},
+    {"smart_manu": "IMM-330-1",   "position": "D3-330-1",    "short_name": "D3", "floor": "GF"},
+    {"smart_manu": "IMM-330-5",   "position": "D4-HP-330-5", "short_name": "D4", "floor": "GF"},
+    {"smart_manu": "IMM-428-1",   "position": "D5-428-1",    "short_name": "D5", "floor": "GF"},
+    {"smart_manu": "IMM-428-4",   "position": "D6-HP-428-4", "short_name": "D6", "floor": "GF"},
+    {"smart_manu": "IMM-330-8",   "position": "D7-HP-330",   "short_name": "D7", "floor": "GF"},
+    {"smart_manu": "IMM-380-90",  "position": "E1-380-90",   "short_name": "E1", "floor": "GF"},
+    {"smart_manu": "IMM-380-94",  "position": "E2-380-94",   "short_name": "E2", "floor": "GF"},
+    {"smart_manu": "IMM-380-88",  "position": "E3-380-88",   "short_name": "E3", "floor": "GF"},
+    {"smart_manu": "IMM-380-76",  "position": "E4-380-76",   "short_name": "E4", "floor": "GF"},
+    {"smart_manu": "IMM-380-62",  "position": "E5-380-62",   "short_name": "E5", "floor": "GF"},
+    {"smart_manu": "IMM-380-75",  "position": "E6-380-75",   "short_name": "E6", "floor": "GF"},
+    {"smart_manu": "IMM-380-92",  "position": "F1-380-92",   "short_name": "F1", "floor": "GF"},
+    {"smart_manu": "IMM-380-93",  "position": "F2-380-93",   "short_name": "F2", "floor": "GF"},
+    {"smart_manu": "IMM-380-98",  "position": "F3-380-98",   "short_name": "F3", "floor": "GF"},
+    {"smart_manu": "IMM-380-99",  "position": "F4-380-99",   "short_name": "F4", "floor": "GF"},
+    {"smart_manu": "IMM-380-101", "position": "F5-380-101",  "short_name": "F5", "floor": "GF"},
+    {"smart_manu": "IMM-380-100", "position": "F6-380-100",  "short_name": "F6", "floor": "GF"},
+]
+
 EXCEL_SIZES = [
     "160",
     "90",
@@ -48,6 +115,31 @@ EXCEL_SIZES = [
     "428",
 ]
 SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
+
+
+def auto_resolve_machine_typo(raw_mc_sl, floor=None):
+    """Maps dragged excel cell typos (e.g. C4-121 -> C4-120PC, E3-385 -> E3-380-88, A7-159 -> A7-160)."""
+    if not raw_mc_sl or str(raw_mc_sl).strip() in ["", "nan", "None", "-"]:
+        return None
+
+    clean_str = str(raw_mc_sl).strip().upper()
+
+    for entry in MACHINE_MASTER:
+        if floor and entry["floor"] != floor:
+            continue
+        if clean_str in [entry["position"].upper(), entry["smart_manu"].upper(), entry["short_name"].upper()]:
+            return entry["position"]
+
+    match = re.match(r"^([A-F]\d+)", clean_str)
+    if match:
+        short_code = match.group(1)
+        for entry in MACHINE_MASTER:
+            if floor and entry["floor"] != floor:
+                continue
+            if entry["short_name"].upper() == short_code:
+                return entry["position"]
+
+    return None
 
 
 def extract_date_from_sheet_name(sheet_name):
@@ -110,8 +202,12 @@ def extract_excel_mc_size(mc_sl, size_col_val=None):
 
     mc_str = str(mc_sl).strip().upper()
 
-    if "119" in mc_str:
+    if "119" in mc_str or "121" in mc_str or "122" in mc_str or "123" in mc_str:
         return "120"
+    if "159" in mc_str:
+        return "160"
+    if any(f"38{i}" in mc_str for i in range(1, 10)) or "391" in mc_str or "392" in mc_str:
+        return "380"
 
     for sz in SORTED_SIZES:
         if sz in mc_str:
@@ -224,25 +320,34 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
 
-            def get_num(col_name, default=0.0):
-                val = pd.to_numeric(row.get(col_name), errors="coerce")
-                return default if pd.isna(val) else float(val)
-
-            ct = (
-                float(ct_override)
+            ct_raw = (
+                ct_override
                 if ct_override is not None
-                else get_num("CT")
+                else row.get("CT")
             )
-            cavity = (
-                float(cavity_override)
-                if cavity_override is not None
-                else get_num("Cavity")
-            )
-            unit_wt_kg = get_num("Unit Wt")
+            ct_num = pd.to_numeric(ct_raw, errors="coerce")
+            ct = 0.0 if pd.isna(ct_num) else float(ct_num)
 
-            a_good = get_num("A-Good")
-            a_rej = get_num("A-Rejec")
-            b_good = get_num("B-Good")
+            cavity_raw = (
+                cavity_override
+                if cavity_override is not None
+                else row.get("Cavity")
+            )
+            cavity_num = pd.to_numeric(cavity_raw, errors="coerce")
+            cavity = 0.0 if pd.isna(cavity_num) else float(cavity_num)
+
+            unit_wt_num = pd.to_numeric(row.get("Unit Wt"), errors="coerce")
+            unit_wt_kg = 0.0 if pd.isna(unit_wt_num) else float(unit_wt_num)
+
+            a_good_num = pd.to_numeric(row.get("A-Good"), errors="coerce")
+            a_good = 0.0 if pd.isna(a_good_num) else float(a_good_num)
+
+            a_rej_num = pd.to_numeric(row.get("A-Rejec"), errors="coerce")
+            a_rej = 0.0 if pd.isna(a_rej_num) else float(a_rej_num)
+
+            b_good_num = pd.to_numeric(row.get("B-Good"), errors="coerce")
+            b_good = 0.0 if pd.isna(b_good_num) else float(b_good_num)
+
             b_rej_val = row.get("B-Reject")
             if pd.isna(b_rej_val):
                 b_rej_val = row.get("B-Reject Cause of Less Prod")
@@ -252,6 +357,8 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             # EVALUATE AUDIT CONDITIONS
             is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
+
+            suggested_mc = auto_resolve_machine_typo(raw_mc_sl, floor_label) or raw_mc_sl
 
             if is_size_typo or is_missing_params:
                 if is_size_typo:
@@ -267,7 +374,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                     "Order Name": order,
                     "Acc Code": acc_code,
                     "Issue Detected": issue_msg,
-                    "Applied Resolution": "Flagged for override or source fix",
+                    "Suggested MC SL": suggested_mc,
                     "Current MC SL": mc_sl,
                     "Current CT": ct,
                     "Current Cavity": cavity,
@@ -277,11 +384,20 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
             )
 
-            demand_qty = get_num("Demand")
-            up_to_prod = get_num("Up to Prod")
-            due_prod_prev = get_num("Due Prod")
-            last_day_prod_col = get_num("Last Day Prod")
-            due_prod_present = get_num("Due Prod.1")
+            demand_num = pd.to_numeric(row.get("Demand"), errors="coerce")
+            demand_qty = 0.0 if pd.isna(demand_num) else float(demand_num)
+
+            up_to_prod_num = pd.to_numeric(row.get("Up to Prod"), errors="coerce")
+            up_to_prod = 0.0 if pd.isna(up_to_prod_num) else float(up_to_prod_num)
+
+            due_prev_num = pd.to_numeric(row.get("Due Prod"), errors="coerce")
+            due_prod_prev = 0.0 if pd.isna(due_prev_num) else float(due_prev_num)
+
+            last_day_col_num = pd.to_numeric(row.get("Last Day Prod"), errors="coerce")
+            last_day_prod_col = 0.0 if pd.isna(last_day_col_num) else float(last_day_col_num)
+
+            due_present_num = pd.to_numeric(row.get("Due Prod.1"), errors="coerce")
+            due_prod_present = 0.0 if pd.isna(due_present_num) else float(due_present_num)
 
             a_runtime = (
                 (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
@@ -533,10 +649,10 @@ def compute_size_summary(df_subset, mode="daily"):
 
         if mode == "as_of":
             mc_qty = active_grp.groupby("Date")["Machine"].nunique().sum()
+            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
         else:
             mc_qty = active_grp["Machine"].nunique()
-
-        run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
 
         if tot_runtime > 0:
             avg_ct = (
@@ -570,7 +686,7 @@ def compute_size_summary(df_subset, mode="daily"):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
-    """Adds a complete Sub-Total summary row matching Excel Sheet2 formulas."""
+    """Adds a complete Sub-Total summary row calculating sums, Excel-matched unweighted averages, and percentages."""
     if df.empty:
         return df
 
@@ -656,7 +772,7 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 
 
 # ============================================
-# SECTION 4: TABLE FORMATTING HELPERS
+# SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
 # ============================================
 def clean_and_format_dataframe(df):
     """Rounds float metrics to 2 decimal places and formats piece counts."""
@@ -900,8 +1016,6 @@ else:
                 st.session_state.pop("typo_overrides", None)
                 st.session_state.pop("df_data_raw", None)
                 st.session_state.pop("dashboard_ready", None)
-                st.session_state.pop("sms_oee_bytes", None)
-                st.session_state.pop("sms_rej_bytes", None)
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
@@ -936,8 +1050,31 @@ else:
                     with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
                         st.markdown("#### 🔍 Data Quality & In-App Typo Correction")
                         st.caption(
-                            "Override flagged typos below to re-parse live calculations:"
+                            "Auto-correct cell drag-down errors or override individually below:"
                         )
+
+                        # 1-CLICK BATCH AUTO-CORRECT ALL TYPOS
+                        if st.button(
+                            f"⚡ Auto-Correct All Typos ({len(df_typo_audit)})",
+                            type="primary",
+                            use_container_width=True,
+                        ):
+                            if "typo_overrides" not in st.session_state:
+                                st.session_state["typo_overrides"] = {}
+                            for _, t_row in df_typo_audit.iterrows():
+                                t_key = t_row["Key"]
+                                st.session_state["typo_overrides"][t_key] = {
+                                    "mc_sl": t_row["Suggested MC SL"],
+                                    "ct": t_row["Current CT"],
+                                    "cavity": t_row["Current Cavity"],
+                                }
+                            st.success(
+                                "All machine typos resolved to master registry!"
+                                " Refreshing..."
+                            )
+                            st.rerun()
+
+                        st.divider()
 
                         for idx_t, t_row in df_typo_audit.iterrows():
                             t_key = t_row["Key"]
@@ -945,12 +1082,16 @@ else:
                                 f"📍 {t_row['Date']} | {t_row['Floor']} - {t_row['Machine SL']} ({t_row['Order Name']})"
                             ):
                                 st.write(f"**Issue:** {t_row['Issue Detected']}")
+                                st.caption(
+                                    "Suggested Master Position:"
+                                    f" `{t_row['Suggested MC SL']}`"
+                                )
 
                                 col_t1, col_t2, col_t3 = st.columns(3)
                                 with col_t1:
                                     new_mc = st.text_input(
                                         "Machine SL",
-                                        value=str(t_row["Current MC SL"]),
+                                        value=str(t_row["Suggested MC SL"]),
                                         key=f"mc_{t_key}",
                                     )
                                 with col_t2:
@@ -1828,7 +1969,6 @@ else:
                             ["Shift A Good (Pcs)", "Shift B Good (Pcs)", "Day Output (Pcs)", "Rejections (Pcs)", "Day Output (Ton)", "Runtime (Hrs)"],
                             [],
                         )
-
                         st.dataframe(clean_and_format_dataframe(df_timeline_tot), use_container_width=True, hide_index=True)
                         st.download_button(f"📥 Export {sel_order} - {sel_item} Timeline (CSV)", df_timeline_tot.to_csv(index=False), f"JobOrder_{sel_order}_{sel_item}_Timeline.csv", "text/csv")
 
@@ -1836,31 +1976,56 @@ else:
             # SECTION 11: MODULE 4 — SHIFTWISE DATA
             # ============================================
             elif nav_choice == "🌗 Shiftwise Data":
-                shift_mode = st.radio("Shiftwise Mode:", ["📅 Daily Shiftwise", "📊 As-Of Cumulative Shiftwise"], horizontal=True)
+                shift_mode = st.radio(
+                    "Shiftwise Mode:",
+                    [
+                        "📅 Daily Shiftwise",
+                        "📊 As-Of Cumulative Shiftwise",
+                    ],
+                    horizontal=True,
+                )
 
                 a_ton = df_active["Shift A Prod Ton"].sum()
                 a_good = df_active["Shift A Good"].sum()
                 a_rej = df_active["Shift A Rej"].sum()
+                a_hrs = df_active["Shift A Runtime"].sum()
+
                 b_ton = df_active["Shift B Prod Ton"].sum()
                 b_good = df_active["Shift B Good"].sum()
                 b_rej = df_active["Shift B Rej"].sum()
+                b_hrs = df_active["Shift B Runtime"].sum()
 
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("#### ☀️ Shift A (Day Shift)")
                     st.metric("Day Shift Tonnage", f"{a_ton:.2f} T")
-                    st.metric("Day Shift Output", f"{int(a_good):,} Pcs", f"Rejections: {int(a_rej):,}")
+                    st.metric(
+                        "Day Shift Output",
+                        f"{int(a_good):,} Pcs",
+                        f"Rejections: {int(a_rej):,}",
+                    )
 
                 with c2:
                     st.markdown("#### 🌙 Shift B (Night Shift)")
                     st.metric("Night Shift Tonnage", f"{b_ton:.2f} T")
-                    st.metric("Night Shift Output", f"{int(b_good):,} Pcs", f"Rejections: {int(b_rej):,}")
+                    st.metric(
+                        "Night Shift Output",
+                        f"{int(b_good):,} Pcs",
+                        f"Rejections: {int(b_rej):,}",
+                    )
 
                 st.divider()
 
                 if shift_mode == "📅 Daily Shiftwise":
                     shift_daily = (
-                        df_active.groupby("Date")[["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"]]
+                        df_active.groupby("Date")[
+                            [
+                                "Shift A Good",
+                                "Shift B Good",
+                                "Shift A Prod Ton",
+                                "Shift B Prod Ton",
+                            ]
+                        ]
                         .sum()
                         .reset_index()
                     )
@@ -1868,17 +2033,38 @@ else:
                     shift_daily_tot = add_total_row(
                         shift_daily,
                         "Date",
-                        ["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"],
+                        [
+                            "Shift A Good",
+                            "Shift B Good",
+                            "Shift A Prod Ton",
+                            "Shift B Prod Ton",
+                        ],
                         [],
                     )
 
-                    v_cols = column_visibility_selector(shift_daily_tot, "daily_shift")
-                    st.dataframe(clean_and_format_dataframe(shift_daily_tot[v_cols]), use_container_width=True, hide_index=True)
-                    st.download_button("📥 Export Daily Shiftwise Log (CSV)", shift_daily_tot[v_cols].to_csv(index=False), "Daily_Shiftwise_Log.csv", "text/csv")
+                    v_cols = column_visibility_selector(
+                        shift_daily_tot, "daily_shift"
+                    )
+                    st.dataframe(
+                        clean_and_format_dataframe(shift_daily_tot[v_cols]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                    st.download_button(
+                        "📥 Export Daily Shiftwise Log (CSV)",
+                        shift_daily_tot[v_cols].to_csv(index=False),
+                        "Daily_Shiftwise_Log.csv",
+                        "text/csv",
+                    )
 
                 elif shift_mode == "📊 As-Of Cumulative Shiftwise":
                     fig_shift = px.bar(
-                        df_active.groupby("Date")[["Shift A Prod Ton", "Shift B Prod Ton"]].sum().reset_index(),
+                        df_active.groupby("Date")[
+                            ["Shift A Prod Ton", "Shift B Prod Ton"]
+                        ]
+                        .sum()
+                        .reset_index(),
                         x="Date",
                         y=["Shift A Prod Ton", "Shift B Prod Ton"],
                         title="Daily Shift Comparison (Tonnage)",
