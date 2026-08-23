@@ -4,6 +4,7 @@
 import io
 import os
 import re
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -13,7 +14,7 @@ st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
     page_icon="🏭",
     layout="wide",
-    initial_sidebar_state="locked",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -25,12 +26,11 @@ def load_css(file_name="style.css"):
 
 load_css("style.css")
 
-# Initialize Typo Overrides in Session State
 if "typo_overrides" not in st.session_state:
     st.session_state["typo_overrides"] = {}
 
 # ============================================
-# SECTION 2: EXCEL CONFIGURATION & SIZING
+# SECTION 2: CONFIGURATION & RESILIENT PARSERS
 # ============================================
 EXCEL_SIZES = [
     "160",
@@ -47,6 +47,56 @@ EXCEL_SIZES = [
     "428",
 ]
 SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
+
+
+def extract_date_from_sheet_name(sheet_name):
+    """
+    Ultra-resilient sheet date parser.
+    Catches variations:
+    - '22-08-2026', '22-08-26 ', '22/08/2026', '22.08.2026', '22_08_2026', '22 08 2026'
+    - '22-Aug-2026', '22Aug26', '2-8-26', trailing/leading whitespace, etc.
+    """
+    if not isinstance(sheet_name, str):
+        return None
+
+    s_clean = sheet_name.strip().replace("\xa0", " ")
+
+    # 1. Standard numeric date pattern (DD-MM-YYYY or DD-MM-YY with -, /, ., _, or spaces)
+    match = re.search(r"(\b\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4}\b)", s_clean)
+    if match:
+        d_str, m_str, y_str = match.group(1), match.group(2), match.group(3)
+        try:
+            d, m, y = int(d_str), int(m_str), int(y_str)
+            if y < 100:
+                y += 2000
+            if 1 <= d <= 31 and 1 <= m <= 12 and 2000 <= y <= 2099:
+                return datetime(y, m, d)
+        except Exception:
+            pass
+
+    # 2. Text month pattern (e.g., '22-Aug-2026', '22Aug26')
+    month_names = {
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+        "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12
+    }
+    match_txt = re.search(r"(\b\d{1,2})[-/\._\s]?([a-zA-Z]{3,9})[-/\._\s]?(\d{2,4})?", s_clean)
+    if match_txt:
+        d_str = match_txt.group(1)
+        m_txt = match_txt.group(2).lower()[:3]
+        y_str = match_txt.group(3)
+        if m_txt in month_names:
+            try:
+                d = int(d_str)
+                m = month_names[m_txt]
+                y = int(y_str) if y_str else datetime.now().year
+                if y < 100:
+                    y += 2000
+                if 1 <= d <= 31 and 1 <= m <= 12:
+                    return datetime(y, m, d)
+            except Exception:
+                pass
+
+    return None
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
@@ -100,16 +150,10 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     all_parsed_dates = []
 
     for s in xls.sheet_names:
-        s_clean = s.strip()
-        match = re.search(r"(\d{2}-\d{2}-\d{4})", s_clean)
-        if match:
-            dt_str = match.group(1)
-            try:
-                dt = pd.to_datetime(dt_str, format="%d-%m-%Y")
-                valid_sheets.append((s, dt))
-                all_parsed_dates.append(dt)
-            except Exception:
-                pass
+        dt = extract_date_from_sheet_name(s)
+        if dt:
+            valid_sheets.append((s, dt))
+            all_parsed_dates.append(dt)
 
     if all_parsed_dates:
         latest_date = max(all_parsed_dates)
@@ -179,62 +223,30 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
 
+            def get_num(col_name, default=0.0):
+                val = pd.to_numeric(row.get(col_name), errors="coerce")
+                return default if pd.isna(val) else float(val)
+
             ct = (
                 float(ct_override)
                 if ct_override is not None
-                else (
-                    pd.to_numeric(row.get("CT"), errors="coerce")
-                    if pd.notna(row.get("CT"))
-                    else 0.0
-                )
+                else get_num("CT")
             )
             cavity = (
                 float(cavity_override)
                 if cavity_override is not None
-                else (
-                    pd.to_numeric(row.get("Cavity"), errors="coerce")
-                    if pd.notna(row.get("Cavity"))
-                    else 0.0
-                )
+                else get_num("Cavity")
             )
-            unit_wt_kg = (
-                pd.to_numeric(row.get("Unit Wt"), errors="coerce")
-                if pd.notna(row.get("Unit Wt"))
-                else 0.0
-            )
+            unit_wt_kg = get_num("Unit Wt")
 
-            if pd.isna(ct): ct = 0.0
-            if pd.isna(cavity): cavity = 0.0
-            if pd.isna(unit_wt_kg): unit_wt_kg = 0.0
-
-            a_good = (
-                pd.to_numeric(row.get("A-Good"), errors="coerce")
-                if pd.notna(row.get("A-Good"))
-                else 0.0
-            )
-            a_rej = (
-                pd.to_numeric(row.get("A-Rejec"), errors="coerce")
-                if pd.notna(row.get("A-Rejec"))
-                else 0.0
-            )
-            if pd.isna(a_good): a_good = 0.0
-            if pd.isna(a_rej): a_rej = 0.0
-
-            b_good = (
-                pd.to_numeric(row.get("B-Good"), errors="coerce")
-                if pd.notna(row.get("B-Good"))
-                else 0.0
-            )
+            a_good = get_num("A-Good")
+            a_rej = get_num("A-Rejec")
+            b_good = get_num("B-Good")
             b_rej_val = row.get("B-Reject")
             if pd.isna(b_rej_val):
                 b_rej_val = row.get("B-Reject Cause of Less Prod")
-            b_rej = (
-                pd.to_numeric(b_rej_val, errors="coerce")
-                if pd.notna(b_rej_val)
-                else 0.0
-            )
-            if pd.isna(b_good): b_good = 0.0
-            if pd.isna(b_rej): b_rej = 0.0
+            b_rej_num = pd.to_numeric(b_rej_val, errors="coerce")
+            b_rej = 0.0 if pd.isna(b_rej_num) else float(b_rej_num)
 
             # EVALUATE AUDIT CONDITIONS
             is_size_typo = mc_size not in EXCEL_SIZES
@@ -264,11 +276,11 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
             )
 
-            demand_qty = pd.to_numeric(row.get("Demand"), errors="coerce") or 0.0
-            up_to_prod = pd.to_numeric(row.get("Up to Prod"), errors="coerce") or 0.0
-            due_prod_prev = pd.to_numeric(row.get("Due Prod"), errors="coerce") or 0.0
-            last_day_prod_col = pd.to_numeric(row.get("Last Day Prod"), errors="coerce") or 0.0
-            due_prod_present = pd.to_numeric(row.get("Due Prod.1"), errors="coerce") or 0.0
+            demand_qty = get_num("Demand")
+            up_to_prod = get_num("Up to Prod")
+            due_prod_prev = get_num("Due Prod")
+            last_day_prod_col = get_num("Last Day Prod")
+            due_prod_present = get_num("Due Prod.1")
 
             a_runtime = (
                 (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
@@ -329,14 +341,14 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     # EXACT SHIFT-ISOLATED PROPORTIONAL CAPACITY (Matching Details!L:L)
     # -------------------------------------------------------------
     df_res["Helper"] = df_res["Floor"].astype(str) + "|" + df_res["Machine"].astype(str) + "|" + df_res["Date"].astype(str)
-    
+
     s_col = df_res["Shift A Runtime"].fillna(0)
     t_col = df_res["Shift B Runtime"].fillna(0)
     k_col = df_res["STD Cap/Shift"].fillna(0)
-    
+
     sum_s_map = df_res.groupby("Helper")["Shift A Runtime"].transform("sum")
     sum_t_map = df_res.groupby("Helper")["Shift B Runtime"].transform("sum")
-    
+
     cap_a = np.where(
         sum_s_map > 0,
         np.where(sum_s_map > 12.01, k_col * (s_col > 0).astype(float), k_col * (s_col / sum_s_map)),
@@ -347,7 +359,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
         np.where(sum_t_map > 12.01, k_col * (t_col > 0).astype(float), k_col * (t_col / sum_t_map)),
         0.0
     )
-    
+
     df_res["Weighted Cap Pcs"] = cap_a + cap_b
     df_res["Weighted Cap Ton"] = (df_res["Weighted Cap Pcs"] * df_res["Unit Wt (kg)"]) / 1000.0
     df_res["Daily Cap Pcs"] = df_res["Weighted Cap Pcs"]
@@ -434,13 +446,14 @@ def compute_line_summary(df_subset):
     """Computes daily line summary counting distinct active machines on that date."""
     records = []
     for lg, grp in df_subset.groupby("Line Group"):
-        mc_qty = grp["Machine"].nunique()
-        tot_runtime = grp["Total Runtime (Hrs)"].sum()
+        active_grp = grp[(grp["Total Good"] > 0) | (grp["Total Runtime (Hrs)"] > 0)]
+        mc_qty = active_grp["Machine"].nunique()
+        tot_runtime = active_grp["Total Runtime (Hrs)"].sum()
 
-        tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
-        tot_prod_pcs = grp["Total Good"].sum()
-        tot_cap_ton = grp["Weighted Cap Ton"].sum()
-        tot_prod_ton = grp["Total Prod Ton"].sum()
+        tot_cap_pcs = active_grp["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = active_grp["Total Good"].sum()
+        tot_cap_ton = active_grp["Weighted Cap Ton"].sum()
+        tot_prod_ton = active_grp["Total Prod Ton"].sum()
 
         ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
         ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
@@ -463,13 +476,14 @@ def compute_line_summary_mtd(df_subset):
     """Computes MTD Line Summary summing daily active machine counts (Cumulative Machine-Days)."""
     records = []
     for lg, grp in df_subset.groupby("Line Group"):
-        cum_mc_days = grp.groupby("Date")["Machine"].nunique().sum()
-        tot_runtime = grp["Total Runtime (Hrs)"].sum()
+        active_grp = grp[(grp["Total Good"] > 0) | (grp["Total Runtime (Hrs)"] > 0)]
+        cum_mc_days = active_grp.groupby("Date")["Machine"].nunique().sum()
+        tot_runtime = active_grp["Total Runtime (Hrs)"].sum()
 
-        tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
-        tot_prod_pcs = grp["Total Good"].sum()
-        tot_cap_ton = grp["Weighted Cap Ton"].sum()
-        tot_prod_ton = grp["Total Prod Ton"].sum()
+        tot_cap_pcs = active_grp["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = active_grp["Total Good"].sum()
+        tot_cap_ton = active_grp["Weighted Cap Ton"].sum()
+        tot_prod_ton = active_grp["Total Prod Ton"].sum()
 
         ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
         ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
@@ -490,15 +504,16 @@ def compute_line_summary_mtd(df_subset):
 
 def compute_size_summary(df_subset, mode="daily"):
     """
-    Computes Machine Size Summary matching Excel Sheet2 standard.
-    - Daily Mode: MC QTY = Unique running machines on selected date.
-    - As-Of Mode: MC QTY = Cumulative running machine-days across period.
+    Computes Machine Size Summary strictly matching Excel Sheet2 standard.
+    - Evaluates only running machines with active production/runtime.
     """
     records = []
 
     for sz in EXCEL_SIZES:
         grp = df_subset[df_subset["MC Size"] == sz]
-        if grp.empty:
+        active_grp = grp[(grp["Total Good"] > 0) | (grp["Total Runtime (Hrs)"] > 0)]
+
+        if active_grp.empty:
             records.append({
                 "MC Size": sz,
                 "MC QTY": 0,
@@ -513,26 +528,26 @@ def compute_size_summary(df_subset, mode="daily"):
             })
             continue
 
-        tot_runtime = grp["Total Runtime (Hrs)"].sum()
+        tot_runtime = active_grp["Total Runtime (Hrs)"].sum()
 
         if mode == "as_of":
-            mc_qty = grp.groupby("Date")["Machine"].nunique().sum()
-            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+            mc_qty = active_grp.groupby("Date")["Machine"].nunique().sum()
         else:
-            mc_qty = grp["Machine"].nunique()
-            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+            mc_qty = active_grp["Machine"].nunique()
+
+        run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
 
         if tot_runtime > 0:
             avg_ct = (
-                grp["CT"] * grp["Total Runtime (Hrs)"]
+                active_grp["CT"] * active_grp["Total Runtime (Hrs)"]
             ).sum() / tot_runtime
         else:
-            avg_ct = grp["CT"].mean()
+            avg_ct = active_grp["CT"].mean()
 
-        tot_cap_pcs = grp["Weighted Cap Pcs"].sum()
-        tot_prod_pcs = grp["Total Good"].sum()
-        tot_cap_ton = grp["Weighted Cap Ton"].sum()
-        tot_prod_ton = grp["Total Prod Ton"].sum()
+        tot_cap_pcs = active_grp["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = active_grp["Total Good"].sum()
+        tot_cap_ton = active_grp["Weighted Cap Ton"].sum()
+        tot_prod_ton = active_grp["Total Prod Ton"].sum()
 
         ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
         ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
@@ -554,7 +569,7 @@ def compute_size_summary(df_subset, mode="daily"):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
-    """Adds a complete Sub-Total summary row calculating sums, Excel-matched unweighted averages, and percentages."""
+    """Adds a complete Sub-Total summary row matching Excel Sheet2 formulas."""
     if df.empty:
         return df
 
@@ -568,6 +583,7 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
             val = pd.to_numeric(df[c], errors="coerce").sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
         elif c in avg_cols:
+            # Matches Excel =IFERROR(AVERAGEIF(E3:E14, "<>0"), 0)
             non_zero = pd.to_numeric(df[df[c] > 0][c], errors="coerce")
             tot_row[c] = (
                 round(non_zero.mean(), 2) if not non_zero.empty else 0.0
@@ -639,7 +655,7 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 
 
 # ============================================
-# SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
+# SECTION 4: TABLE FORMATTING HELPERS
 # ============================================
 def clean_and_format_dataframe(df):
     """Rounds float metrics to 2 decimal places and formats piece counts."""
@@ -727,11 +743,6 @@ if "app_launched" not in st.session_state:
 # SECTION 6: LANDING SETUP SCREEN
 # ============================================
 if not st.session_state["app_launched"]:
-    st.markdown(
-        '<div class="landing-page-marker"></div>',
-        unsafe_allow_html=True,
-    )
-
     st.markdown("## 🏭 **PLASTIC-3 CONSOLE SETUP**")
     st.markdown("##### Upload your production entry files to launch.")
     st.divider()
@@ -785,11 +796,6 @@ if not st.session_state["app_launched"]:
 # SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
 # ============================================
 else:
-    st.markdown(
-        '<div class="dashboard-page-marker"></div>',
-        unsafe_allow_html=True,
-    )
-
     all_parsed_dfs = []
     all_audit_dfs = []
 
@@ -883,21 +889,12 @@ else:
                 st.session_state.pop("typo_overrides", None)
                 st.session_state.pop("df_data_raw", None)
                 st.session_state.pop("dashboard_ready", None)
-                st.session_state.pop("sms_oee_bytes", None)
-                st.session_state.pop("sms_rej_bytes", None)
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
-            st.warning(
-                "⚠️ **First Floor (FF) file is not uploaded.** Please click '⚙️"
-                " Change Uploaded Files' in the sidebar to upload the FF file."
-            )
+            st.warning("⚠️ **First Floor (FF) file is not uploaded.**")
         elif floor_choice == "GF" and "gf_bytes" not in st.session_state:
-            st.warning(
-                "⚠️ **Ground Floor (GF) file is not uploaded.** Please click"
-                " '⚙️ Change Uploaded Files' in the sidebar to upload the GF"
-                " file."
-            )
+            st.warning("⚠️ **Ground Floor (GF) file is not uploaded.**")
         else:
             if floor_choice != "ALL FLOORS":
                 df_curr = df_data_raw[
@@ -918,45 +915,24 @@ else:
                 if not df_typo_audit.empty:
                     with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
                         st.markdown("#### 🔍 Data Quality & In-App Typo Correction")
-                        st.caption(
-                            "Override flagged typos below to re-parse live calculations:"
-                        )
-
                         for idx_t, t_row in df_typo_audit.iterrows():
                             t_key = t_row["Key"]
                             with st.expander(
                                 f"📍 {t_row['Date']} | {t_row['Floor']} - {t_row['Machine SL']} ({t_row['Order Name']})"
                             ):
                                 st.write(f"**Issue:** {t_row['Issue Detected']}")
-
                                 col_t1, col_t2, col_t3 = st.columns(3)
                                 with col_t1:
-                                    new_mc = st.text_input(
-                                        "Machine SL",
-                                        value=str(t_row["Current MC SL"]),
-                                        key=f"mc_{t_key}",
-                                    )
+                                    new_mc = st.text_input("Machine SL", value=str(t_row["Current MC SL"]), key=f"mc_{t_key}")
                                 with col_t2:
-                                    new_ct = st.number_input(
-                                        "CT (s)",
-                                        value=float(t_row["Current CT"]),
-                                        key=f"ct_{t_key}",
-                                    )
+                                    new_ct = st.number_input("CT (s)", value=float(t_row["Current CT"]), key=f"ct_{t_key}")
                                 with col_t3:
-                                    new_cav = st.number_input(
-                                        "Cavity",
-                                        value=float(t_row["Current Cavity"]),
-                                        key=f"cav_{t_key}",
-                                    )
+                                    new_cav = st.number_input("Cavity", value=float(t_row["Current Cavity"]), key=f"cav_{t_key}")
 
                                 if st.button("💾 Apply Correction", key=f"btn_{t_key}"):
                                     if "typo_overrides" not in st.session_state:
                                         st.session_state["typo_overrides"] = {}
-                                    st.session_state["typo_overrides"][t_key] = {
-                                        "mc_sl": new_mc,
-                                        "ct": new_ct,
-                                        "cavity": new_cav,
-                                    }
+                                    st.session_state["typo_overrides"][t_key] = {"mc_sl": new_mc, "ct": new_ct, "cavity": new_cav}
                                     st.success("Correction saved! Refreshing console...")
                                     st.rerun()
 
@@ -992,6 +968,7 @@ else:
                     selected_date = st.selectbox(
                         "Operational Date",
                         all_dates,
+                        index=len(all_dates) - 1 if all_dates else 0,
                         label_visibility="collapsed",
                     )
 
@@ -1000,9 +977,7 @@ else:
 
                 st.divider()
 
-                df_daily_raw = df_active[
-                    df_active["Date"] == selected_date
-                ].copy()
+                df_daily_raw = df_active[df_active["Date"] == selected_date].copy()
                 df_daily = consolidate_daily_machines(df_daily_raw)
 
                 tot_prod_ton = df_daily["Total Prod Ton"].sum()
@@ -1012,40 +987,14 @@ else:
                 tot_rej = df_daily["Total Rejections"].sum()
                 tot_time = df_daily["Total Runtime (Hrs)"].sum()
 
-                ton_ach = (
-                    (tot_prod_ton / tot_cap_ton * 100)
-                    if tot_cap_ton > 0
-                    else 0.0
-                )
-                pcs_ach = (
-                    (tot_good_pcs / tot_cap_pcs * 100)
-                    if tot_cap_pcs > 0
-                    else 0.0
-                )
+                ton_ach = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+                pcs_ach = (tot_good_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
 
                 c1, c2, c3, c4 = st.columns(4)
-                c1.metric(
-                    "Prod vs Cap (Tons)",
-                    f"{tot_prod_ton:.2f} / {tot_cap_ton:.2f} T",
-                    f"Ach: {ton_ach:.2f}%",
-                )
-                c2.metric(
-                    "Prod vs Cap (Pieces)",
-                    f"{int(tot_good_pcs):,} Pcs",
-                    f"Ach: {pcs_ach:.2f}%",
-                )
-                c3.metric(
-                    "Total Rejections",
-                    f"{int(tot_rej):,} Pcs",
-                    f"Quality Loss: {(tot_rej/tot_good_pcs*100):.2f}%"
-                    if tot_good_pcs > 0
-                    else "0.00%",
-                )
-                c4.metric(
-                    "Running Machines",
-                    f"{df_daily['Machine'].nunique()} MCs",
-                    f"Uptime: {tot_time:.2f} Hrs",
-                )
+                c1.metric("Prod vs Cap (Tons)", f"{tot_prod_ton:.2f} / {tot_cap_ton:.2f} T", f"Ach: {ton_ach:.2f}%")
+                c2.metric("Prod vs Cap (Pieces)", f"{int(tot_good_pcs):,} Pcs", f"Ach: {pcs_ach:.2f}%")
+                c3.metric("Total Rejections", f"{int(tot_rej):,} Pcs", f"Quality Loss: {(tot_rej/tot_good_pcs*100):.2f}%" if tot_good_pcs > 0 else "0.00%")
+                c4.metric("Running Machines", f"{df_daily['Machine'].nunique()} MCs", f"Uptime: {tot_time:.2f} Hrs")
 
                 st.divider()
 
@@ -1055,32 +1004,13 @@ else:
                     df_line_day_tot = add_total_row(
                         df_line_day,
                         "Line Group",
-                        [
-                            "Running MC Qty",
-                            "Uptime (Hrs)",
-                            "Cap (Pcs)",
-                            "Prod (Pcs)",
-                            "Cap (Ton)",
-                            "Prod (Ton)",
-                        ],
+                        ["Running MC Qty", "Uptime (Hrs)", "Cap (Pcs)", "Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"],
                         [],
                     )
 
-                    v_cols = column_visibility_selector(
-                        df_line_day_tot, "daily_line"
-                    )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_line_day_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        "📥 Export Daily Line Summary (CSV)",
-                        df_line_day_tot[v_cols].to_csv(index=False),
-                        "Daily_Line_Summary.csv",
-                        "text/csv",
-                    )
+                    v_cols = column_visibility_selector(df_line_day_tot, "daily_line")
+                    st.dataframe(clean_and_format_dataframe(df_line_day_tot[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export Daily Line Summary (CSV)", df_line_day_tot[v_cols].to_csv(index=False), "Daily_Line_Summary.csv", "text/csv")
 
                 elif daily_mode == "🏭 MC Wise":
                     st.markdown("### 🏭 Consolidated Machine Performance")
@@ -1088,130 +1018,53 @@ else:
                         df_daily,
                         "Machine",
                         [
-                            "Shift A Good",
-                            "Shift B Good",
-                            "Total Good",
-                            "Total Rejections",
-                            "Shift A Runtime",
-                            "Shift B Runtime",
-                            "Total Runtime (Hrs)",
-                            "Weighted Cap Pcs",
-                            "Weighted Cap Ton",
-                            "Total Prod Ton",
+                            "Shift A Good", "Shift B Good", "Total Good", "Total Rejections",
+                            "Shift A Runtime", "Shift B Runtime", "Total Runtime (Hrs)",
+                            "Weighted Cap Pcs", "Weighted Cap Ton", "Total Prod Ton",
                         ],
                         ["CT", "Cavity"],
                     )
 
-                    v_cols = column_visibility_selector(
-                        df_daily_totals, "daily_mc"
-                    )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_daily_totals[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    v_cols = column_visibility_selector(df_daily_totals, "daily_mc")
+                    st.dataframe(clean_and_format_dataframe(df_daily_totals[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export Daily Machine Summary (CSV)", df_daily_totals[v_cols].to_csv(index=False), "Daily_Machine_Summary.csv", "text/csv")
 
-                    st.download_button(
-                        "📥 Export Daily Machine Summary (CSV)",
-                        df_daily_totals[v_cols].to_csv(index=False),
-                        "Daily_Machine_Summary.csv",
-                        "text/csv",
-                    )
-
-                    mixed_mcs = df_daily[df_daily["Is Mixed"]][
-                        "Machine"
-                    ].tolist()
+                    mixed_mcs = df_daily[df_daily["Is Mixed"]]["Machine"].tolist()
                     if mixed_mcs:
                         st.divider()
-                        st.markdown(
-                            "#### 🔍 Inspect Mixed Machine Breakdown (Inside"
-                            " Story)"
-                        )
-                        sel_mc = st.selectbox(
-                            "Select a Mixed Machine ID to view its mold run"
-                            " breakdown:",
-                            mixed_mcs,
-                        )
-                        sub_raw = df_daily_raw[
-                            df_daily_raw["Machine"] == sel_mc
-                        ].copy()
-
-                        sub_raw["Daily Cap (Pcs)"] = sub_raw[
-                            "Weighted Cap Pcs"
-                        ].round(2)
-                        sub_raw["Daily Prod (Ton)"] = sub_raw[
-                            "Total Prod Ton"
-                        ].round(2)
-                        sub_raw["Runtime (Hrs)"] = sub_raw[
-                            "Total Runtime (Hrs)"
-                        ].round(2)
+                        st.markdown("#### 🔍 Inspect Mixed Machine Breakdown")
+                        sel_mc = st.selectbox("Select a Mixed Machine ID:", mixed_mcs)
+                        sub_raw = df_daily_raw[df_daily_raw["Machine"] == sel_mc].copy()
+                        sub_raw["Daily Cap (Pcs)"] = sub_raw["Weighted Cap Pcs"].round(2)
+                        sub_raw["Daily Prod (Ton)"] = sub_raw["Total Prod Ton"].round(2)
+                        sub_raw["Runtime (Hrs)"] = sub_raw["Total Runtime (Hrs)"].round(2)
 
                         st.dataframe(
-                            clean_and_format_dataframe(
-                                sub_raw[[
-                                    "Floor",
-                                    "Order Name",
-                                    "Item Name",
-                                    "CT",
-                                    "Cavity",
-                                    "Shift A Good",
-                                    "Shift B Good",
-                                    "Total Good",
-                                    "Runtime (Hrs)",
-                                    "Daily Prod (Ton)",
-                                ]]
-                            ),
+                            clean_and_format_dataframe(sub_raw[["Floor", "Order Name", "Item Name", "CT", "Cavity", "Shift A Good", "Shift B Good", "Total Good", "Runtime (Hrs)", "Daily Prod (Ton)"]]),
                             use_container_width=True,
                             hide_index=True,
                         )
 
                 elif daily_mode == "📏 Sizewise":
                     st.markdown("### 📏 Machine Size Summary")
-                    df_size_day = compute_size_summary(
-                        df_daily_raw, mode="daily"
-                    )
+                    df_size_day = compute_size_summary(df_daily_raw, mode="daily")
                     df_size_day_tot = add_total_row(
                         df_size_day,
                         "MC Size",
-                        [
-                            "MC QTY",
-                            "Total Cap (Pcs)",
-                            "Total Prod (Pcs)",
-                            "Cap (Ton)",
-                            "Prod (Ton)",
-                        ],
+                        ["MC QTY", "Total Cap (Pcs)", "Total Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"],
                         ["CT Average", "Run Hour Average"],
                     )
 
-                    v_cols = column_visibility_selector(
-                        df_size_day_tot, "daily_size"
-                    )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_size_day_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        "📥 Export Daily Size Summary (CSV)",
-                        df_size_day_tot[v_cols].to_csv(index=False),
-                        "Daily_Size_Summary.csv",
-                        "text/csv",
-                    )
+                    v_cols = column_visibility_selector(df_size_day_tot, "daily_size")
+                    st.dataframe(clean_and_format_dataframe(df_size_day_tot[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export Daily Size Summary (CSV)", df_size_day_tot[v_cols].to_csv(index=False), "Daily_Size_Summary.csv", "text/csv")
 
                 elif daily_mode == "📦 Job-Order Wise":
                     st.markdown("### 📦 Active Orders Run On Selected Date")
-
                     col_top1, col_top2 = st.columns([1.2, 2.5])
 
                     records_job_day = []
-                    for (
-                        cust,
-                        ord_name,
-                        acc_cd,
-                    ), grp in df_daily_raw.groupby(
-                        ["Customer", "Order Name", "Acc Code"]
-                    ):
+                    for (cust, ord_name, acc_cd), grp in df_daily_raw.groupby(["Customer", "Order Name", "Acc Code"]):
                         itm_name = grp["Item Name"].iloc[0]
                         merged_demand = grp["Demand Qty"].sum()
                         tot_good_val = grp["Total Good"].sum()
@@ -1223,16 +1076,8 @@ else:
                         mc_count = grp["Machine"].nunique()
                         mc_pos = ", ".join(sorted(grp["Machine"].unique()))
 
-                        ach_ton_val = (
-                            (tot_prod_ton_val / cap_ton_val * 100)
-                            if cap_ton_val > 0
-                            else 0.0
-                        )
-                        ach_pcs_val = (
-                            (tot_good_val / cap_pcs_val * 100)
-                            if cap_pcs_val > 0
-                            else 0.0
-                        )
+                        ach_ton_val = (tot_prod_ton_val / cap_ton_val * 100) if cap_ton_val > 0 else 0.0
+                        ach_pcs_val = (tot_good_val / cap_pcs_val * 100) if cap_pcs_val > 0 else 0.0
 
                         records_job_day.append({
                             "Customer": cust,
@@ -1256,13 +1101,7 @@ else:
                     job_day = pd.DataFrame(records_job_day)
 
                     with col_top2:
-                        search_term = st.text_input(
-                            "Search Daily Orders",
-                            "",
-                            placeholder="🔍 Search Job Order or Item Name...",
-                            label_visibility="collapsed",
-                            key="search_daily_job",
-                        )
+                        search_term = st.text_input("Search Daily Orders", "", placeholder="🔍 Search Job Order or Item Name...", label_visibility="collapsed", key="search_daily_job")
 
                     if search_term.strip():
                         term = search_term.strip().lower()
@@ -1275,37 +1114,15 @@ else:
                     job_day_tot = add_total_row(
                         job_day,
                         "Order Name",
-                        [
-                            "Demand Qty",
-                            "Total Good",
-                            "Total Prod Ton",
-                            "Running Molds",
-                            "Daily Cap (Pcs)",
-                            "Daily Prod (Pcs)",
-                            "Daily Cap (Ton)",
-                            "Daily Prod (Ton)",
-                            "Daily Runtime (Hrs)",
-                        ],
+                        ["Demand Qty", "Total Good", "Total Prod Ton", "Running Molds", "Daily Cap (Pcs)", "Daily Prod (Pcs)", "Daily Cap (Ton)", "Daily Prod (Ton)", "Daily Runtime (Hrs)"],
                         [],
                     )
 
                     with col_top1:
-                        v_cols = column_visibility_selector(
-                            job_day_tot, "daily_job"
-                        )
+                        v_cols = column_visibility_selector(job_day_tot, "daily_job")
 
-                    st.dataframe(
-                        clean_and_format_dataframe(job_day_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        "📥 Export Daily Active Job Summary (CSV)",
-                        job_day_tot[v_cols].to_csv(index=False),
-                        "Daily_Job_Summary.csv",
-                        "text/csv",
-                    )
+                    st.dataframe(clean_and_format_dataframe(job_day_tot[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export Daily Active Job Summary (CSV)", job_day_tot[v_cols].to_csv(index=False), "Daily_Job_Summary.csv", "text/csv")
 
             # ============================================
             # SECTION 9: MODULE 2 — AS OF DATA (MTD)
@@ -1316,24 +1133,10 @@ else:
                 col_mtd1, col_mtd2, col_mtd3 = st.columns([3.5, 1.2, 1.3])
 
                 with col_mtd1:
-                    mtd_mode = st.radio(
-                        "As-Of View Mode:",
-                        [
-                            "📊 Linewise",
-                            "📏 Sizewise",
-                            "📦 Job-Order Wise",
-                        ],
-                        horizontal=True,
-                        label_visibility="collapsed",
-                    )
+                    mtd_mode = st.radio("As-Of View Mode:", ["📊 Linewise", "📏 Sizewise", "📦 Job-Order Wise"], horizontal=True, label_visibility="collapsed")
 
                 with col_mtd2:
-                    as_of_date = st.selectbox(
-                        "As-Of Cutoff Date",
-                        all_dates,
-                        index=len(all_dates) - 1,
-                        label_visibility="collapsed",
-                    )
+                    as_of_date = st.selectbox("As-Of Cutoff Date", all_dates, index=len(all_dates) - 1, label_visibility="collapsed")
 
                 with col_mtd3:
                     render_typo_popover()
@@ -1349,108 +1152,47 @@ else:
                 tot_runtime = df_mtd["Total Runtime (Hrs)"].sum()
                 ach_rate = (tot_prod / tot_cap * 100) if tot_cap > 0 else 0.0
 
-                cum_mc_days = df_mtd.groupby("Date")["Machine"].nunique().sum()
+                cum_mc_days = df_mtd[df_mtd["Total Good"] > 0].groupby("Date")["Machine"].nunique().sum()
 
                 c1, c2, c3, c4 = st.columns(4)
-                c1.metric(
-                    "Cumulative Tonnage",
-                    f"{tot_prod:.2f} T",
-                    f"Cap: {tot_cap:.2f} T",
-                )
-                c2.metric(
-                    "Cumulative Pieces",
-                    f"{int(tot_good):,} Pcs",
-                    f"Cap: {int(tot_cap_pcs):,} Pcs",
-                )
+                c1.metric("Cumulative Tonnage", f"{tot_prod:.2f} T", f"Cap: {tot_cap:.2f} T")
+                c2.metric("Cumulative Pieces", f"{int(tot_good):,} Pcs", f"Cap: {int(tot_cap_pcs):,} Pcs")
                 c3.metric("Achievement Rate", f"{ach_rate:.2f}%")
-                c4.metric(
-                    "Cumulative MC-Days",
-                    f"{cum_mc_days} MC-Days",
-                    f"Uptime: {tot_runtime:.2f} Hrs",
-                )
+                c4.metric("Cumulative MC-Days", f"{cum_mc_days} MC-Days", f"Uptime: {tot_runtime:.2f} Hrs")
 
                 st.divider()
 
                 if mtd_mode == "📊 Linewise":
-                    st.markdown(
-                        f"### 📈 Line-Wise Summary (As of {as_of_date})"
-                    )
+                    st.markdown(f"### 📈 Line-Wise Summary (As of {as_of_date})")
                     df_line_mtd = compute_line_summary_mtd(df_mtd)
                     df_line_mtd_tot = add_total_row(
                         df_line_mtd,
                         "Line Group",
-                        [
-                            "Running MC Qty",
-                            "Uptime (Hrs)",
-                            "Cap (Pcs)",
-                            "Prod (Pcs)",
-                            "Cap (Ton)",
-                            "Prod (Ton)",
-                        ],
+                        ["Running MC Qty", "Uptime (Hrs)", "Cap (Pcs)", "Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"],
                         [],
                     )
-
-                    v_cols = column_visibility_selector(
-                        df_line_mtd_tot, "mtd_line"
-                    )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_line_mtd_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        "📥 Export As-Of Line Summary (CSV)",
-                        df_line_mtd_tot[v_cols].to_csv(index=False),
-                        "AsOf_Line_Summary.csv",
-                        "text/csv",
-                    )
+                    v_cols = column_visibility_selector(df_line_mtd_tot, "mtd_line")
+                    st.dataframe(clean_and_format_dataframe(df_line_mtd_tot[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export As-Of Line Summary (CSV)", df_line_mtd_tot[v_cols].to_csv(index=False), "AsOf_Line_Summary.csv", "text/csv")
 
                 elif mtd_mode == "📏 Sizewise":
-                    st.markdown(
-                        f"### 📏 Machine Size Summary (As of {as_of_date})"
-                    )
-
+                    st.markdown(f"### 📏 Machine Size Summary (As of {as_of_date})")
                     df_size_mtd = compute_size_summary(df_mtd, mode="as_of")
                     df_size_mtd_tot = add_total_row(
                         df_size_mtd,
                         "MC Size",
-                        [
-                            "MC QTY",
-                            "Total Cap (Pcs)",
-                            "Total Prod (Pcs)",
-                            "Cap (Ton)",
-                            "Prod (Ton)",
-                        ],
+                        ["MC QTY", "Total Cap (Pcs)", "Total Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"],
                         ["CT Average", "Run Hour Average"],
                     )
-
-                    v_cols = column_visibility_selector(
-                        df_size_mtd_tot, "mtd_size"
-                    )
-                    st.dataframe(
-                        clean_and_format_dataframe(df_size_mtd_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        "📥 Export As-Of Size Summary (CSV)",
-                        df_size_mtd_tot[v_cols].to_csv(index=False),
-                        "AsOf_Size_Summary.csv",
-                        "text/csv",
-                    )
+                    v_cols = column_visibility_selector(df_size_mtd_tot, "mtd_size")
+                    st.dataframe(clean_and_format_dataframe(df_size_mtd_tot[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export As-Of Size Summary (CSV)", df_size_mtd_tot[v_cols].to_csv(index=False), "AsOf_Size_Summary.csv", "text/csv")
 
                 elif mtd_mode == "📦 Job-Order Wise":
-                    st.markdown(
-                        "### 📦 Master Order Completion Summary (As of"
-                        f" {as_of_date})"
-                    )
+                    st.markdown(f"### 📦 Master Order Completion Summary (As of {as_of_date})")
 
                     job_records = []
-                    for (cust, ord_name, acc_cd), grp in df_mtd.groupby(
-                        ["Customer", "Order Name", "Acc Code"]
-                    ):
+                    for (cust, ord_name, acc_cd), grp in df_mtd.groupby(["Customer", "Order Name", "Acc Code"]):
                         latest_run = grp.sort_values("DateObj").iloc[-1]
                         last_run_date = latest_run["Date"]
                         itm_name = latest_run["Item Name"]
@@ -1461,7 +1203,7 @@ else:
                             order_qty = cutoff_grp["Demand Qty"].sum()
                             due_prod_present = cutoff_grp["Due Prod Present"].sum()
                             as_of_prod = order_qty - due_prod_present
-                            last_mcs = ", ".join(sorted(cutoff_grp["Machine"].unique()))
+                            last_mcs = ", ".join(sorted(cutoff_grp[cutoff_grp["Total Good"] > 0]["Machine"].unique()))
                             last_day_output = cutoff_grp["Last Day Prod Col"].sum()
                             last_day_cap = cutoff_grp["Daily Cap Pcs"].sum()
                         else:
@@ -1469,24 +1211,15 @@ else:
                             due_prod_present = latest_run["Due Prod Present"]
                             as_of_prod = max(0.0, order_qty - due_prod_present) if order_qty > 0 else grp["Total Good"].sum()
                             last_date_runs = grp[grp["Date"] == last_run_date]
-                            last_mcs = ", ".join(sorted(last_date_runs["Machine"].unique()))
+                            last_mcs = ", ".join(sorted(last_date_runs[last_date_runs["Total Good"] > 0]["Machine"].unique()))
                             last_day_output = last_date_runs["Last Day Prod Col"].sum()
                             last_day_cap = last_date_runs["Daily Cap Pcs"].sum()
 
                         tot_prod_ton_cum = grp["Total Prod Ton"].sum()
                         tot_runtime_cum = grp["Total Runtime (Hrs)"].sum()
 
-                        as_of_pct = (
-                            (as_of_prod / order_qty * 100)
-                            if order_qty > 0
-                            else 0.0
-                        )
-
-                        last_day_util = (
-                            (last_day_output / last_day_cap * 100)
-                            if last_day_cap > 0
-                            else 0.0
-                        )
+                        as_of_pct = (as_of_prod / order_qty * 100) if order_qty > 0 else 0.0
+                        last_day_util = (last_day_output / last_day_cap * 100) if last_day_cap > 0 else 0.0
 
                         job_records.append({
                             "Customer": cust,
@@ -1519,97 +1252,45 @@ else:
 
                         with st_tab1:
                             col_top1, col_top2 = st.columns([1.2, 2.5])
-
-                            df_active_jobs = df_job_mtd[
-                                ~df_job_mtd["Is Completed"]
-                            ].copy()
+                            df_active_jobs = df_job_mtd[~df_job_mtd["Is Completed"]].copy()
 
                             with col_top2:
-                                search_active = st.text_input(
-                                    "Search Active Orders",
-                                    "",
-                                    placeholder="🔍 Search Job Order or Item Name...",
-                                    label_visibility="collapsed",
-                                    key="search_active_mtd",
-                                )
+                                search_active = st.text_input("Search Active Orders", "", placeholder="🔍 Search Job Order or Item Name...", label_visibility="collapsed", key="search_active_mtd")
 
                             if search_active.strip():
                                 term = search_active.strip().lower()
                                 df_active_jobs = df_active_jobs[
-                                    df_active_jobs["Order Name"]
-                                    .str.lower()
-                                    .str.contains(term)
-                                    | df_active_jobs["Item Name"]
-                                    .str.lower()
-                                    .str.contains(term)
-                                    | df_active_jobs["Customer"]
-                                    .str.lower()
-                                    .str.contains(term)
+                                    df_active_jobs["Order Name"].str.lower().str.contains(term)
+                                    | df_active_jobs["Item Name"].str.lower().str.contains(term)
+                                    | df_active_jobs["Customer"].str.lower().str.contains(term)
                                 ]
 
                             df_active_tot = add_total_row(
                                 df_active_jobs,
                                 "Order Name",
-                                [
-                                    "Order Qty",
-                                    "Due Production",
-                                    "As of Production",
-                                    "Total Prod Ton",
-                                    "Total Runtime (Hrs)",
-                                    "Last Day Cap (Pcs)",
-                                    "Last Day Output (Pcs)",
-                                ],
+                                ["Order Qty", "Due Production", "As of Production", "Total Prod Ton", "Total Runtime (Hrs)", "Last Day Cap (Pcs)", "Last Day Output (Pcs)"],
                                 [],
                             )
 
                             with col_top1:
-                                v_cols = column_visibility_selector(
-                                    df_active_tot, "mtd_job_active"
-                                )
+                                v_cols = column_visibility_selector(df_active_tot, "mtd_job_active")
 
-                            st.dataframe(
-                                clean_and_format_dataframe(
-                                    df_active_tot[v_cols]
-                                ),
-                                use_container_width=True,
-                                hide_index=True,
-                            )
-
-                            st.download_button(
-                                "📥 Export Active MTD Job Summary (CSV)",
-                                df_active_tot[v_cols].to_csv(index=False),
-                                "Active_MTD_Job_Summary.csv",
-                                "text/csv",
-                            )
+                            st.dataframe(clean_and_format_dataframe(df_active_tot[v_cols]), use_container_width=True, hide_index=True)
+                            st.download_button("📥 Export Active MTD Job Summary (CSV)", df_active_tot[v_cols].to_csv(index=False), "Active_MTD_Job_Summary.csv", "text/csv")
 
                         with st_tab2:
                             col_top1_d, col_top2_d = st.columns([1.2, 2.5])
-
-                            df_done_jobs = df_job_mtd[
-                                df_job_mtd["Is Completed"]
-                            ].copy()
+                            df_done_jobs = df_job_mtd[df_job_mtd["Is Completed"]].copy()
 
                             with col_top2_d:
-                                search_done = st.text_input(
-                                    "Search Done Orders",
-                                    "",
-                                    placeholder="🔍 Search Job Order or Item Name...",
-                                    label_visibility="collapsed",
-                                    key="search_done_mtd",
-                                )
+                                search_done = st.text_input("Search Done Orders", "", placeholder="🔍 Search Job Order or Item Name...", label_visibility="collapsed", key="search_done_mtd")
 
                             if search_done.strip():
                                 term = search_done.strip().lower()
                                 df_done_jobs = df_done_jobs[
-                                    df_done_jobs["Order Name"]
-                                    .str.lower()
-                                    .str.contains(term)
-                                    | df_done_jobs["Item Name"]
-                                    .str.lower()
-                                    .str.contains(term)
-                                    | df_done_jobs["Customer"]
-                                    .str.lower()
-                                    .str.contains(term)
+                                    df_done_jobs["Order Name"].str.lower().str.contains(term)
+                                    | df_done_jobs["Item Name"].str.lower().str.contains(term)
+                                    | df_done_jobs["Customer"].str.lower().str.contains(term)
                                 ]
 
                             if df_done_jobs.empty:
@@ -1618,40 +1299,18 @@ else:
                                 df_done_tot = add_total_row(
                                     df_done_jobs,
                                     "Order Name",
-                                    [
-                                        "Order Qty",
-                                        "Due Production",
-                                        "As of Production",
-                                        "Total Prod Ton",
-                                        "Total Runtime (Hrs)",
-                                        "Last Day Cap (Pcs)",
-                                        "Last Day Output (Pcs)",
-                                    ],
+                                    ["Order Qty", "Due Production", "As of Production", "Total Prod Ton", "Total Runtime (Hrs)", "Last Day Cap (Pcs)", "Last Day Output (Pcs)"],
                                     [],
                                 )
 
                                 with col_top1_d:
-                                    v_cols = column_visibility_selector(
-                                        df_done_tot, "mtd_job_done"
-                                    )
+                                    v_cols = column_visibility_selector(df_done_tot, "mtd_job_done")
 
-                                st.dataframe(
-                                    clean_and_format_dataframe(
-                                        df_done_tot[v_cols]
-                                    ),
-                                    use_container_width=True,
-                                    hide_index=True,
-                                    )
-
-                                st.download_button(
-                                    "📥 Export Completed MTD Job Summary (CSV)",
-                                    df_done_tot[v_cols].to_csv(index=False),
-                                    "Completed_MTD_Job_Summary.csv",
-                                    "text/csv",
-                                )
+                                st.dataframe(clean_and_format_dataframe(df_done_tot[v_cols]), use_container_width=True, hide_index=True)
+                                st.download_button("📥 Export Completed MTD Job Summary (CSV)", df_done_tot[v_cols].to_csv(index=False), "Completed_MTD_Job_Summary.csv", "text/csv")
 
             # ============================================
-            # SECTION 10: MODULE 3 — JOB ORDER ANALYSIS (NEW)
+            # SECTION 10: MODULE 3 — JOB ORDER ANALYSIS
             # ============================================
             elif nav_choice == "📦 Job Order Analysis":
                 st.markdown("### 📦 Job Order Lifecycle & Full Period Analysis")
@@ -1665,11 +1324,7 @@ else:
                 else:
                     col_sel1, col_sel2 = st.columns([2.5, 1.5])
                     with col_sel1:
-                        sel_order = st.selectbox(
-                            "🔍 **Search & Select Job Order:**",
-                            all_unique_orders,
-                            key="sel_job_analysis_order",
-                        )
+                        sel_order = st.selectbox("🔍 **Search & Select Job Order:**", all_unique_orders, key="sel_job_analysis_order")
 
                     df_ord_raw = df_active[df_active["Order Name"] == sel_order].copy()
                     df_ord_raw = df_ord_raw.sort_values("DateObj")
@@ -1681,19 +1336,17 @@ else:
                         st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
                         st.markdown(f"**Customer:** `{cust_name}` &nbsp;|&nbsp; **Acc Code:** `{acc_code_name}`")
 
-                    # Order-level Item Aggregates (using latest entries for Demand & Due)
                     item_summary_records = []
                     for item_name, i_grp in df_ord_raw.groupby("Item Name"):
                         i_grp_sorted = i_grp.sort_values("DateObj")
                         latest_item_entry = i_grp_sorted.iloc[-1]
-                        
+
                         i_demand = latest_item_entry["Demand Qty"] if latest_item_entry["Demand Qty"] > 0 else i_grp["Demand Qty"].max()
                         i_due = latest_item_entry["Due Prod Present"]
                         i_good_cum = i_grp["Total Good"].sum()
                         i_ton_cum = i_grp["Total Prod Ton"].sum()
                         i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
 
-                        # Determine Completion Milestone
                         cum_tracker = 0
                         completion_date = None
                         for _, r_row in i_grp_sorted.iterrows():
@@ -1723,7 +1376,6 @@ else:
 
                     df_items_sum = pd.DataFrame(item_summary_records)
 
-                    # Top KPI Cards for Selected Order
                     tot_ord_demand = df_items_sum["Demand Qty"].sum()
                     tot_ord_prod = df_items_sum["Total Produced (Pcs)"].sum()
                     tot_ord_ton = df_items_sum["Total Produced (Ton)"].sum()
@@ -1745,9 +1397,7 @@ else:
 
                     st.divider()
 
-                    # Item-level Drill-down
                     st.markdown("#### 🔬 Item Daily Run Lifecycle & Machine Allocations")
-                    
                     unique_items = df_items_sum["Item Name"].tolist()
                     sel_item = st.selectbox("Select Item to Inspect Daily Production Timeline:", unique_items, key="sel_job_item_inspect")
 
@@ -1760,22 +1410,25 @@ else:
                     col_m3.caption(f"**Cavity / CT:** {item_meta['Cavity']} Cav / {item_meta['CT']} s")
                     col_m4.caption(f"**Status:** {item_meta['Status']}")
 
-                    # Daily consolidated rows for the selected item
                     timeline_records = []
                     running_cum_pcs = 0
                     running_cum_ton = 0.0
                     target_demand = item_meta["Demand Qty"]
 
                     for d_val, d_grp in df_sel_item_runs.groupby("Date", sort=False):
-                        d_mcs = ", ".join(sorted(d_grp["Machine"].unique()))
-                        d_floors = ", ".join(sorted(d_grp["Floor"].unique()))
-                        
-                        d_a_good = d_grp["Shift A Good"].sum()
-                        d_b_good = d_grp["Shift B Good"].sum()
-                        d_good = d_grp["Total Good"].sum()
-                        d_rej = d_grp["Total Rejections"].sum()
-                        d_ton = d_grp["Total Prod Ton"].sum()
-                        d_runtime = d_grp["Total Runtime (Hrs)"].sum()
+                        active_d_grp = d_grp[(d_grp["Total Good"] > 0) | (d_grp["Total Runtime (Hrs)"] > 0)]
+                        if active_d_grp.empty:
+                            continue
+
+                        d_mcs = ", ".join(sorted(active_d_grp["Machine"].unique()))
+                        d_floors = ", ".join(sorted(active_d_grp["Floor"].unique()))
+
+                        d_a_good = active_d_grp["Shift A Good"].sum()
+                        d_b_good = active_d_grp["Shift B Good"].sum()
+                        d_good = active_d_grp["Total Good"].sum()
+                        d_rej = active_d_grp["Total Rejections"].sum()
+                        d_ton = active_d_grp["Total Prod Ton"].sum()
+                        d_runtime = active_d_grp["Total Runtime (Hrs)"].sum()
 
                         running_cum_pcs += d_good
                         running_cum_ton += d_ton
@@ -1807,87 +1460,48 @@ else:
 
                     df_timeline = pd.DataFrame(timeline_records)
 
-                    df_timeline_tot = add_total_row(
-                        df_timeline,
-                        "Date",
-                        [
-                            "Shift A Good (Pcs)",
-                            "Shift B Good (Pcs)",
-                            "Day Output (Pcs)",
-                            "Rejections (Pcs)",
-                            "Day Output (Ton)",
-                            "Runtime (Hrs)",
-                        ],
-                        [],
-                    )
+                    if df_timeline.empty:
+                        st.info("No active production runs found for this item.")
+                    else:
+                        df_timeline_tot = add_total_row(
+                            df_timeline,
+                            "Date",
+                            ["Shift A Good (Pcs)", "Shift B Good (Pcs)", "Day Output (Pcs)", "Rejections (Pcs)", "Day Output (Ton)", "Runtime (Hrs)"],
+                            [],
+                        )
 
-                    st.dataframe(
-                        clean_and_format_dataframe(df_timeline_tot),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        f"📥 Export {sel_order} - {sel_item} Timeline (CSV)",
-                        df_timeline_tot.to_csv(index=False),
-                        f"JobOrder_{sel_order}_{sel_item}_Timeline.csv",
-                        "text/csv",
-                    )
+                        st.dataframe(clean_and_format_dataframe(df_timeline_tot), use_container_width=True, hide_index=True)
+                        st.download_button(f"📥 Export {sel_order} - {sel_item} Timeline (CSV)", df_timeline_tot.to_csv(index=False), f"JobOrder_{sel_order}_{sel_item}_Timeline.csv", "text/csv")
 
             # ============================================
             # SECTION 11: MODULE 4 — SHIFTWISE DATA
             # ============================================
             elif nav_choice == "🌗 Shiftwise Data":
-                shift_mode = st.radio(
-                    "Shiftwise Mode:",
-                    [
-                        "📅 Daily Shiftwise",
-                        "📊 As-Of Cumulative Shiftwise",
-                    ],
-                    horizontal=True,
-                )
+                shift_mode = st.radio("Shiftwise Mode:", ["📅 Daily Shiftwise", "📊 As-Of Cumulative Shiftwise"], horizontal=True)
 
                 a_ton = df_active["Shift A Prod Ton"].sum()
                 a_good = df_active["Shift A Good"].sum()
                 a_rej = df_active["Shift A Rej"].sum()
-                a_hrs = df_active["Shift A Runtime"].sum()
-
                 b_ton = df_active["Shift B Prod Ton"].sum()
                 b_good = df_active["Shift B Good"].sum()
                 b_rej = df_active["Shift B Rej"].sum()
-                b_hrs = df_active["Shift B Runtime"].sum()
 
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("#### ☀️ Shift A (Day Shift)")
                     st.metric("Day Shift Tonnage", f"{a_ton:.2f} T")
-                    st.metric(
-                        "Day Shift Output",
-                        f"{int(a_good):,} Pcs",
-                        f"Rejections: {int(a_rej):,}",
-                    )
+                    st.metric("Day Shift Output", f"{int(a_good):,} Pcs", f"Rejections: {int(a_rej):,}")
 
                 with c2:
                     st.markdown("#### 🌙 Shift B (Night Shift)")
                     st.metric("Night Shift Tonnage", f"{b_ton:.2f} T")
-                    st.metric(
-                        "Night Shift Output",
-                        f"{int(b_good):,} Pcs",
-                        f"Rejections: {int(b_rej):,}",
-                    )
+                    st.metric("Night Shift Output", f"{int(b_good):,} Pcs", f"Rejections: {int(b_rej):,}")
 
                 st.divider()
 
                 if shift_mode == "📅 Daily Shiftwise":
                     shift_daily = (
-                        df_active.groupby("Date")[
-                            [
-                                "Shift A Good",
-                                "Shift B Good",
-                                "Shift A Prod Ton",
-                                "Shift B Prod Ton",
-                            ]
-                        ]
+                        df_active.groupby("Date")[["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"]]
                         .sum()
                         .reset_index()
                     )
@@ -1895,38 +1509,17 @@ else:
                     shift_daily_tot = add_total_row(
                         shift_daily,
                         "Date",
-                        [
-                            "Shift A Good",
-                            "Shift B Good",
-                            "Shift A Prod Ton",
-                            "Shift B Prod Ton",
-                        ],
+                        ["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"],
                         [],
                     )
 
-                    v_cols = column_visibility_selector(
-                        shift_daily_tot, "daily_shift"
-                    )
-                    st.dataframe(
-                        clean_and_format_dataframe(shift_daily_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        "📥 Export Daily Shiftwise Log (CSV)",
-                        shift_daily_tot[v_cols].to_csv(index=False),
-                        "Daily_Shiftwise_Log.csv",
-                        "text/csv",
-                    )
+                    v_cols = column_visibility_selector(shift_daily_tot, "daily_shift")
+                    st.dataframe(clean_and_format_dataframe(shift_daily_tot[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export Daily Shiftwise Log (CSV)", shift_daily_tot[v_cols].to_csv(index=False), "Daily_Shiftwise_Log.csv", "text/csv")
 
                 elif shift_mode == "📊 As-Of Cumulative Shiftwise":
                     fig_shift = px.bar(
-                        df_active.groupby("Date")[
-                            ["Shift A Prod Ton", "Shift B Prod Ton"]
-                        ]
-                        .sum()
-                        .reset_index(),
+                        df_active.groupby("Date")[["Shift A Prod Ton", "Shift B Prod Ton"]].sum().reset_index(),
                         x="Date",
                         y=["Shift A Prod Ton", "Shift B Prod Ton"],
                         title="Daily Shift Comparison (Tonnage)",
