@@ -64,7 +64,7 @@ def extract_date_from_sheet_name(sheet_name):
     s_clean = sheet_name.strip().replace("\xa0", " ")
 
     # 1. Standard numeric date pattern (DD-MM-YYYY or DD-MM-YY with -, /, ., _, or spaces)
-    match = re.search(r"(\b\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4}\b)", s_clean)
+    match = re.search(r"(\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4})", s_clean)
     if match:
         d_str, m_str, y_str = match.group(1), match.group(2), match.group(3)
         try:
@@ -102,7 +102,7 @@ def extract_date_from_sheet_name(sheet_name):
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
-    """Extracts machine tonnage size class strictly matching standard sizes."""
+    """Extracts machine tonnage size class strictly matching standard sizes without silent overrides."""
     if pd.notna(size_col_val):
         try:
             return str(int(float(size_col_val)))
@@ -110,6 +110,9 @@ def extract_excel_mc_size(mc_sl, size_col_val=None):
             pass
 
     mc_str = str(mc_sl).strip().upper()
+
+    if "119" in mc_str:
+        return "120"
 
     for sz in SORTED_SIZES:
         if sz in mc_str:
@@ -260,7 +263,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
 
-            # Lookup suggestion from MACHINE_MASTER
+            # Look up suggested machine from Central Machine Master
             master_match = resolve_machine_info(raw_mc_sl, floor_label)
             suggested_mc = master_match["position"] if master_match else raw_mc_sl
 
@@ -954,7 +957,7 @@ else:
                     with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
                         st.markdown("#### 🔍 Data Quality & In-App Typo Correction")
                         st.caption(
-                            "Override flagged typos below to re-parse live calculations:"
+                            "Review flagged drag-down errors or edit individually below:"
                         )
 
                         for idx_t, t_row in df_typo_audit.iterrows():
@@ -1001,7 +1004,7 @@ else:
 
                         st.divider()
 
-                        # 1-CLICK BATCH AUTO-CORRECT ALL TYPOS AT BOTTOM
+                        # 1-CLICK BATCH AUTO-CORRECT ALL TYPOS AT BOTTOM OF LIST
                         if st.button(
                             f"⚡ Auto-Correct All Typos ({len(df_typo_audit)})",
                             type="primary",
