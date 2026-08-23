@@ -568,7 +568,6 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
             val = pd.to_numeric(df[c], errors="coerce").sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
         elif c in avg_cols:
-            # Matches Excel =IFERROR(AVERAGEIF(E3:E14, "<>0"), 0)
             non_zero = pd.to_numeric(df[df[c] > 0][c], errors="coerce")
             tot_row[c] = (
                 round(non_zero.mean(), 2) if not non_zero.empty else 0.0
@@ -833,7 +832,10 @@ else:
         with st.sidebar:
             col_logo, col_text = st.columns([1, 2.3], gap="small", vertical_alignment="center")
             with col_logo:
-                st.image("logo.png", use_container_width=True)
+                if os.path.exists("logo.png"):
+                    st.image("logo.png", use_container_width=True)
+                else:
+                    st.markdown("🏭")
             with col_text:
                 st.markdown("### **PLASTIC-3 CONSOLE**")
                 st.caption("Active Production Session")
@@ -845,6 +847,7 @@ else:
                 [
                     "📅 Daily Data",
                     "📊 As of Data (MTD)",
+                    "📦 Job Order Analysis",
                     "🌗 Shiftwise Data",
                 ],
             )
@@ -1462,9 +1465,9 @@ else:
                             last_day_output = cutoff_grp["Last Day Prod Col"].sum()
                             last_day_cap = cutoff_grp["Daily Cap Pcs"].sum()
                         else:
-                            order_qty = grp["Demand Qty"].max()
-                            as_of_prod = grp["Total Good"].sum()
-                            due_prod_present = max(0.0, order_qty - as_of_prod)
+                            order_qty = latest_run["Demand Qty"] if latest_run["Demand Qty"] > 0 else grp["Demand Qty"].max()
+                            due_prod_present = latest_run["Due Prod Present"]
+                            as_of_prod = max(0.0, order_qty - due_prod_present) if order_qty > 0 else grp["Total Good"].sum()
                             last_date_runs = grp[grp["Date"] == last_run_date]
                             last_mcs = ", ".join(sorted(last_date_runs["Machine"].unique()))
                             last_day_output = last_date_runs["Last Day Prod Col"].sum()
@@ -1638,7 +1641,7 @@ else:
                                     ),
                                     use_container_width=True,
                                     hide_index=True,
-                                )
+                                    )
 
                                 st.download_button(
                                     "📥 Export Completed MTD Job Summary (CSV)",
@@ -1648,7 +1651,191 @@ else:
                                 )
 
             # ============================================
-            # SECTION 10: MODULE 3 — SHIFTWISE DATA
+            # SECTION 10: MODULE 3 — JOB ORDER ANALYSIS (NEW)
+            # ============================================
+            elif nav_choice == "📦 Job Order Analysis":
+                st.markdown("### 📦 Job Order Lifecycle & Full Period Analysis")
+                st.caption("Inspect order demand completion milestones, item-wise daily machine allocations, and cumulative outputs.")
+                st.divider()
+
+                all_unique_orders = sorted([str(o).strip() for o in df_active["Order Name"].dropna().unique() if str(o).strip()])
+
+                if not all_unique_orders:
+                    st.info("No Job Orders found in the active dataset.")
+                else:
+                    col_sel1, col_sel2 = st.columns([2.5, 1.5])
+                    with col_sel1:
+                        sel_order = st.selectbox(
+                            "🔍 **Search & Select Job Order:**",
+                            all_unique_orders,
+                            key="sel_job_analysis_order",
+                        )
+
+                    df_ord_raw = df_active[df_active["Order Name"] == sel_order].copy()
+                    df_ord_raw = df_ord_raw.sort_values("DateObj")
+
+                    cust_name = df_ord_raw["Customer"].iloc[0] if not df_ord_raw.empty else "-"
+                    acc_code_name = df_ord_raw["Acc Code"].iloc[0] if not df_ord_raw.empty else "-"
+
+                    with col_sel2:
+                        st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
+                        st.markdown(f"**Customer:** `{cust_name}` &nbsp;|&nbsp; **Acc Code:** `{acc_code_name}`")
+
+                    # Order-level Item Aggregates (using latest entries for Demand & Due)
+                    item_summary_records = []
+                    for item_name, i_grp in df_ord_raw.groupby("Item Name"):
+                        i_grp_sorted = i_grp.sort_values("DateObj")
+                        latest_item_entry = i_grp_sorted.iloc[-1]
+                        
+                        i_demand = latest_item_entry["Demand Qty"] if latest_item_entry["Demand Qty"] > 0 else i_grp["Demand Qty"].max()
+                        i_due = latest_item_entry["Due Prod Present"]
+                        i_good_cum = i_grp["Total Good"].sum()
+                        i_ton_cum = i_grp["Total Prod Ton"].sum()
+                        i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
+
+                        # Determine Completion Milestone
+                        cum_tracker = 0
+                        completion_date = None
+                        for _, r_row in i_grp_sorted.iterrows():
+                            cum_tracker += r_row["Total Good"]
+                            if i_demand > 0 and cum_tracker >= i_demand:
+                                completion_date = r_row["Date"]
+                                break
+
+                        i_status = f"✅ Done on {completion_date}" if completion_date else ("✅ Completed" if i_due <= 0 and i_demand > 0 else "🔄 In Progress")
+                        i_pct = (i_good_cum / i_demand * 100) if i_demand > 0 else 0.0
+
+                        item_summary_records.append({
+                            "Item Name": item_name,
+                            "Acc Code": latest_item_entry["Acc Code"],
+                            "Demand Qty": i_demand,
+                            "Total Produced (Pcs)": i_good_cum,
+                            "Total Produced (Ton)": round(i_ton_cum, 2),
+                            "Remaining Due": round(max(0.0, i_demand - i_good_cum) if i_demand > 0 else i_due, 2),
+                            "Fulfillment %": f"{i_pct:.2f}%",
+                            "Total Runtime (Hrs)": round(i_runtime_cum, 2),
+                            "Status": i_status,
+                            "Completion Date": completion_date,
+                            "Unit Wt (kg)": latest_item_entry["Unit Wt (kg)"],
+                            "Cavity": latest_item_entry["Cavity"],
+                            "CT": latest_item_entry["CT"],
+                        })
+
+                    df_items_sum = pd.DataFrame(item_summary_records)
+
+                    # Top KPI Cards for Selected Order
+                    tot_ord_demand = df_items_sum["Demand Qty"].sum()
+                    tot_ord_prod = df_items_sum["Total Produced (Pcs)"].sum()
+                    tot_ord_ton = df_items_sum["Total Produced (Ton)"].sum()
+                    tot_ord_due = df_items_sum["Remaining Due"].sum()
+                    ord_fulfill_pct = (tot_ord_prod / tot_ord_demand * 100) if tot_ord_demand > 0 else 0.0
+
+                    k1, k2, k3, k4 = st.columns(4)
+                    k1.metric("Total Order Demand", f"{int(tot_ord_demand):,} Pcs")
+                    k2.metric("Produced to Date", f"{int(tot_ord_prod):,} Pcs", f"{tot_ord_ton:.2f} Tons")
+                    k3.metric("Remaining Due Balance", f"{int(tot_ord_due):,} Pcs")
+                    k4.metric("Order Fulfillment", f"{ord_fulfill_pct:.2f}%", "Overall Progress")
+
+                    st.markdown("#### 📋 Items Under This Job Order")
+                    st.dataframe(
+                        clean_and_format_dataframe(df_items_sum[["Item Name", "Demand Qty", "Total Produced (Pcs)", "Remaining Due", "Fulfillment %", "Total Produced (Ton)", "Total Runtime (Hrs)", "Status"]]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                    st.divider()
+
+                    # Item-level Drill-down
+                    st.markdown("#### 🔬 Item Daily Run Lifecycle & Machine Allocations")
+                    
+                    unique_items = df_items_sum["Item Name"].tolist()
+                    sel_item = st.selectbox("Select Item to Inspect Daily Production Timeline:", unique_items, key="sel_job_item_inspect")
+
+                    df_sel_item_runs = df_ord_raw[df_ord_raw["Item Name"] == sel_item].sort_values("DateObj").copy()
+                    item_meta = df_items_sum[df_items_sum["Item Name"] == sel_item].iloc[0]
+
+                    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+                    col_m1.caption(f"**Item Demand:** {int(item_meta['Demand Qty']):,} Pcs")
+                    col_m2.caption(f"**Unit Weight:** {item_meta['Unit Wt (kg)']:.4f} kg")
+                    col_m3.caption(f"**Cavity / CT:** {item_meta['Cavity']} Cav / {item_meta['CT']} s")
+                    col_m4.caption(f"**Status:** {item_meta['Status']}")
+
+                    # Daily consolidated rows for the selected item
+                    timeline_records = []
+                    running_cum_pcs = 0
+                    running_cum_ton = 0.0
+                    target_demand = item_meta["Demand Qty"]
+
+                    for d_val, d_grp in df_sel_item_runs.groupby("Date", sort=False):
+                        d_mcs = ", ".join(sorted(d_grp["Machine"].unique()))
+                        d_floors = ", ".join(sorted(d_grp["Floor"].unique()))
+                        
+                        d_a_good = d_grp["Shift A Good"].sum()
+                        d_b_good = d_grp["Shift B Good"].sum()
+                        d_good = d_grp["Total Good"].sum()
+                        d_rej = d_grp["Total Rejections"].sum()
+                        d_ton = d_grp["Total Prod Ton"].sum()
+                        d_runtime = d_grp["Total Runtime (Hrs)"].sum()
+
+                        running_cum_pcs += d_good
+                        running_cum_ton += d_ton
+                        rem_due = max(0.0, target_demand - running_cum_pcs) if target_demand > 0 else 0.0
+
+                        if target_demand > 0 and running_cum_pcs >= target_demand:
+                            if running_cum_pcs - d_good < target_demand:
+                                day_status = f"🎯 Demand Done ({d_val})"
+                            else:
+                                day_status = "🟢 Buffer / Over-run"
+                        else:
+                            day_status = "🟡 In Progress"
+
+                        timeline_records.append({
+                            "Date": d_val,
+                            "Floor": d_floors,
+                            "Active Machines": d_mcs,
+                            "Shift A Good (Pcs)": d_a_good,
+                            "Shift B Good (Pcs)": d_b_good,
+                            "Day Output (Pcs)": d_good,
+                            "Rejections (Pcs)": d_rej,
+                            "Day Output (Ton)": round(d_ton, 3),
+                            "Runtime (Hrs)": round(d_runtime, 2),
+                            "Cumulative Output (Pcs)": running_cum_pcs,
+                            "Cumulative Output (Ton)": round(running_cum_ton, 2),
+                            "Remaining Due (Pcs)": int(rem_due),
+                            "Status": day_status,
+                        })
+
+                    df_timeline = pd.DataFrame(timeline_records)
+
+                    df_timeline_tot = add_total_row(
+                        df_timeline,
+                        "Date",
+                        [
+                            "Shift A Good (Pcs)",
+                            "Shift B Good (Pcs)",
+                            "Day Output (Pcs)",
+                            "Rejections (Pcs)",
+                            "Day Output (Ton)",
+                            "Runtime (Hrs)",
+                        ],
+                        [],
+                    )
+
+                    st.dataframe(
+                        clean_and_format_dataframe(df_timeline_tot),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                    st.download_button(
+                        f"📥 Export {sel_order} - {sel_item} Timeline (CSV)",
+                        df_timeline_tot.to_csv(index=False),
+                        f"JobOrder_{sel_order}_{sel_item}_Timeline.csv",
+                        "text/csv",
+                    )
+
+            # ============================================
+            # SECTION 11: MODULE 4 — SHIFTWISE DATA
             # ============================================
             elif nav_choice == "🌗 Shiftwise Data":
                 shift_mode = st.radio(
