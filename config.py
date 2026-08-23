@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from config import MACHINE_MASTER, resolve_machine_info
 
 st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
@@ -64,7 +63,7 @@ def extract_date_from_sheet_name(sheet_name):
     s_clean = sheet_name.strip().replace("\xa0", " ")
 
     # 1. Standard numeric date pattern (DD-MM-YYYY or DD-MM-YY with -, /, ., _, or spaces)
-    match = re.search(r"(\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4})", s_clean)
+    match = re.search(r"(\b\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4}\b)", s_clean)
     if match:
         d_str, m_str, y_str = match.group(1), match.group(2), match.group(3)
         try:
@@ -102,7 +101,7 @@ def extract_date_from_sheet_name(sheet_name):
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
-    """Extracts machine tonnage size class strictly matching standard sizes without silent overrides."""
+    """Extracts machine tonnage size class with typo resilience (e.g., 'B8-119' -> '120')."""
     if pd.notna(size_col_val):
         try:
             return str(int(float(size_col_val)))
@@ -225,34 +224,25 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
 
-            ct_raw = (
-                ct_override
+            def get_num(col_name, default=0.0):
+                val = pd.to_numeric(row.get(col_name), errors="coerce")
+                return default if pd.isna(val) else float(val)
+
+            ct = (
+                float(ct_override)
                 if ct_override is not None
-                else row.get("CT")
+                else get_num("CT")
             )
-            ct_num = pd.to_numeric(ct_raw, errors="coerce")
-            ct = 0.0 if pd.isna(ct_num) else float(ct_num)
-
-            cavity_raw = (
-                cavity_override
+            cavity = (
+                float(cavity_override)
                 if cavity_override is not None
-                else row.get("Cavity")
+                else get_num("Cavity")
             )
-            cavity_num = pd.to_numeric(cavity_raw, errors="coerce")
-            cavity = 0.0 if pd.isna(cavity_num) else float(cavity_num)
+            unit_wt_kg = get_num("Unit Wt")
 
-            unit_wt_num = pd.to_numeric(row.get("Unit Wt"), errors="coerce")
-            unit_wt_kg = 0.0 if pd.isna(unit_wt_num) else float(unit_wt_num)
-
-            a_good_num = pd.to_numeric(row.get("A-Good"), errors="coerce")
-            a_good = 0.0 if pd.isna(a_good_num) else float(a_good_num)
-
-            a_rej_num = pd.to_numeric(row.get("A-Rejec"), errors="coerce")
-            a_rej = 0.0 if pd.isna(a_rej_num) else float(a_rej_num)
-
-            b_good_num = pd.to_numeric(row.get("B-Good"), errors="coerce")
-            b_good = 0.0 if pd.isna(b_good_num) else float(b_good_num)
-
+            a_good = get_num("A-Good")
+            a_rej = get_num("A-Rejec")
+            b_good = get_num("B-Good")
             b_rej_val = row.get("B-Reject")
             if pd.isna(b_rej_val):
                 b_rej_val = row.get("B-Reject Cause of Less Prod")
@@ -262,10 +252,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             # EVALUATE AUDIT CONDITIONS
             is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
-
-            # Look up suggested machine from Central Machine Master
-            master_match = resolve_machine_info(raw_mc_sl, floor_label)
-            suggested_mc = master_match["position"] if master_match else raw_mc_sl
 
             if is_size_typo or is_missing_params:
                 if is_size_typo:
@@ -281,7 +267,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                     "Order Name": order,
                     "Acc Code": acc_code,
                     "Issue Detected": issue_msg,
-                    "Suggested MC SL": suggested_mc,
+                    "Applied Resolution": "Flagged for override or source fix",
                     "Current MC SL": mc_sl,
                     "Current CT": ct,
                     "Current Cavity": cavity,
@@ -291,20 +277,11 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
             )
 
-            demand_num = pd.to_numeric(row.get("Demand"), errors="coerce")
-            demand_qty = 0.0 if pd.isna(demand_num) else float(demand_num)
-
-            up_to_prod_num = pd.to_numeric(row.get("Up to Prod"), errors="coerce")
-            up_to_prod = 0.0 if pd.isna(up_to_prod_num) else float(up_to_prod_num)
-
-            due_prev_num = pd.to_numeric(row.get("Due Prod"), errors="coerce")
-            due_prod_prev = 0.0 if pd.isna(due_prev_num) else float(due_prev_num)
-
-            last_day_col_num = pd.to_numeric(row.get("Last Day Prod"), errors="coerce")
-            last_day_prod_col = 0.0 if pd.isna(last_day_col_num) else float(last_day_col_num)
-
-            due_present_num = pd.to_numeric(row.get("Due Prod.1"), errors="coerce")
-            due_prod_present = 0.0 if pd.isna(due_present_num) else float(due_present_num)
+            demand_qty = get_num("Demand")
+            up_to_prod = get_num("Up to Prod")
+            due_prod_prev = get_num("Due Prod")
+            last_day_prod_col = get_num("Last Day Prod")
+            due_prod_present = get_num("Due Prod.1")
 
             a_runtime = (
                 (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
@@ -593,7 +570,7 @@ def compute_size_summary(df_subset, mode="daily"):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
-    """Adds a complete Sub-Total summary row calculating sums, Excel-matched unweighted averages, and percentages."""
+    """Adds a complete Sub-Total summary row matching Excel Sheet2 formulas."""
     if df.empty:
         return df
 
@@ -679,7 +656,7 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
 
 
 # ============================================
-# SECTION 4: TABLE FORMATTING & ALIGNMENT HELPERS
+# SECTION 4: TABLE FORMATTING HELPERS
 # ============================================
 def clean_and_format_dataframe(df):
     """Rounds float metrics to 2 decimal places and formats piece counts."""
@@ -923,6 +900,8 @@ else:
                 st.session_state.pop("typo_overrides", None)
                 st.session_state.pop("df_data_raw", None)
                 st.session_state.pop("dashboard_ready", None)
+                st.session_state.pop("sms_oee_bytes", None)
+                st.session_state.pop("sms_rej_bytes", None)
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
@@ -957,7 +936,7 @@ else:
                     with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
                         st.markdown("#### 🔍 Data Quality & In-App Typo Correction")
                         st.caption(
-                            "Review flagged drag-down errors or edit individually below:"
+                            "Override flagged typos below to re-parse live calculations:"
                         )
 
                         for idx_t, t_row in df_typo_audit.iterrows():
@@ -966,16 +945,12 @@ else:
                                 f"📍 {t_row['Date']} | {t_row['Floor']} - {t_row['Machine SL']} ({t_row['Order Name']})"
                             ):
                                 st.write(f"**Issue:** {t_row['Issue Detected']}")
-                                st.caption(
-                                    "Suggested Master Position:"
-                                    f" `{t_row['Suggested MC SL']}`"
-                                )
 
                                 col_t1, col_t2, col_t3 = st.columns(3)
                                 with col_t1:
                                     new_mc = st.text_input(
                                         "Machine SL",
-                                        value=str(t_row["Suggested MC SL"]),
+                                        value=str(t_row["Current MC SL"]),
                                         key=f"mc_{t_key}",
                                     )
                                 with col_t2:
@@ -1003,28 +978,6 @@ else:
                                     st.rerun()
 
                         st.divider()
-
-                        # 1-CLICK BATCH AUTO-CORRECT ALL TYPOS AT BOTTOM OF LIST
-                        if st.button(
-                            f"⚡ Auto-Correct All Typos ({len(df_typo_audit)})",
-                            type="primary",
-                            use_container_width=True,
-                        ):
-                            if "typo_overrides" not in st.session_state:
-                                st.session_state["typo_overrides"] = {}
-                            for _, t_row in df_typo_audit.iterrows():
-                                t_key = t_row["Key"]
-                                st.session_state["typo_overrides"][t_key] = {
-                                    "mc_sl": t_row["Suggested MC SL"],
-                                    "ct": t_row["Current CT"],
-                                    "cavity": t_row["Current Cavity"],
-                                }
-                            st.success(
-                                "All machine typos resolved to master registry!"
-                                " Refreshing..."
-                            )
-                            st.rerun()
-
                         if st.button("🔄 Reset All Corrections", use_container_width=True):
                             st.session_state["typo_overrides"] = {}
                             st.rerun()
@@ -1730,11 +1683,7 @@ else:
                 else:
                     col_sel1, col_sel2 = st.columns([2.5, 1.5])
                     with col_sel1:
-                        sel_order = st.selectbox(
-                            "🔍 **Search & Select Job Order:**",
-                            all_unique_orders,
-                            key="sel_job_analysis_order",
-                        )
+                        sel_order = st.selectbox("🔍 **Search & Select Job Order:**", all_unique_orders, key="sel_job_analysis_order")
 
                     df_ord_raw = df_active[df_active["Order Name"] == sel_order].copy()
                     df_ord_raw = df_ord_raw.sort_values("DateObj")
@@ -1746,7 +1695,6 @@ else:
                         st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
                         st.markdown(f"**Customer:** `{cust_name}` &nbsp;|&nbsp; **Acc Code:** `{acc_code_name}`")
 
-                    # Order-level Item Aggregates (using latest entries for Demand & Due)
                     item_summary_records = []
                     for item_name, i_grp in df_ord_raw.groupby("Item Name"):
                         i_grp_sorted = i_grp.sort_values("DateObj")
@@ -1758,7 +1706,6 @@ else:
                         i_ton_cum = i_grp["Total Prod Ton"].sum()
                         i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
 
-                        # Determine Completion Milestone
                         cum_tracker = 0
                         completion_date = None
                         for _, r_row in i_grp_sorted.iterrows():
@@ -1788,7 +1735,6 @@ else:
 
                     df_items_sum = pd.DataFrame(item_summary_records)
 
-                    # Top KPI Cards for Selected Order
                     tot_ord_demand = df_items_sum["Demand Qty"].sum()
                     tot_ord_prod = df_items_sum["Total Produced (Pcs)"].sum()
                     tot_ord_ton = df_items_sum["Total Produced (Ton)"].sum()
@@ -1810,9 +1756,7 @@ else:
 
                     st.divider()
 
-                    # Item-level Drill-down
                     st.markdown("#### 🔬 Item Daily Run Lifecycle & Machine Allocations")
-
                     unique_items = df_items_sum["Item Name"].tolist()
                     sel_item = st.selectbox("Select Item to Inspect Daily Production Timeline:", unique_items, key="sel_job_item_inspect")
 
@@ -1825,7 +1769,6 @@ else:
                     col_m3.caption(f"**Cavity / CT:** {item_meta['Cavity']} Cav / {item_meta['CT']} s")
                     col_m4.caption(f"**Status:** {item_meta['Status']}")
 
-                    # Daily consolidated rows for the selected item
                     timeline_records = []
                     running_cum_pcs = 0
                     running_cum_ton = 0.0
@@ -1882,84 +1825,42 @@ else:
                         df_timeline_tot = add_total_row(
                             df_timeline,
                             "Date",
-                            [
-                                "Shift A Good (Pcs)",
-                                "Shift B Good (Pcs)",
-                                "Day Output (Pcs)",
-                                "Rejections (Pcs)",
-                                "Day Output (Ton)",
-                                "Runtime (Hrs)",
-                            ],
+                            ["Shift A Good (Pcs)", "Shift B Good (Pcs)", "Day Output (Pcs)", "Rejections (Pcs)", "Day Output (Ton)", "Runtime (Hrs)"],
                             [],
                         )
 
-                        st.dataframe(
-                            clean_and_format_dataframe(df_timeline_tot),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-
-                        st.download_button(
-                            f"📥 Export {sel_order} - {sel_item} Timeline (CSV)",
-                            df_timeline_tot.to_csv(index=False),
-                            f"JobOrder_{sel_order}_{sel_item}_Timeline.csv",
-                            "text/csv",
-                        )
+                        st.dataframe(clean_and_format_dataframe(df_timeline_tot), use_container_width=True, hide_index=True)
+                        st.download_button(f"📥 Export {sel_order} - {sel_item} Timeline (CSV)", df_timeline_tot.to_csv(index=False), f"JobOrder_{sel_order}_{sel_item}_Timeline.csv", "text/csv")
 
             # ============================================
             # SECTION 11: MODULE 4 — SHIFTWISE DATA
             # ============================================
             elif nav_choice == "🌗 Shiftwise Data":
-                shift_mode = st.radio(
-                    "Shiftwise Mode:",
-                    [
-                        "📅 Daily Shiftwise",
-                        "📊 As-Of Cumulative Shiftwise",
-                    ],
-                    horizontal=True,
-                )
+                shift_mode = st.radio("Shiftwise Mode:", ["📅 Daily Shiftwise", "📊 As-Of Cumulative Shiftwise"], horizontal=True)
 
                 a_ton = df_active["Shift A Prod Ton"].sum()
                 a_good = df_active["Shift A Good"].sum()
                 a_rej = df_active["Shift A Rej"].sum()
-                a_hrs = df_active["Shift A Runtime"].sum()
-
                 b_ton = df_active["Shift B Prod Ton"].sum()
                 b_good = df_active["Shift B Good"].sum()
                 b_rej = df_active["Shift B Rej"].sum()
-                b_hrs = df_active["Shift B Runtime"].sum()
 
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("#### ☀️ Shift A (Day Shift)")
                     st.metric("Day Shift Tonnage", f"{a_ton:.2f} T")
-                    st.metric(
-                        "Day Shift Output",
-                        f"{int(a_good):,} Pcs",
-                        f"Rejections: {int(a_rej):,}",
-                    )
+                    st.metric("Day Shift Output", f"{int(a_good):,} Pcs", f"Rejections: {int(a_rej):,}")
 
                 with c2:
                     st.markdown("#### 🌙 Shift B (Night Shift)")
                     st.metric("Night Shift Tonnage", f"{b_ton:.2f} T")
-                    st.metric(
-                        "Night Shift Output",
-                        f"{int(b_good):,} Pcs",
-                        f"Rejections: {int(b_rej):,}",
-                    )
+                    st.metric("Night Shift Output", f"{int(b_good):,} Pcs", f"Rejections: {int(b_rej):,}")
 
                 st.divider()
 
                 if shift_mode == "📅 Daily Shiftwise":
                     shift_daily = (
-                        df_active.groupby("Date")[
-                            [
-                                "Shift A Good",
-                                "Shift B Good",
-                                "Shift A Prod Ton",
-                                "Shift B Prod Ton",
-                            ]
-                        ]
+                        df_active.groupby("Date")[["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"]]
                         .sum()
                         .reset_index()
                     )
@@ -1967,38 +1868,17 @@ else:
                     shift_daily_tot = add_total_row(
                         shift_daily,
                         "Date",
-                        [
-                            "Shift A Good",
-                            "Shift B Good",
-                            "Shift A Prod Ton",
-                            "Shift B Prod Ton",
-                        ],
+                        ["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"],
                         [],
                     )
 
-                    v_cols = column_visibility_selector(
-                        shift_daily_tot, "daily_shift"
-                    )
-                    st.dataframe(
-                        clean_and_format_dataframe(shift_daily_tot[v_cols]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    st.download_button(
-                        "📥 Export Daily Shiftwise Log (CSV)",
-                        shift_daily_tot[v_cols].to_csv(index=False),
-                        "Daily_Shiftwise_Log.csv",
-                        "text/csv",
-                    )
+                    v_cols = column_visibility_selector(shift_daily_tot, "daily_shift")
+                    st.dataframe(clean_and_format_dataframe(shift_daily_tot[v_cols]), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export Daily Shiftwise Log (CSV)", shift_daily_tot[v_cols].to_csv(index=False), "Daily_Shiftwise_Log.csv", "text/csv")
 
                 elif shift_mode == "📊 As-Of Cumulative Shiftwise":
                     fig_shift = px.bar(
-                        df_active.groupby("Date")[
-                            ["Shift A Prod Ton", "Shift B Prod Ton"]
-                        ]
-                        .sum()
-                        .reset_index(),
+                        df_active.groupby("Date")[["Shift A Prod Ton", "Shift B Prod Ton"]].sum().reset_index(),
                         x="Date",
                         y=["Shift A Prod Ton", "Shift B Prod Ton"],
                         title="Daily Shift Comparison (Tonnage)",
