@@ -10,6 +10,15 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from config import (
+    MACHINE_MASTER,
+    EXCEL_SIZES,
+    SORTED_SIZES,
+    MC_COUNT_BY_SIZE,
+    resolve_machine_info,
+)
+from chess import consolidate_chess_family_mold
+
 st.set_page_config(
     page_title="Plastic-3 Operations Console | FF & GF",
     page_icon="🏭",
@@ -30,124 +39,14 @@ load_css("style.css")
 if "typo_overrides" not in st.session_state:
     st.session_state["typo_overrides"] = {}
 
+
 # ============================================
-# SECTION 2: EXCEL CONFIGURATION & SIZING
+# SECTION 2: PARSING HELPERS
 # ============================================
-MACHINE_MASTER = [
-    # --- FIRST FLOOR (FF) ---
-    {"smart_manu": "IMM-160-6",   "position": "A1-160",      "short_name": "A1", "floor": "FF"},
-    {"smart_manu": "IMM-120-20",  "position": "A2-120",      "short_name": "A2", "floor": "FF"},
-    {"smart_manu": "IMM-120-28",  "position": "A3-120",      "short_name": "A3", "floor": "FF"},
-    {"smart_manu": "IMM-120-29",  "position": "A4-120",      "short_name": "A4", "floor": "FF"},
-    {"smart_manu": "IMM-160-7",   "position": "A5-160",      "short_name": "A5", "floor": "FF"},
-    {"smart_manu": "IMM-160-12",  "position": "A6-160",      "short_name": "A6", "floor": "FF"},
-    {"smart_manu": "IMM-160-48",  "position": "A7-160",      "short_name": "A7", "floor": "FF"},
-    {"smart_manu": "IMM-120-11",  "position": "B1-120",      "short_name": "B1", "floor": "FF"},
-    {"smart_manu": "IMM-120-15",  "position": "B2-120",      "short_name": "B2", "floor": "FF"},
-    {"smart_manu": "IMM-120-14",  "position": "B3-120",      "short_name": "B3", "floor": "FF"},
-    {"smart_manu": "IMM-120-75",  "position": "B4-120",      "short_name": "B4", "floor": "FF"},
-    {"smart_manu": "IMM-90-8",    "position": "B5-90PC",     "short_name": "B5", "floor": "FF"},
-    {"smart_manu": "IMM-90-9",    "position": "B6-90PC",     "short_name": "B6", "floor": "FF"},
-    {"smart_manu": "IMM-120-32",  "position": "B7-120PC",    "short_name": "B7", "floor": "FF"},
-    {"smart_manu": "IMM-120-27",  "position": "B8-120PC",    "short_name": "B8", "floor": "FF"},
-    {"smart_manu": "IMM-120-4",   "position": "C1-120",      "short_name": "C1", "floor": "FF"},
-    {"smart_manu": "IMM-160-17",  "position": "C2-160",      "short_name": "C2", "floor": "FF"},
-    {"smart_manu": "IMM-120-22",  "position": "C3-120",      "short_name": "C3", "floor": "FF"},
-    {"smart_manu": "IMM-120-46",  "position": "C4-120PC",    "short_name": "C4", "floor": "FF"},
-    {"smart_manu": "IMM-90-4",    "position": "C5-90",       "short_name": "C5", "floor": "FF"},
-    {"smart_manu": "IMM-120-47",  "position": "C6-120",      "short_name": "C6", "floor": "FF"},
-    {"smart_manu": "IMM-160-51",  "position": "C7-160",      "short_name": "C7", "floor": "FF"},
-    {"smart_manu": "IMM-160-39",  "position": "D1-160",      "short_name": "D1", "floor": "FF"},
-    {"smart_manu": "IMM-160-79",  "position": "D2-160",      "short_name": "D2", "floor": "FF"},
-    {"smart_manu": "IMM-160-80",  "position": "D3-160",      "short_name": "D3", "floor": "FF"},
-
-    # --- GROUND FLOOR (GF) ---
-    {"smart_manu": "IMM-280R-25", "position": "A1-280TC",    "short_name": "A1", "floor": "GF"},
-    {"smart_manu": "IMM-380-5",   "position": "A2-380",      "short_name": "A2", "floor": "GF"},
-    {"smart_manu": "IMM-380-81",  "position": "A3-380 (PC)", "short_name": "A3", "floor": "GF"},
-    {"smart_manu": "IMM-380-80",  "position": "A4-380",      "short_name": "A4", "floor": "GF"},
-    {"smart_manu": "IMM-330-4",   "position": "A5-HP-330",   "short_name": "A5", "floor": "GF"},
-    {"smart_manu": "IMM-470-5",   "position": "B1-470",      "short_name": "B1", "floor": "GF"},
-    {"smart_manu": "IMM-380-6",   "position": "B2-380",      "short_name": "B2", "floor": "GF"},
-    {"smart_manu": "IMM-530-15",  "position": "B3-530",      "short_name": "B3", "floor": "GF"},
-    {"smart_manu": "IMM-530-16",  "position": "B4-530",      "short_name": "B4", "floor": "GF"},
-    {"smart_manu": "IMM-530-22",  "position": "B5-530",      "short_name": "B5", "floor": "GF"},
-    {"smart_manu": "IMM-380-4",   "position": "B6-380",      "short_name": "B6", "floor": "GF"},
-    {"smart_manu": "IMM-800-30",  "position": "C1-800-30",   "short_name": "C1", "floor": "GF"},
-    {"smart_manu": "IMM-800-31",  "position": "C2-800-31",   "short_name": "C2", "floor": "GF"},
-    {"smart_manu": "IMM-270-1",   "position": "C3-270-1",    "short_name": "C3", "floor": "GF"},
-    {"smart_manu": "IMM-380-73",  "position": "C4-380-73",   "short_name": "C4", "floor": "GF"},
-    {"smart_manu": "IMM-380-44",  "position": "C5-380-44",   "short_name": "C5", "floor": "GF"},
-    {"smart_manu": "IMM-280R-3",  "position": "C6-280TC",    "short_name": "C6", "floor": "GF"},
-    {"smart_manu": "IMM-280R-24", "position": "D1-280TC",    "short_name": "D1", "floor": "GF"},
-    {"smart_manu": "IMM-250-106", "position": "D2-MA2-250",  "short_name": "D2", "floor": "GF"},
-    {"smart_manu": "IMM-330-1",   "position": "D3-330-1",    "short_name": "D3", "floor": "GF"},
-    {"smart_manu": "IMM-330-5",   "position": "D4-HP-330-5", "short_name": "D4", "floor": "GF"},
-    {"smart_manu": "IMM-428-1",   "position": "D5-428-1",    "short_name": "D5", "floor": "GF"},
-    {"smart_manu": "IMM-428-4",   "position": "D6-HP-428-4", "short_name": "D6", "floor": "GF"},
-    {"smart_manu": "IMM-330-8",   "position": "D7-HP-330",   "short_name": "D7", "floor": "GF"},
-    {"smart_manu": "IMM-380-90",  "position": "E1-380-90",   "short_name": "E1", "floor": "GF"},
-    {"smart_manu": "IMM-380-94",  "position": "E2-380-94",   "short_name": "E2", "floor": "GF"},
-    {"smart_manu": "IMM-380-88",  "position": "E3-380-88",   "short_name": "E3", "floor": "GF"},
-    {"smart_manu": "IMM-380-76",  "position": "E4-380-76",   "short_name": "E4", "floor": "GF"},
-    {"smart_manu": "IMM-380-62",  "position": "E5-380-62",   "short_name": "E5", "floor": "GF"},
-    {"smart_manu": "IMM-380-75",  "position": "E6-380-75",   "short_name": "E6", "floor": "GF"},
-    {"smart_manu": "IMM-380-92",  "position": "F1-380-92",   "short_name": "F1", "floor": "GF"},
-    {"smart_manu": "IMM-380-93",  "position": "F2-380-93",   "short_name": "F2", "floor": "GF"},
-    {"smart_manu": "IMM-380-98",  "position": "F3-380-98",   "short_name": "F3", "floor": "GF"},
-    {"smart_manu": "IMM-380-99",  "position": "F4-380-99",   "short_name": "F4", "floor": "GF"},
-    {"smart_manu": "IMM-380-101", "position": "F5-380-101",  "short_name": "F5", "floor": "GF"},
-    {"smart_manu": "IMM-380-100", "position": "F6-380-100",  "short_name": "F6", "floor": "GF"},
-]
-
-EXCEL_SIZES = [
-    "160",
-    "90",
-    "120",
-    "250",
-    "270",
-    "280",
-    "380",
-    "330",
-    "470",
-    "530",
-    "800",
-    "428",
-]
-SORTED_SIZES = sorted(EXCEL_SIZES, key=len, reverse=True)
-
-
-def auto_resolve_machine_typo(raw_mc_sl, floor=None):
-    """Maps dragged excel cell typos (e.g. C4-121 -> C4-120PC, E3-385 -> E3-380-88, A7-159 -> A7-160)."""
-    if not raw_mc_sl or str(raw_mc_sl).strip() in ["", "nan", "None", "-"]:
-        return None
-
-    clean_str = str(raw_mc_sl).strip().upper()
-
-    for entry in MACHINE_MASTER:
-        if floor and entry["floor"] != floor:
-            continue
-        if clean_str in [entry["position"].upper(), entry["smart_manu"].upper(), entry["short_name"].upper()]:
-            return entry["position"]
-
-    match = re.match(r"^([A-F]\d+)", clean_str)
-    if match:
-        short_code = match.group(1)
-        for entry in MACHINE_MASTER:
-            if floor and entry["floor"] != floor:
-                continue
-            if entry["short_name"].upper() == short_code:
-                return entry["position"]
-
-    return None
-
-
 def extract_date_from_sheet_name(sheet_name):
     """
     Ultra-resilient sheet date parser.
-    Catches variations:
-    - '22-08-2026', '22-08-26 ', '22/08/2026', '22.08.2026', '22_08_2026', '22 08 2026'
-    - '22-Aug-2026', '22Aug26', '2-8-26', trailing/leading whitespace, etc.
+    Catches '22-08-2026', '22-08-26 ', '22/08/2026', '22.08.2026', text months, trailing whitespace, etc.
     """
     if not isinstance(sheet_name, str):
         return None
@@ -155,7 +54,7 @@ def extract_date_from_sheet_name(sheet_name):
     s_clean = sheet_name.strip().replace("\xa0", " ")
 
     # 1. Standard numeric date pattern (DD-MM-YYYY or DD-MM-YY with -, /, ., _, or spaces)
-    match = re.search(r"(\b\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4}\b)", s_clean)
+    match = re.search(r"(\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4})", s_clean)
     if match:
         d_str, m_str, y_str = match.group(1), match.group(2), match.group(3)
         try:
@@ -193,7 +92,7 @@ def extract_date_from_sheet_name(sheet_name):
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
-    """Extracts machine tonnage size class with typo resilience (e.g., 'B8-119' -> '120')."""
+    """Extracts machine tonnage size class strictly matching standard sizes without silent overrides."""
     if pd.notna(size_col_val):
         try:
             return str(int(float(size_col_val)))
@@ -202,12 +101,8 @@ def extract_excel_mc_size(mc_sl, size_col_val=None):
 
     mc_str = str(mc_sl).strip().upper()
 
-    if "119" in mc_str or "121" in mc_str or "122" in mc_str or "123" in mc_str:
+    if "119" in mc_str:
         return "120"
-    if "159" in mc_str:
-        return "160"
-    if any(f"38{i}" in mc_str for i in range(1, 10)) or "391" in mc_str or "392" in mc_str:
-        return "380"
 
     for sz in SORTED_SIZES:
         if sz in mc_str:
@@ -231,12 +126,20 @@ def derive_line_group(floor_code, mc_sl):
     return f"{floor_code} {line_code}"
 
 
+def convert_df_to_excel_bytes(df):
+    """Converts dataframe into clean Excel (.xlsx) file bytes for download."""
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Data")
+    return output.getvalue()
+
+
 # ============================================
 # SECTION 3: DATA PARSING & SHIFT-ISOLATED ENGINE
 # ============================================
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
-    """Parses raw Excel floor production sheets, applies shift-isolated capacity, and logs typo exceptions."""
+    """Parses raw Excel floor production sheets, consolidates family molds, applies capacity, and audits typos."""
     if typo_overrides is None:
         typo_overrides = {}
 
@@ -279,6 +182,9 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
 
         df = df[df["MC SL"].notna() & df["Order Name"].notna()].copy()
 
+        # APPLY CHESS FAMILY MOLD CONSOLIDATION (Prevents 5x runtime multiplication)
+        df = consolidate_chess_family_mold(df)
+
         for idx, row in df.iterrows():
             raw_val = row.get("MC SL")
             if isinstance(raw_val, float) and raw_val.is_integer():
@@ -320,19 +226,11 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
             line_group = derive_line_group(floor_label, mc_sl)
 
-            ct_raw = (
-                ct_override
-                if ct_override is not None
-                else row.get("CT")
-            )
+            ct_raw = ct_override if ct_override is not None else row.get("CT")
             ct_num = pd.to_numeric(ct_raw, errors="coerce")
             ct = 0.0 if pd.isna(ct_num) else float(ct_num)
 
-            cavity_raw = (
-                cavity_override
-                if cavity_override is not None
-                else row.get("Cavity")
-            )
+            cavity_raw = cavity_override if cavity_override is not None else row.get("Cavity")
             cavity_num = pd.to_numeric(cavity_raw, errors="coerce")
             cavity = 0.0 if pd.isna(cavity_num) else float(cavity_num)
 
@@ -354,18 +252,19 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             b_rej_num = pd.to_numeric(b_rej_val, errors="coerce")
             b_rej = 0.0 if pd.isna(b_rej_num) else float(b_rej_num)
 
-            # EVALUATE AUDIT CONDITIONS
+            # Audit Conditions
             is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
 
-            suggested_mc = auto_resolve_machine_typo(raw_mc_sl, floor_label) or raw_mc_sl
+            master_match = resolve_machine_info(raw_mc_sl, floor_label)
+            suggested_mc = master_match["position"] if master_match else raw_mc_sl
 
             if is_size_typo or is_missing_params:
-                if is_size_typo:
-                    issue_msg = f"Invalid Machine SL / Size '{mc_sl}' (Extracted Size: '{mc_size}')"
-                else:
-                    issue_msg = f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
-
+                issue_msg = (
+                    f"Invalid Machine SL / Size '{mc_sl}' (Extracted Size: '{mc_size}')"
+                    if is_size_typo
+                    else f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
+                )
                 typo_logs.append({
                     "Key": override_key,
                     "Date": dt_str_clean,
@@ -454,9 +353,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     if df_res.empty:
         return df_res, df_audit
 
-    # -------------------------------------------------------------
     # EXACT SHIFT-ISOLATED PROPORTIONAL CAPACITY (Matching Details!L:L)
-    # -------------------------------------------------------------
     df_res["Helper"] = df_res["Floor"].astype(str) + "|" + df_res["Machine"].astype(str) + "|" + df_res["Date"].astype(str)
 
     s_col = df_res["Shift A Runtime"].fillna(0)
@@ -578,7 +475,7 @@ def compute_line_summary(df_subset):
         records.append({
             "Line Group": lg,
             "Running MC Qty": mc_qty,
-            "Uptime (Hrs)": round(tot_runtime, 2),
+            "Runtime (Hrs)": round(tot_runtime, 2),
             "Cap (Pcs)": round(tot_cap_pcs, 2),
             "Prod (Pcs)": round(tot_prod_pcs, 2),
             "Pcs Ach %": f"{ach_pcs:.2f}%",
@@ -608,7 +505,7 @@ def compute_line_summary_mtd(df_subset):
         records.append({
             "Line Group": lg,
             "Running MC Qty": cum_mc_days,
-            "Uptime (Hrs)": round(tot_runtime, 2),
+            "Runtime (Hrs)": round(tot_runtime, 2),
             "Cap (Pcs)": round(tot_cap_pcs, 2),
             "Prod (Pcs)": round(tot_prod_pcs, 2),
             "Pcs Ach %": f"{ach_pcs:.2f}%",
@@ -649,10 +546,10 @@ def compute_size_summary(df_subset, mode="daily"):
 
         if mode == "as_of":
             mc_qty = active_grp.groupby("Date")["Machine"].nunique().sum()
-            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
         else:
             mc_qty = active_grp["Machine"].nunique()
-            run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+
+        run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
 
         if tot_runtime > 0:
             avg_ct = (
@@ -999,7 +896,7 @@ else:
             hide_zero_runs = st.toggle(
                 "🚫 Hide Non-Running Machines",
                 value=True,
-                help="Filters out idle machines with zero production",
+                help="Filters out idle machines with zero production on Floor View",
             )
 
             st.divider()
@@ -1019,16 +916,9 @@ else:
                 st.rerun()
 
         if floor_choice == "FF" and "ff_bytes" not in st.session_state:
-            st.warning(
-                "⚠️ **First Floor (FF) file is not uploaded.** Please click '⚙️"
-                " Change Uploaded Files' in the sidebar to upload the FF file."
-            )
+            st.warning("⚠️ **First Floor (FF) file is not uploaded.**")
         elif floor_choice == "GF" and "gf_bytes" not in st.session_state:
-            st.warning(
-                "⚠️ **Ground Floor (GF) file is not uploaded.** Please click"
-                " '⚙️ Change Uploaded Files' in the sidebar to upload the GF"
-                " file."
-            )
+            st.warning("⚠️ **Ground Floor (GF) file is not uploaded.**")
         else:
             if floor_choice != "ALL FLOORS":
                 df_curr = df_data_raw[
@@ -1050,31 +940,8 @@ else:
                     with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
                         st.markdown("#### 🔍 Data Quality & In-App Typo Correction")
                         st.caption(
-                            "Auto-correct cell drag-down errors or override individually below:"
+                            "Review flagged drag-down errors or edit individually below:"
                         )
-
-                        # 1-CLICK BATCH AUTO-CORRECT ALL TYPOS
-                        if st.button(
-                            f"⚡ Auto-Correct All Typos ({len(df_typo_audit)})",
-                            type="primary",
-                            use_container_width=True,
-                        ):
-                            if "typo_overrides" not in st.session_state:
-                                st.session_state["typo_overrides"] = {}
-                            for _, t_row in df_typo_audit.iterrows():
-                                t_key = t_row["Key"]
-                                st.session_state["typo_overrides"][t_key] = {
-                                    "mc_sl": t_row["Suggested MC SL"],
-                                    "ct": t_row["Current CT"],
-                                    "cavity": t_row["Current Cavity"],
-                                }
-                            st.success(
-                                "All machine typos resolved to master registry!"
-                                " Refreshing..."
-                            )
-                            st.rerun()
-
-                        st.divider()
 
                         for idx_t, t_row in df_typo_audit.iterrows():
                             t_key = t_row["Key"]
@@ -1119,6 +986,27 @@ else:
                                     st.rerun()
 
                         st.divider()
+
+                        # 1-CLICK BATCH AUTO-CORRECT ALL TYPOS AT BOTTOM OF LIST
+                        if st.button(
+                            f"⚡ Auto-Correct All Typos ({len(df_typo_audit)})",
+                            type="primary",
+                            use_container_width=True,
+                        ):
+                            if "typo_overrides" not in st.session_state:
+                                st.session_state["typo_overrides"] = {}
+                            for _, t_row in df_typo_audit.iterrows():
+                                t_key = t_row["Key"]
+                                st.session_state["typo_overrides"][t_key] = {
+                                    "mc_sl": t_row["Suggested MC SL"],
+                                    "ct": t_row["Current CT"],
+                                    "cavity": t_row["Current Cavity"],
+                                }
+                            st.success(
+                                "All machine typos resolved to master registry! Refreshing..."
+                            )
+                            st.rerun()
+
                         if st.button("🔄 Reset All Corrections", use_container_width=True):
                             st.session_state["typo_overrides"] = {}
                             st.rerun()
@@ -1203,7 +1091,7 @@ else:
                 c4.metric(
                     "Running Machines",
                     f"{df_daily['Machine'].nunique()} MCs",
-                    f"Uptime: {tot_time:.2f} Hrs",
+                    f"Runtime: {tot_time:.2f} Hrs",
                 )
 
                 st.divider()
@@ -1216,7 +1104,7 @@ else:
                         "Line Group",
                         [
                             "Running MC Qty",
-                            "Uptime (Hrs)",
+                            "Runtime (Hrs)",
                             "Cap (Pcs)",
                             "Prod (Pcs)",
                             "Cap (Ton)",
@@ -1228,17 +1116,18 @@ else:
                     v_cols = column_visibility_selector(
                         df_line_day_tot, "daily_line"
                     )
+                    clean_line_df = clean_and_format_dataframe(df_line_day_tot[v_cols])
                     st.dataframe(
-                        clean_and_format_dataframe(df_line_day_tot[v_cols]),
+                        clean_line_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
                     st.download_button(
-                        "📥 Export Daily Line Summary (CSV)",
-                        df_line_day_tot[v_cols].to_csv(index=False),
-                        "Daily_Line_Summary.csv",
-                        "text/csv",
+                        "📥 Export Daily Line Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_line_df),
+                        "Daily_Line_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
                 elif daily_mode == "🏭 MC Wise":
@@ -1264,17 +1153,18 @@ else:
                     v_cols = column_visibility_selector(
                         df_daily_totals, "daily_mc"
                     )
+                    clean_mc_df = clean_and_format_dataframe(df_daily_totals[v_cols])
                     st.dataframe(
-                        clean_and_format_dataframe(df_daily_totals[v_cols]),
+                        clean_mc_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
                     st.download_button(
-                        "📥 Export Daily Machine Summary (CSV)",
-                        df_daily_totals[v_cols].to_csv(index=False),
-                        "Daily_Machine_Summary.csv",
-                        "text/csv",
+                        "📥 Export Daily Machine Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_mc_df),
+                        "Daily_Machine_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
                     mixed_mcs = df_daily[df_daily["Is Mixed"]][
@@ -1283,12 +1173,10 @@ else:
                     if mixed_mcs:
                         st.divider()
                         st.markdown(
-                            "#### 🔍 Inspect Mixed Machine Breakdown (Inside"
-                            " Story)"
+                            "#### 🔍 Inspect Mixed Machine Breakdown (Inside Story)"
                         )
                         sel_mc = st.selectbox(
-                            "Select a Mixed Machine ID to view its mold run"
-                            " breakdown:",
+                            "Select a Mixed Machine ID to view its mold run breakdown:",
                             mixed_mcs,
                         )
                         sub_raw = df_daily_raw[
@@ -1305,21 +1193,22 @@ else:
                             "Total Runtime (Hrs)"
                         ].round(2)
 
+                        clean_sub_raw = clean_and_format_dataframe(
+                            sub_raw[[
+                                "Floor",
+                                "Order Name",
+                                "Item Name",
+                                "CT",
+                                "Cavity",
+                                "Shift A Good",
+                                "Shift B Good",
+                                "Total Good",
+                                "Runtime (Hrs)",
+                                "Daily Prod (Ton)",
+                            ]]
+                        )
                         st.dataframe(
-                            clean_and_format_dataframe(
-                                sub_raw[[
-                                    "Floor",
-                                    "Order Name",
-                                    "Item Name",
-                                    "CT",
-                                    "Cavity",
-                                    "Shift A Good",
-                                    "Shift B Good",
-                                    "Total Good",
-                                    "Runtime (Hrs)",
-                                    "Daily Prod (Ton)",
-                                ]]
-                            ),
+                            clean_sub_raw,
                             use_container_width=True,
                             hide_index=True,
                         )
@@ -1345,17 +1234,18 @@ else:
                     v_cols = column_visibility_selector(
                         df_size_day_tot, "daily_size"
                     )
+                    clean_size_df = clean_and_format_dataframe(df_size_day_tot[v_cols])
                     st.dataframe(
-                        clean_and_format_dataframe(df_size_day_tot[v_cols]),
+                        clean_size_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
                     st.download_button(
-                        "📥 Export Daily Size Summary (CSV)",
-                        df_size_day_tot[v_cols].to_csv(index=False),
-                        "Daily_Size_Summary.csv",
-                        "text/csv",
+                        "📥 Export Daily Size Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_size_df),
+                        "Daily_Size_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
                 elif daily_mode == "📦 Job-Order Wise":
@@ -1453,17 +1343,18 @@ else:
                             job_day_tot, "daily_job"
                         )
 
+                    clean_job_day_df = clean_and_format_dataframe(job_day_tot[v_cols])
                     st.dataframe(
-                        clean_and_format_dataframe(job_day_tot[v_cols]),
+                        clean_job_day_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
                     st.download_button(
-                        "📥 Export Daily Active Job Summary (CSV)",
-                        job_day_tot[v_cols].to_csv(index=False),
-                        "Daily_Job_Summary.csv",
-                        "text/csv",
+                        "📥 Export Daily Active Job Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_job_day_df),
+                        "Daily_Job_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
             # ============================================
@@ -1525,7 +1416,7 @@ else:
                 c4.metric(
                     "Cumulative MC-Days",
                     f"{cum_mc_days} MC-Days",
-                    f"Uptime: {tot_runtime:.2f} Hrs",
+                    f"Runtime: {tot_runtime:.2f} Hrs",
                 )
 
                 st.divider()
@@ -1540,7 +1431,7 @@ else:
                         "Line Group",
                         [
                             "Running MC Qty",
-                            "Uptime (Hrs)",
+                            "Runtime (Hrs)",
                             "Cap (Pcs)",
                             "Prod (Pcs)",
                             "Cap (Ton)",
@@ -1552,17 +1443,18 @@ else:
                     v_cols = column_visibility_selector(
                         df_line_mtd_tot, "mtd_line"
                     )
+                    clean_line_mtd_df = clean_and_format_dataframe(df_line_mtd_tot[v_cols])
                     st.dataframe(
-                        clean_and_format_dataframe(df_line_mtd_tot[v_cols]),
+                        clean_line_mtd_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
                     st.download_button(
-                        "📥 Export As-Of Line Summary (CSV)",
-                        df_line_mtd_tot[v_cols].to_csv(index=False),
-                        "AsOf_Line_Summary.csv",
-                        "text/csv",
+                        "📥 Export As-Of Line Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_line_mtd_df),
+                        "AsOf_Line_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
                 elif mtd_mode == "📏 Sizewise":
@@ -1587,23 +1479,23 @@ else:
                     v_cols = column_visibility_selector(
                         df_size_mtd_tot, "mtd_size"
                     )
+                    clean_size_mtd_df = clean_and_format_dataframe(df_size_mtd_tot[v_cols])
                     st.dataframe(
-                        clean_and_format_dataframe(df_size_mtd_tot[v_cols]),
+                        clean_size_mtd_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
                     st.download_button(
-                        "📥 Export As-Of Size Summary (CSV)",
-                        df_size_mtd_tot[v_cols].to_csv(index=False),
-                        "AsOf_Size_Summary.csv",
-                        "text/csv",
+                        "📥 Export As-Of Size Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_size_mtd_df),
+                        "AsOf_Size_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
                 elif mtd_mode == "📦 Job-Order Wise":
                     st.markdown(
-                        "### 📦 Master Order Completion Summary (As of"
-                        f" {as_of_date})"
+                        f"### 📦 Master Order Completion Summary (As of {as_of_date})"
                     )
 
                     job_records = []
@@ -1726,19 +1618,18 @@ else:
                                     df_active_tot, "mtd_job_active"
                                 )
 
+                            clean_job_act_df = clean_and_format_dataframe(df_active_tot[v_cols])
                             st.dataframe(
-                                clean_and_format_dataframe(
-                                    df_active_tot[v_cols]
-                                ),
+                                clean_job_act_df,
                                 use_container_width=True,
                                 hide_index=True,
                             )
 
                             st.download_button(
-                                "📥 Export Active MTD Job Summary (CSV)",
-                                df_active_tot[v_cols].to_csv(index=False),
-                                "Active_MTD_Job_Summary.csv",
-                                "text/csv",
+                                "📥 Export Active MTD Job Summary (.xlsx)",
+                                convert_df_to_excel_bytes(clean_job_act_df),
+                                "Active_MTD_Job_Summary.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             )
 
                         with st_tab2:
@@ -1794,19 +1685,18 @@ else:
                                         df_done_tot, "mtd_job_done"
                                     )
 
+                                clean_job_done_df = clean_and_format_dataframe(df_done_tot[v_cols])
                                 st.dataframe(
-                                    clean_and_format_dataframe(
-                                        df_done_tot[v_cols]
-                                    ),
+                                    clean_job_done_df,
                                     use_container_width=True,
                                     hide_index=True,
                                 )
 
                                 st.download_button(
-                                    "📥 Export Completed MTD Job Summary (CSV)",
-                                    df_done_tot[v_cols].to_csv(index=False),
-                                    "Completed_MTD_Job_Summary.csv",
-                                    "text/csv",
+                                    "📥 Export Completed MTD Job Summary (.xlsx)",
+                                    convert_df_to_excel_bytes(clean_job_done_df),
+                                    "Completed_MTD_Job_Summary.xlsx",
+                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                 )
 
             # ============================================
@@ -1817,16 +1707,22 @@ else:
                 st.caption("Inspect order demand completion milestones, item-wise daily machine allocations, and cumulative outputs.")
                 st.divider()
 
-                all_unique_orders = sorted([str(o).strip() for o in df_active["Order Name"].dropna().unique() if str(o).strip()])
+                # Always use df_curr so unstarted items with 0 production remain visible
+                all_unique_orders = sorted([str(o).strip() for o in df_curr["Order Name"].dropna().unique() if str(o).strip()])
 
                 if not all_unique_orders:
                     st.info("No Job Orders found in the active dataset.")
                 else:
                     col_sel1, col_sel2 = st.columns([2.5, 1.5])
                     with col_sel1:
-                        sel_order = st.selectbox("🔍 **Search & Select Job Order:**", all_unique_orders, key="sel_job_analysis_order")
+                        sel_order = st.selectbox(
+                            "🔍 **Search & Select Job Order:**",
+                            all_unique_orders,
+                            key="sel_job_analysis_order",
+                        )
 
-                    df_ord_raw = df_active[df_active["Order Name"] == sel_order].copy()
+                    # Query full parsed orders
+                    df_ord_raw = df_curr[df_curr["Order Name"] == sel_order].copy()
                     df_ord_raw = df_ord_raw.sort_values("DateObj")
 
                     cust_name = df_ord_raw["Customer"].iloc[0] if not df_ord_raw.empty else "-"
@@ -1836,6 +1732,7 @@ else:
                         st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
                         st.markdown(f"**Customer:** `{cust_name}` &nbsp;|&nbsp; **Acc Code:** `{acc_code_name}`")
 
+                    # Order-level Item Aggregates
                     item_summary_records = []
                     for item_name, i_grp in df_ord_raw.groupby("Item Name"):
                         i_grp_sorted = i_grp.sort_values("DateObj")
@@ -1847,6 +1744,7 @@ else:
                         i_ton_cum = i_grp["Total Prod Ton"].sum()
                         i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
 
+                        # Determine Completion Milestone
                         cum_tracker = 0
                         completion_date = None
                         for _, r_row in i_grp_sorted.iterrows():
@@ -1855,7 +1753,15 @@ else:
                                 completion_date = r_row["Date"]
                                 break
 
-                        i_status = f"✅ Done on {completion_date}" if completion_date else ("✅ Completed" if i_due <= 0 and i_demand > 0 else "🔄 In Progress")
+                        if completion_date:
+                            i_status = f"✅ Done on {completion_date}"
+                        elif i_due <= 0 and i_demand > 0 and i_good_cum >= i_demand:
+                            i_status = "✅ Completed"
+                        elif i_good_cum > 0:
+                            i_status = "🔄 In Progress"
+                        else:
+                            i_status = "⏳ Not Started"
+
                         i_pct = (i_good_cum / i_demand * 100) if i_demand > 0 else 0.0
 
                         item_summary_records.append({
@@ -1876,6 +1782,7 @@ else:
 
                     df_items_sum = pd.DataFrame(item_summary_records)
 
+                    # Top KPI Cards for Selected Order
                     tot_ord_demand = df_items_sum["Demand Qty"].sum()
                     tot_ord_prod = df_items_sum["Total Produced (Pcs)"].sum()
                     tot_ord_ton = df_items_sum["Total Produced (Ton)"].sum()
@@ -1889,15 +1796,36 @@ else:
                     k4.metric("Order Fulfillment", f"{ord_fulfill_pct:.2f}%", "Overall Progress")
 
                     st.markdown("#### 📋 Items Under This Job Order")
+                    clean_items_df = clean_and_format_dataframe(
+                        df_items_sum[[
+                            "Item Name",
+                            "Demand Qty",
+                            "Total Produced (Pcs)",
+                            "Remaining Due",
+                            "Fulfillment %",
+                            "Total Produced (Ton)",
+                            "Total Runtime (Hrs)",
+                            "Status",
+                        ]]
+                    )
                     st.dataframe(
-                        clean_and_format_dataframe(df_items_sum[["Item Name", "Demand Qty", "Total Produced (Pcs)", "Remaining Due", "Fulfillment %", "Total Produced (Ton)", "Total Runtime (Hrs)", "Status"]]),
+                        clean_items_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
+                    st.download_button(
+                        f"📥 Export {sel_order} Item Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_items_df),
+                        f"JobOrder_{sel_order}_Items.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+
                     st.divider()
 
+                    # Item-level Drill-down
                     st.markdown("#### 🔬 Item Daily Run Lifecycle & Machine Allocations")
+
                     unique_items = df_items_sum["Item Name"].tolist()
                     sel_item = st.selectbox("Select Item to Inspect Daily Production Timeline:", unique_items, key="sel_job_item_inspect")
 
@@ -1966,11 +1894,30 @@ else:
                         df_timeline_tot = add_total_row(
                             df_timeline,
                             "Date",
-                            ["Shift A Good (Pcs)", "Shift B Good (Pcs)", "Day Output (Pcs)", "Rejections (Pcs)", "Day Output (Ton)", "Runtime (Hrs)"],
+                            [
+                                "Shift A Good (Pcs)",
+                                "Shift B Good (Pcs)",
+                                "Day Output (Pcs)",
+                                "Rejections (Pcs)",
+                                "Day Output (Ton)",
+                                "Runtime (Hrs)",
+                            ],
                             [],
                         )
-                        st.dataframe(clean_and_format_dataframe(df_timeline_tot), use_container_width=True, hide_index=True)
-                        st.download_button(f"📥 Export {sel_order} - {sel_item} Timeline (CSV)", df_timeline_tot.to_csv(index=False), f"JobOrder_{sel_order}_{sel_item}_Timeline.csv", "text/csv")
+
+                        clean_timeline_df = clean_and_format_dataframe(df_timeline_tot)
+                        st.dataframe(
+                            clean_timeline_df,
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+
+                        st.download_button(
+                            f"📥 Export {sel_order} - {sel_item} Timeline (.xlsx)",
+                            convert_df_to_excel_bytes(clean_timeline_df),
+                            f"JobOrder_{sel_order}_{sel_item}_Timeline.xlsx",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        )
 
             # ============================================
             # SECTION 11: MODULE 4 — SHIFTWISE DATA
@@ -2045,17 +1992,18 @@ else:
                     v_cols = column_visibility_selector(
                         shift_daily_tot, "daily_shift"
                     )
+                    clean_shift_df = clean_and_format_dataframe(shift_daily_tot[v_cols])
                     st.dataframe(
-                        clean_and_format_dataframe(shift_daily_tot[v_cols]),
+                        clean_shift_df,
                         use_container_width=True,
                         hide_index=True,
                     )
 
                     st.download_button(
-                        "📥 Export Daily Shiftwise Log (CSV)",
-                        shift_daily_tot[v_cols].to_csv(index=False),
-                        "Daily_Shiftwise_Log.csv",
-                        "text/csv",
+                        "📥 Export Daily Shiftwise Log (.xlsx)",
+                        convert_df_to_excel_bytes(clean_shift_df),
+                        "Daily_Shiftwise_Log.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
 
                 elif shift_mode == "📊 As-Of Cumulative Shiftwise":
