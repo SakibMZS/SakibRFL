@@ -194,6 +194,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
 
             order = str(row.get("Order Name")).strip()
             item = str(row.get("Item Name", "")).strip()
+            color = str(row.get("Color", "")).strip() if pd.notna(row.get("Color")) else "-"
 
             acc_code_val = row.get("Acc Code")
             try:
@@ -324,6 +325,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 "Order Name": order,
                 "Acc Code": acc_code,
                 "Item Name": item,
+                "Color": color,
                 "Demand Qty": demand_qty,
                 "Up to Prod": up_to_prod,
                 "Due Prod Prev": due_prod_prev,
@@ -650,6 +652,13 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
         if "Completion %" in df.columns:
             tot_row["Completion %"] = f"{ach:.2f}%"
 
+    if "Demand Qty" in df.columns and "Total Produced (Pcs)" in df.columns:
+        dem = pd.to_numeric(df["Demand Qty"], errors="coerce").sum()
+        prod_pcs = pd.to_numeric(df["Total Produced (Pcs)"], errors="coerce").sum()
+        ach = (prod_pcs / dem * 100) if dem > 0 else 0.0
+        if "Fulfillment %" in df.columns:
+            tot_row["Fulfillment %"] = f"{ach:.2f}%"
+
     if "Order Qty" in df.columns and "As of Production" in df.columns:
         dem = pd.to_numeric(df["Order Qty"], errors="coerce").sum()
         good = pd.to_numeric(df["As of Production"], errors="coerce").sum()
@@ -707,7 +716,7 @@ def clean_and_format_dataframe(df):
     return df_clean
 
 
-def column_visibility_selector(df, key_prefix=""):
+def column_visibility_selector(df, key_prefix="", custom_exclusions=None):
     """Manages column visibility selector with default exclusions."""
     all_cols = df.columns.tolist()
 
@@ -721,6 +730,9 @@ def column_visibility_selector(df, key_prefix=""):
         "Last Day Output (Pcs)",
         "Last Day Util %",
     ]
+    if custom_exclusions:
+        excluded_defaults.extend(custom_exclusions)
+
     default_cols = [c for c in all_cols if c not in excluded_defaults]
 
     if f"{key_prefix}_visible_cols" not in st.session_state:
@@ -1743,6 +1755,18 @@ else:
                         i_good_cum = i_grp["Total Good"].sum()
                         i_ton_cum = i_grp["Total Prod Ton"].sum()
                         i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
+                        i_color = latest_item_entry.get("Color", "-")
+
+                        # Determine Last Run Date & Last MC Run
+                        active_item_runs = i_grp_sorted[(i_grp_sorted["Total Good"] > 0) | (i_grp_sorted["Total Runtime (Hrs)"] > 0)]
+                        if not active_item_runs.empty:
+                            latest_active = active_item_runs.iloc[-1]
+                            last_run_date = str(latest_active["Date"])
+                            last_active_date_runs = active_item_runs[active_item_runs["Date"] == last_run_date]
+                            last_mc_run = ", ".join(sorted(last_active_date_runs["Machine"].unique()))
+                        else:
+                            last_run_date = "-"
+                            last_mc_run = "-"
 
                         # Determine Completion Milestone
                         cum_tracker = 0
@@ -1767,11 +1791,14 @@ else:
                         item_summary_records.append({
                             "Item Name": item_name,
                             "Acc Code": latest_item_entry["Acc Code"],
+                            "Color": i_color,
                             "Demand Qty": i_demand,
                             "Total Produced (Pcs)": i_good_cum,
-                            "Total Produced (Ton)": round(i_ton_cum, 2),
                             "Remaining Due": round(max(0.0, i_demand - i_good_cum) if i_demand > 0 else i_due, 2),
                             "Fulfillment %": f"{i_pct:.2f}%",
+                            "Last Run Date": last_run_date,
+                            "Last MC Run": last_mc_run,
+                            "Total Produced (Ton)": round(i_ton_cum, 2),
                             "Total Runtime (Hrs)": round(i_runtime_cum, 2),
                             "Status": i_status,
                             "Completion Date": completion_date,
@@ -1796,18 +1823,52 @@ else:
                     k4.metric("Order Fulfillment", f"{ord_fulfill_pct:.2f}%", "Overall Progress")
 
                     st.markdown("#### 📋 Items Under This Job Order")
-                    clean_items_df = clean_and_format_dataframe(
-                        df_items_sum[[
-                            "Item Name",
+
+                    # Base columns available in the table
+                    item_display_cols = [
+                        "Item Name",
+                        "Acc Code",
+                        "Color",
+                        "Demand Qty",
+                        "Total Produced (Pcs)",
+                        "Remaining Due",
+                        "Fulfillment %",
+                        "Last Run Date",
+                        "Last MC Run",
+                        "Total Produced (Ton)",
+                        "Total Runtime (Hrs)",
+                        "Status",
+                    ]
+
+                    df_items_display = df_items_sum[item_display_cols].copy()
+
+                    # Add total row
+                    df_items_tot = add_total_row(
+                        df_items_display,
+                        "Item Name",
+                        [
                             "Demand Qty",
                             "Total Produced (Pcs)",
                             "Remaining Due",
-                            "Fulfillment %",
                             "Total Produced (Ton)",
                             "Total Runtime (Hrs)",
-                            "Status",
-                        ]]
+                        ],
+                        [],
                     )
+
+                    # Hide Acc Code, Color, Total Produced (Ton), Total Runtime (Hrs) by default
+                    v_item_cols = column_visibility_selector(
+                        df_items_tot,
+                        key_prefix="job_analysis_items",
+                        custom_exclusions=[
+                            "Acc Code",
+                            "Color",
+                            "Total Produced (Ton)",
+                            "Total Runtime (Hrs)",
+                        ],
+                    )
+
+                    clean_items_df = clean_and_format_dataframe(df_items_tot[v_item_cols])
                     st.dataframe(
                         clean_items_df,
                         use_container_width=True,
