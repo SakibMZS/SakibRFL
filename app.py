@@ -599,7 +599,6 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
             val = pd.to_numeric(df[c], errors="coerce").sum()
             tot_row[c] = round(val, 2) if isinstance(val, float) else val
         elif c in avg_cols:
-            # Matches Excel =IFERROR(AVERAGEIF(E3:E14, "<>0"), 0)
             non_zero = pd.to_numeric(df[df[c] > 0][c], errors="coerce")
             tot_row[c] = (
                 round(non_zero.mean(), 2) if not non_zero.empty else 0.0
@@ -1757,16 +1756,21 @@ else:
                         i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
                         i_color = latest_item_entry.get("Color", "-")
 
-                        # Determine Last Run Date & Last MC Run
+                        # Determine Last Run Date & Last MC Run & Last Day Capacity / Output
                         active_item_runs = i_grp_sorted[(i_grp_sorted["Total Good"] > 0) | (i_grp_sorted["Total Runtime (Hrs)"] > 0)]
                         if not active_item_runs.empty:
                             latest_active = active_item_runs.iloc[-1]
                             last_run_date = str(latest_active["Date"])
                             last_active_date_runs = active_item_runs[active_item_runs["Date"] == last_run_date]
                             last_mc_run = ", ".join(sorted(last_active_date_runs["Machine"].unique()))
+                            last_day_prod_pcs = last_active_date_runs["Total Good"].sum()
+                            # Proportional capacity calculated matching Daily Sizewise engine
+                            last_day_cap_pcs = last_active_date_runs["Weighted Cap Pcs"].sum()
                         else:
                             last_run_date = "-"
                             last_mc_run = "-"
+                            last_day_prod_pcs = 0.0
+                            last_day_cap_pcs = 0.0
 
                         # Determine Completion Milestone
                         cum_tracker = 0
@@ -1789,6 +1793,7 @@ else:
                         i_pct = (i_good_cum / i_demand * 100) if i_demand > 0 else 0.0
 
                         item_summary_records.append({
+                            "Job Order": sel_order,
                             "Item Name": item_name,
                             "Acc Code": latest_item_entry["Acc Code"],
                             "Color": i_color,
@@ -1798,6 +1803,8 @@ else:
                             "Fulfillment %": f"{i_pct:.2f}%",
                             "Last Run Date": last_run_date,
                             "Last MC Run": last_mc_run,
+                            "Last Day Cap (Pcs)": round(last_day_cap_pcs, 2),
+                            "Last Day Output (Pcs)": round(last_day_prod_pcs, 2),
                             "Total Produced (Ton)": round(i_ton_cum, 2),
                             "Total Runtime (Hrs)": round(i_runtime_cum, 2),
                             "Status": i_status,
@@ -1826,6 +1833,7 @@ else:
 
                     # Base columns available in the table
                     item_display_cols = [
+                        "Job Order",
                         "Item Name",
                         "Acc Code",
                         "Color",
@@ -1835,6 +1843,8 @@ else:
                         "Fulfillment %",
                         "Last Run Date",
                         "Last MC Run",
+                        "Last Day Cap (Pcs)",
+                        "Last Day Output (Pcs)",
                         "Total Produced (Ton)",
                         "Total Runtime (Hrs)",
                         "Status",
@@ -1850,19 +1860,24 @@ else:
                             "Demand Qty",
                             "Total Produced (Pcs)",
                             "Remaining Due",
+                            "Last Day Cap (Pcs)",
+                            "Last Day Output (Pcs)",
                             "Total Produced (Ton)",
                             "Total Runtime (Hrs)",
                         ],
                         [],
                     )
 
-                    # Hide Acc Code, Color, Total Produced (Ton), Total Runtime (Hrs) by default
+                    # Hidden by default on-screen: Job Order, Acc Code, Color, Last Day Cap/Output, Ton, Runtime
                     v_item_cols = column_visibility_selector(
                         df_items_tot,
                         key_prefix="job_analysis_items",
                         custom_exclusions=[
+                            "Job Order",
                             "Acc Code",
                             "Color",
+                            "Last Day Cap (Pcs)",
+                            "Last Day Output (Pcs)",
                             "Total Produced (Ton)",
                             "Total Runtime (Hrs)",
                         ],
@@ -1875,9 +1890,11 @@ else:
                         hide_index=True,
                     )
 
+                    # Export includes all columns including Job Order
+                    full_export_df = clean_and_format_dataframe(df_items_tot)
                     st.download_button(
                         f"📥 Export {sel_order} Item Summary (.xlsx)",
-                        convert_df_to_excel_bytes(clean_items_df),
+                        convert_df_to_excel_bytes(full_export_df),
                         f"JobOrder_{sel_order}_Items.xlsx",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
