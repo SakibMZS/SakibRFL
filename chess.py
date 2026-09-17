@@ -12,7 +12,7 @@ def consolidate_chess_family_mold(df_sheet):
     """
     Combines multi-component chess family mold entries (King, Queen, Bishop, Knight, Rook)
     into a single operational entry: 'DT 3 IN 1 Classic Game Board Chess Set'.
-    Sum cavities and output to reflect physical shot count without multiplying runtime.
+    Accurately sums cavities, output, shot counters, and production metrics.
     """
     if df_sheet.empty or "Item Name" not in df_sheet.columns:
         return df_sheet
@@ -32,7 +32,7 @@ def consolidate_chess_family_mold(df_sheet):
     for keys, grp in df_chess.groupby(group_cols, sort=False):
         first_row = grp.iloc[0].copy()
 
-        # Sum cavities across components (e.g., 2 + 2 + 4 + 4 + 4 = 16)
+        # Sum cavities across all parts (e.g., 2 + 2 + 4 + 4 + 4 = 16)
         total_cavity = pd.to_numeric(grp["Cavity"], errors="coerce").fillna(0).sum()
 
         # Weighted average unit weight
@@ -40,7 +40,11 @@ def consolidate_chess_family_mold(df_sheet):
         cavs = pd.to_numeric(grp["Cavity"], errors="coerce").fillna(0)
         weighted_unit_wt = (weights * cavs).sum() / total_cavity if total_cavity > 0 else weights.mean()
 
-        # Sum production pieces
+        # Sum counters (A Total and B Total)
+        sum_a_tot = pd.to_numeric(grp.get("T Counter", grp.get("A Total", 0)), errors="coerce").fillna(0).sum()
+        sum_b_tot = pd.to_numeric(grp.get("Total Counter B", grp.get("B Total", 0)), errors="coerce").fillna(0).sum()
+
+        # Sum output pieces
         sum_a_good = pd.to_numeric(grp.get("A-Good", 0), errors="coerce").fillna(0).sum()
         sum_a_rej = pd.to_numeric(grp.get("A-Rejec", 0), errors="coerce").fillna(0).sum()
         sum_b_good = pd.to_numeric(grp.get("B-Good", 0), errors="coerce").fillna(0).sum()
@@ -48,17 +52,19 @@ def consolidate_chess_family_mold(df_sheet):
         b_rej_col = "B-Reject" if "B-Reject" in grp.columns else "B-Reject Cause of Less Prod"
         sum_b_rej = pd.to_numeric(grp.get(b_rej_col, 0), errors="coerce").fillna(0).sum()
 
-        # Sum demand and due quantities
+        # Sum demand and ledger columns
         sum_demand = pd.to_numeric(grp.get("Demand", 0), errors="coerce").fillna(0).sum()
         sum_up_to = pd.to_numeric(grp.get("Up to Prod", 0), errors="coerce").fillna(0).sum()
         sum_due = pd.to_numeric(grp.get("Due Prod", 0), errors="coerce").fillna(0).sum()
         sum_due_1 = pd.to_numeric(grp.get("Due Prod.1", 0), errors="coerce").fillna(0).sum()
         sum_last_day = pd.to_numeric(grp.get("Last Day Prod", 0), errors="coerce").fillna(0).sum()
 
-        # Consolidate under standard family set name
+        # Apply consolidated master fields
         first_row["Item Name"] = "DT 3 IN 1 Classic Game Board Chess Set"
         first_row["Cavity"] = total_cavity
         first_row["Unit Wt"] = weighted_unit_wt
+        first_row["T Counter"] = sum_a_tot
+        first_row["Total Counter B"] = sum_b_tot
         first_row["A-Good"] = sum_a_good
         first_row["A-Rejec"] = sum_a_rej
         first_row["B-Good"] = sum_b_good
