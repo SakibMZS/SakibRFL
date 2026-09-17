@@ -86,7 +86,6 @@ def get_size_from_position(pos_str):
     return "Other"
 
 
-# Derived dynamic machine metrics from MACHINE_MASTER
 TOTAL_MC_COUNT = len(MACHINE_MASTER)
 MC_COUNT_BY_SIZE = Counter([get_size_from_position(m["position"]) for m in MACHINE_MASTER])
 MC_COUNT_BY_FLOOR = Counter([m["floor"] for m in MACHINE_MASTER])
@@ -96,23 +95,18 @@ POSITION_TO_SMART = {item["position"]: item["smart_manu"] for item in MACHINE_MA
 
 
 def resolve_machine_info(raw_input, floor=None):
-    """
-    Resolves raw machine input strings to a standard master record.
-    Matches exact position, smart_manu, short_name, or bay prefix (e.g., 'C4-121' -> 'C4').
-    """
+    """Resolves raw machine input strings to a standard master record."""
     if not raw_input or pd.isna(raw_input):
         return None
 
     clean_str = str(raw_input).strip().upper()
 
-    # Tier 1: Exact matches
     for entry in MACHINE_MASTER:
         if floor and entry["floor"] != floor:
             continue
         if clean_str in [entry["smart_manu"].upper(), entry["position"].upper(), entry["short_name"].upper()]:
             return entry
 
-    # Tier 2: Prefix matching by Short Name (e.g., 'C4-121' -> matches 'C4')
     match = re.match(r"^([A-F]\d+)", clean_str)
     if match:
         short_code = match.group(1)
