@@ -35,26 +35,35 @@ def load_css(file_name="style.css"):
 
 load_css("style.css")
 
-# Initialize Typo Overrides in Session State
 if "typo_overrides" not in st.session_state:
     st.session_state["typo_overrides"] = {}
 
 
 # ============================================
-# SECTION 2: PARSING HELPERS
+# SECTION 2: PARSING HELPERS & DATE PARSER
 # ============================================
 def extract_date_from_sheet_name(sheet_name):
     """
     Ultra-resilient sheet date parser.
-    Catches '22-08-2026', '22-08-26 ', '22/08/2026', '22.08.2026', text months, trailing whitespace, etc.
+    Excludes non-production tabs (Inventory, Handover, Utilization, etc.)
+    and enforces exact date patterns (DD-MM-YYYY or DD-MM-YY).
     """
     if not isinstance(sheet_name, str):
         return None
 
     s_clean = sheet_name.strip().replace("\xa0", " ")
+    s_lower = s_clean.lower()
 
-    # 1. Standard numeric date pattern (DD-MM-YYYY or DD-MM-YY with -, /, ., _, or spaces)
-    match = re.search(r"(\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4})", s_clean)
+    # Quarantine non-production tabs
+    quarantine_keywords = [
+        "util", "handover", "inventory", "inv", "pf", "rel",
+        "sheet", "schedule", "need", "pet"
+    ]
+    if any(k in s_lower for k in quarantine_keywords):
+        return None
+
+    # Strict numeric date pattern (DD-MM-YYYY or DD-MM-YY)
+    match = re.search(r"(\b\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4}\b)", s_clean)
     if match:
         d_str, m_str, y_str = match.group(1), match.group(2), match.group(3)
         try:
@@ -66,41 +75,26 @@ def extract_date_from_sheet_name(sheet_name):
         except Exception:
             pass
 
-    # 2. Text month pattern (e.g., '22-Aug-2026', '22Aug26')
-    month_names = {
-        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-        "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12
-    }
-    match_txt = re.search(r"(\b\d{1,2})[-/\._\s]?([a-zA-Z]{3,9})[-/\._\s]?(\d{2,4})?", s_clean)
-    if match_txt:
-        d_str = match_txt.group(1)
-        m_txt = match_txt.group(2).lower()[:3]
-        y_str = match_txt.group(3)
-        if m_txt in month_names:
-            try:
-                d = int(d_str)
-                m = month_names[m_txt]
-                y = int(y_str) if y_str else datetime.now().year
-                if y < 100:
-                    y += 2000
-                if 1 <= d <= 31 and 1 <= m <= 12:
-                    return datetime(y, m, d)
-            except Exception:
-                pass
-
     return None
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
-    """Extracts machine tonnage size class strictly matching standard sizes without silent overrides."""
+    """Extracts machine tonnage size class prioritizing exact machine registry over substrings."""
     if pd.notna(size_col_val):
         try:
             return str(int(float(size_col_val)))
         except (ValueError, TypeError):
             pass
 
-    mc_str = str(mc_sl).strip().upper()
+    # Match against MACHINE_MASTER first
+    match = resolve_machine_info(mc_sl)
+    if match:
+        pos = match["position"].upper()
+        for sz in SORTED_SIZES:
+            if sz in pos:
+                return sz
 
+    mc_str = str(mc_sl).strip().upper()
     if "119" in mc_str:
         return "120"
 
@@ -139,7 +133,7 @@ def convert_df_to_excel_bytes(df):
 # ============================================
 @st.cache_data
 def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
-    """Parses raw Excel floor production sheets, consolidates family molds, applies capacity, and audits typos."""
+    """Parses raw Excel floor production sheets, consolidates family molds, and audits typos."""
     if typo_overrides is None:
         typo_overrides = {}
 
@@ -160,12 +154,15 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
         latest_month = latest_date.month
         latest_year = latest_date.year
 
-        date_sheets = [
-            (s, dt)
-            for s, dt in valid_sheets
-            if dt.month == latest_month and dt.year == latest_year
-        ]
-        date_sheets.sort(key=lambda x: x[1])
+        # Strictly enforce 1 primary sheet per calendar date to prevent 2x duplication
+        date_map = {}
+        for s, dt in valid_sheets:
+            if dt.month == latest_month and dt.year == latest_year:
+                date_key = dt.strftime("%Y-%m-%d")
+                if date_key not in date_map:
+                    date_map[date_key] = (s, dt)
+
+        date_sheets = sorted(list(date_map.values()), key=lambda x: x[1])
     else:
         date_sheets = []
 
@@ -174,15 +171,14 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
 
     for sheet, dt_val in date_sheets:
         dt_str_clean = dt_val.strftime("%d-%m-%Y")
-        df = pd.read_excel(xls, sheet_name=sheet)
-        df = df.dropna(how="all").reset_index(drop=True)
+        df = pd.read_excel(xls, sheet_name=sheet).dropna(how="all").reset_index(drop=True)
 
         if "MC SL" not in df.columns or "Order Name" not in df.columns:
             continue
 
         df = df[df["MC SL"].notna() & df["Order Name"].notna()].copy()
 
-        # APPLY CHESS FAMILY MOLD CONSOLIDATION (Prevents 5x runtime multiplication)
+        # APPLY CHESS FAMILY MOLD CONSOLIDATION
         df = consolidate_chess_family_mold(df)
 
         for idx, row in df.iterrows():
@@ -194,7 +190,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
 
             order = str(row.get("Order Name")).strip()
             item = str(row.get("Item Name", "")).strip()
-            color = str(row.get("Color", "")).strip() if pd.notna(row.get("Color")) else "-"
+            color = str(row.get("Color", "")).strip() if pd.notna(row.get("Color")) else str(row.get("Colo+G:AHr", "-")).strip()
 
             acc_code_val = row.get("Acc Code")
             try:
@@ -210,7 +206,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                     else "-"
                 )
 
-            # Check for Session-Based Typo Overrides
+            # Typo override checking
             override_key = f"{dt_str_clean}_{floor_label}_{raw_mc_sl}_{order}_{idx}"
             if override_key in typo_overrides:
                 mc_sl = typo_overrides[override_key].get("mc_sl", raw_mc_sl)
@@ -238,6 +234,13 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             unit_wt_num = pd.to_numeric(row.get("Unit Wt"), errors="coerce")
             unit_wt_kg = 0.0 if pd.isna(unit_wt_num) else float(unit_wt_num)
 
+            # Raw Shot Totals & Good Piece Counts
+            a_tot_val = row.get("T Counter", row.get("Counter", row.get("A Total", 0)))
+            a_tot = 0.0 if pd.isna(pd.to_numeric(a_tot_val, errors="coerce")) else float(a_tot_val)
+
+            b_tot_val = row.get("Total Counter B", row.get("Counter B", row.get("B Total", 0)))
+            b_tot = 0.0 if pd.isna(pd.to_numeric(b_tot_val, errors="coerce")) else float(b_tot_val)
+
             a_good_num = pd.to_numeric(row.get("A-Good"), errors="coerce")
             a_good = 0.0 if pd.isna(a_good_num) else float(a_good_num)
 
@@ -253,7 +256,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             b_rej_num = pd.to_numeric(b_rej_val, errors="coerce")
             b_rej = 0.0 if pd.isna(b_rej_num) else float(b_rej_num)
 
-            # Audit Conditions
+            # Audit conditions
             is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
 
@@ -296,7 +299,11 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             last_day_col_num = pd.to_numeric(row.get("Last Day Prod"), errors="coerce")
             last_day_prod_col = 0.0 if pd.isna(last_day_col_num) else float(last_day_col_num)
 
-            due_present_num = pd.to_numeric(row.get("Due Prod.1"), errors="coerce")
+            # Robust Present Due Extraction (GF uses 'Due Prod.1', FF uses '\nDue Prod' or 'Due Prod.1')
+            due_present_val = row.get("Due Prod.1")
+            if pd.isna(due_present_val):
+                due_present_val = row.get("\nDue Prod", row.get("Due Prod", 0))
+            due_present_num = pd.to_numeric(due_present_val, errors="coerce")
             due_prod_present = 0.0 if pd.isna(due_present_num) else float(due_present_num)
 
             a_runtime = (
@@ -311,6 +318,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
 
             total_good = a_good + b_good
             total_rej = a_rej + b_rej
+            total_bad = (a_tot + b_tot) - total_good if (a_tot + b_tot) > total_good else total_rej
             total_runtime = a_runtime + b_runtime
             total_prod_ton = a_prod_ton + b_prod_ton
 
@@ -320,6 +328,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 "Date": dt_str_clean,
                 "DateObj": dt_val,
                 "Machine": mc_sl,
+                "MC SL": suggested_mc,
                 "MC Size": mc_size,
                 "Customer": cust_prefix,
                 "Order Name": order,
@@ -334,16 +343,23 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
                 "Cavity": cavity,
                 "CT": ct,
                 "Unit Wt (kg)": unit_wt_kg,
+                "Unit Wt": unit_wt_kg,
                 "STD Cap/Shift": std_cap_shift,
+                "A Total": a_tot,
+                "A Good": a_good,
                 "Shift A Good": a_good,
                 "Shift A Rej": a_rej,
                 "Shift A Runtime": a_runtime,
                 "Shift A Prod Ton": a_prod_ton,
+                "B Total": b_tot,
+                "B Good": b_good,
                 "Shift B Good": b_good,
                 "Shift B Rej": b_rej,
                 "Shift B Runtime": b_runtime,
                 "Shift B Prod Ton": b_prod_ton,
                 "Total Good": total_good,
+                "T-Good": total_good,
+                "T-Bad": total_bad,
                 "Total Rejections": total_rej,
                 "Total Runtime (Hrs)": total_runtime,
                 "Total Prod Ton": total_prod_ton,
@@ -355,7 +371,12 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     if df_res.empty:
         return df_res, df_audit
 
-    # EXACT SHIFT-ISOLATED PROPORTIONAL CAPACITY (Matching Details!L:L)
+    # Deduplicate in case of duplicate entry rows in source sheets
+    df_res = df_res.drop_duplicates(
+        subset=["Floor", "Date", "Machine", "Order Name", "Item Name", "Acc Code", "Cavity", "CT", "Total Good"]
+    ).reset_index(drop=True)
+
+    # Shift-isolated capacity calculation
     df_res["Helper"] = df_res["Floor"].astype(str) + "|" + df_res["Machine"].astype(str) + "|" + df_res["Date"].astype(str)
 
     s_col = df_res["Shift A Runtime"].fillna(0)
@@ -519,10 +540,7 @@ def compute_line_summary_mtd(df_subset):
 
 
 def compute_size_summary(df_subset, mode="daily"):
-    """
-    Computes Machine Size Summary strictly matching Excel Sheet2 standard.
-    - Evaluates running machines with active production/runtime.
-    """
+    """Computes Machine Size Summary strictly matching Excel Sheet2 standard."""
     records = []
 
     for sz in EXCEL_SIZES:
@@ -585,7 +603,7 @@ def compute_size_summary(df_subset, mode="daily"):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols):
-    """Adds a complete Sub-Total summary row calculating sums, Excel-matched unweighted averages, and percentages."""
+    """Adds a complete Sub-Total summary row calculating sums, unweighted averages, and percentages."""
     if df.empty:
         return df
 
@@ -606,7 +624,6 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
         else:
             tot_row[c] = "-"
 
-    # Overall Achievement % Calculations
     if "Total Cap (Pcs)" in df.columns and "Total Prod (Pcs)" in df.columns:
         tc_p = pd.to_numeric(df["Total Cap (Pcs)"], errors="coerce").sum()
         tp_p = pd.to_numeric(df["Total Prod (Pcs)"], errors="coerce").sum()
@@ -630,47 +647,12 @@ def add_total_row(df, label_col, sum_cols, avg_cols):
         if "Ton Ach %" in df.columns:
             tot_row["Ton Ach %"] = f"{ach:.2f}%"
 
-    if "Daily Cap (Pcs)" in df.columns and "Daily Prod (Pcs)" in df.columns:
-        dc_p = pd.to_numeric(df["Daily Cap (Pcs)"], errors="coerce").sum()
-        dp_p = pd.to_numeric(df["Daily Prod (Pcs)"], errors="coerce").sum()
-        ach = (dp_p / dc_p * 100) if dc_p > 0 else 0.0
-        if "Daily Util (Pcs %)" in df.columns:
-            tot_row["Daily Util (Pcs %)"] = f"{ach:.2f}%"
-
-    if "Daily Cap (Ton)" in df.columns and "Daily Prod (Ton)" in df.columns:
-        dc_t = pd.to_numeric(df["Daily Cap (Ton)"], errors="coerce").sum()
-        dp_t = pd.to_numeric(df["Daily Prod (Ton)"], errors="coerce").sum()
-        ach = (dp_t / dc_t * 100) if dc_t > 0 else 0.0
-        if "Daily Util (Ton %)" in df.columns:
-            tot_row["Daily Util (Ton %)"] = f"{ach:.2f}%"
-
-    if "Demand Qty" in df.columns and "Total Good" in df.columns:
-        dem = pd.to_numeric(df["Demand Qty"], errors="coerce").sum()
-        good = pd.to_numeric(df["Total Good"], errors="coerce").sum()
-        ach = (good / dem * 100) if dem > 0 else 0.0
-        if "Completion %" in df.columns:
-            tot_row["Completion %"] = f"{ach:.2f}%"
-
     if "Demand Qty" in df.columns and "Total Produced (Pcs)" in df.columns:
         dem = pd.to_numeric(df["Demand Qty"], errors="coerce").sum()
         prod_pcs = pd.to_numeric(df["Total Produced (Pcs)"], errors="coerce").sum()
         ach = (prod_pcs / dem * 100) if dem > 0 else 0.0
         if "Fulfillment %" in df.columns:
             tot_row["Fulfillment %"] = f"{ach:.2f}%"
-
-    if "Order Qty" in df.columns and "As of Production" in df.columns:
-        dem = pd.to_numeric(df["Order Qty"], errors="coerce").sum()
-        good = pd.to_numeric(df["As of Production"], errors="coerce").sum()
-        ach = (good / dem * 100) if dem > 0 else 0.0
-        if "As of %" in df.columns:
-            tot_row["As of %"] = f"{ach:.2f}%"
-
-    if "Last Day Cap (Pcs)" in df.columns and "Last Day Output (Pcs)" in df.columns:
-        c_p = pd.to_numeric(df["Last Day Cap (Pcs)"], errors="coerce").sum()
-        o_p = pd.to_numeric(df["Last Day Output (Pcs)"], errors="coerce").sum()
-        u_p = (o_p / c_p * 100) if c_p > 0 else 0.0
-        if "Last Day Util %" in df.columns:
-            tot_row["Last Day Util %"] = f"{u_p:.2f}%"
 
     tot_df = pd.DataFrame([tot_row])
     return pd.concat([res_df, tot_df], ignore_index=True)
@@ -715,27 +697,18 @@ def clean_and_format_dataframe(df):
     return df_clean
 
 
-def column_visibility_selector(df, key_prefix="", custom_exclusions=None):
-    """Manages column visibility selector with default exclusions."""
+def column_visibility_selector(df, key_prefix="", default_visible_cols=None):
+    """Manages column visibility selector defaulting directly to specified columns."""
     all_cols = df.columns.tolist()
 
-    excluded_defaults = [
-        "Entry Count",
-        "Is Mixed",
-        "Is Completed",
-        "Last Run Date",
-        "Last MC Assigned",
-        "Last Day Cap (Pcs)",
-        "Last Day Output (Pcs)",
-        "Last Day Util %",
-    ]
-    if custom_exclusions:
-        excluded_defaults.extend(custom_exclusions)
-
-    default_cols = [c for c in all_cols if c not in excluded_defaults]
+    if default_visible_cols:
+        initial_cols = [c for c in default_visible_cols if c in all_cols]
+    else:
+        excluded_defaults = ["Entry Count", "Is Mixed", "Is Completed"]
+        initial_cols = [c for c in all_cols if c not in excluded_defaults]
 
     if f"{key_prefix}_visible_cols" not in st.session_state:
-        st.session_state[f"{key_prefix}_visible_cols"] = default_cols
+        st.session_state[f"{key_prefix}_visible_cols"] = initial_cols
 
     with st.popover("👁️ Columns"):
         st.caption("Check or uncheck columns to customize active table view:")
@@ -856,8 +829,7 @@ else:
 
     if not all_parsed_dfs:
         st.error(
-            "No valid data parsed. Click '⚙️ Change Uploaded Files' in"
-            " sidebar."
+            "No valid data parsed. Click '⚙️ Change Uploaded Files' in sidebar."
         )
     else:
         df_data_raw = pd.concat(all_parsed_dfs, ignore_index=True)
@@ -890,6 +862,7 @@ else:
                     "📊 As of Data (MTD)",
                     "📦 Job Order Analysis",
                     "🌗 Shiftwise Data",
+                    "📑 Monthly Master Export (Details)",
                 ],
             )
 
@@ -1517,23 +1490,14 @@ else:
                         last_run_date = latest_run["Date"]
                         itm_name = latest_run["Item Name"]
 
-                        cutoff_grp = grp[grp["Date"] == as_of_date]
+                        order_qty = latest_run["Demand Qty"] if latest_run["Demand Qty"] > 0 else grp["Demand Qty"].max()
+                        due_prod_present = latest_run["Due Prod Present"]
+                        as_of_prod = max(0.0, order_qty - due_prod_present) if order_qty > 0 else grp["Total Good"].sum()
 
-                        if not cutoff_grp.empty:
-                            order_qty = cutoff_grp["Demand Qty"].sum()
-                            due_prod_present = cutoff_grp["Due Prod Present"].sum()
-                            as_of_prod = order_qty - due_prod_present
-                            last_mcs = ", ".join(sorted(cutoff_grp[cutoff_grp["Total Good"] > 0]["Machine"].unique()))
-                            last_day_output = cutoff_grp["Last Day Prod Col"].sum()
-                            last_day_cap = cutoff_grp["Daily Cap Pcs"].sum()
-                        else:
-                            order_qty = latest_run["Demand Qty"] if latest_run["Demand Qty"] > 0 else grp["Demand Qty"].max()
-                            due_prod_present = latest_run["Due Prod Present"]
-                            as_of_prod = max(0.0, order_qty - due_prod_present) if order_qty > 0 else grp["Total Good"].sum()
-                            last_date_runs = grp[grp["Date"] == last_run_date]
-                            last_mcs = ", ".join(sorted(last_date_runs[last_date_runs["Total Good"] > 0]["Machine"].unique()))
-                            last_day_output = last_date_runs["Last Day Prod Col"].sum()
-                            last_day_cap = last_date_runs["Daily Cap Pcs"].sum()
+                        last_date_runs = grp[grp["Date"] == last_run_date]
+                        last_mcs = ", ".join(sorted(last_date_runs[last_date_runs["Total Good"] > 0]["Machine"].unique()))
+                        last_day_output = last_date_runs["Last Day Prod Col"].sum()
+                        last_day_cap = last_date_runs["Daily Cap Pcs"].sum()
 
                         tot_prod_ton_cum = grp["Total Prod Ton"].sum()
                         tot_runtime_cum = grp["Total Runtime (Hrs)"].sum()
@@ -1743,7 +1707,7 @@ else:
                         st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
                         st.markdown(f"**Customer:** `{cust_name}` &nbsp;|&nbsp; **Acc Code:** `{acc_code_name}`")
 
-                    # Order-level Item Aggregates
+                    # EXACT LEDGER ORDER AGGREGATION
                     item_summary_records = []
                     for item_name, i_grp in df_ord_raw.groupby("Item Name"):
                         i_grp_sorted = i_grp.sort_values("DateObj")
@@ -1751,40 +1715,20 @@ else:
 
                         i_demand = latest_item_entry["Demand Qty"] if latest_item_entry["Demand Qty"] > 0 else i_grp["Demand Qty"].max()
                         i_due = latest_item_entry["Due Prod Present"]
-                        i_good_cum = i_grp["Total Good"].sum()
+
+                        # Ground truth cumulative produced from shop floor running ledger
+                        if i_demand > 0:
+                            i_good_cum = max(0.0, i_demand - i_due)
+                        else:
+                            i_good_cum = latest_item_entry["Up to Prod"] + latest_item_entry["Total Good"]
+
                         i_ton_cum = i_grp["Total Prod Ton"].sum()
                         i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
                         i_color = latest_item_entry.get("Color", "-")
 
-                        # Determine Last Run Date & Last MC Run & Last Day Capacity / Output
-                        active_item_runs = i_grp_sorted[(i_grp_sorted["Total Good"] > 0) | (i_grp_sorted["Total Runtime (Hrs)"] > 0)]
-                        if not active_item_runs.empty:
-                            latest_active = active_item_runs.iloc[-1]
-                            last_run_date = str(latest_active["Date"])
-                            last_active_date_runs = active_item_runs[active_item_runs["Date"] == last_run_date]
-                            last_mc_run = ", ".join(sorted(last_active_date_runs["Machine"].unique()))
-                            last_day_prod_pcs = last_active_date_runs["Total Good"].sum()
-                            # Proportional capacity calculated matching Daily Sizewise engine
-                            last_day_cap_pcs = last_active_date_runs["Weighted Cap Pcs"].sum()
-                        else:
-                            last_run_date = "-"
-                            last_mc_run = "-"
-                            last_day_prod_pcs = 0.0
-                            last_day_cap_pcs = 0.0
-
                         # Determine Completion Milestone
-                        cum_tracker = 0
-                        completion_date = None
-                        for _, r_row in i_grp_sorted.iterrows():
-                            cum_tracker += r_row["Total Good"]
-                            if i_demand > 0 and cum_tracker >= i_demand:
-                                completion_date = r_row["Date"]
-                                break
-
-                        if completion_date:
-                            i_status = f"✅ Done on {completion_date}"
-                        elif i_due <= 0 and i_demand > 0 and i_good_cum >= i_demand:
-                            i_status = "✅ Completed"
+                        if i_due <= 0 and i_demand > 0:
+                            i_status = f"✅ Done on {latest_item_entry['Date']}"
                         elif i_good_cum > 0:
                             i_status = "🔄 In Progress"
                         else:
@@ -1794,21 +1738,18 @@ else:
 
                         item_summary_records.append({
                             "Job Order": sel_order,
-                            "Item Name": item_name,
                             "Acc Code": latest_item_entry["Acc Code"],
+                            "Item Name": item_name,
                             "Color": i_color,
                             "Demand Qty": i_demand,
                             "Total Produced (Pcs)": i_good_cum,
-                            "Remaining Due": round(max(0.0, i_demand - i_good_cum) if i_demand > 0 else i_due, 2),
+                            "Remaining Due": round(i_due, 2),
                             "Fulfillment %": f"{i_pct:.2f}%",
-                            "Last Run Date": last_run_date,
-                            "Last MC Run": last_mc_run,
-                            "Last Day Cap (Pcs)": round(last_day_cap_pcs, 2),
-                            "Last Day Output (Pcs)": round(last_day_prod_pcs, 2),
+                            "Status": i_status,
+                            "Last Run Date": latest_item_entry["Date"],
+                            "Last MC Run": latest_item_entry["Machine"],
                             "Total Produced (Ton)": round(i_ton_cum, 2),
                             "Total Runtime (Hrs)": round(i_runtime_cum, 2),
-                            "Status": i_status,
-                            "Completion Date": completion_date,
                             "Unit Wt (kg)": latest_item_entry["Unit Wt (kg)"],
                             "Cavity": latest_item_entry["Cavity"],
                             "CT": latest_item_entry["CT"],
@@ -1831,56 +1772,36 @@ else:
 
                     st.markdown("#### 📋 Items Under This Job Order")
 
-                    # Base columns available in the table
-                    item_display_cols = [
+                    # EXACT 9-COLUMN REPORT SEQUENCE
+                    default_job_cols = [
                         "Job Order",
-                        "Item Name",
                         "Acc Code",
+                        "Item Name",
                         "Color",
                         "Demand Qty",
                         "Total Produced (Pcs)",
                         "Remaining Due",
                         "Fulfillment %",
-                        "Last Run Date",
-                        "Last MC Run",
-                        "Last Day Cap (Pcs)",
-                        "Last Day Output (Pcs)",
-                        "Total Produced (Ton)",
-                        "Total Runtime (Hrs)",
                         "Status",
                     ]
 
-                    df_items_display = df_items_sum[item_display_cols].copy()
-
-                    # Add total row
                     df_items_tot = add_total_row(
-                        df_items_display,
+                        df_items_sum,
                         "Item Name",
                         [
                             "Demand Qty",
                             "Total Produced (Pcs)",
                             "Remaining Due",
-                            "Last Day Cap (Pcs)",
-                            "Last Day Output (Pcs)",
                             "Total Produced (Ton)",
                             "Total Runtime (Hrs)",
                         ],
                         [],
                     )
 
-                    # Hidden by default on-screen: Job Order, Acc Code, Color, Last Day Cap/Output, Ton, Runtime
                     v_item_cols = column_visibility_selector(
                         df_items_tot,
                         key_prefix="job_analysis_items",
-                        custom_exclusions=[
-                            "Job Order",
-                            "Acc Code",
-                            "Color",
-                            "Last Day Cap (Pcs)",
-                            "Last Day Output (Pcs)",
-                            "Total Produced (Ton)",
-                            "Total Runtime (Hrs)",
-                        ],
+                        default_visible_cols=default_job_cols,
                     )
 
                     clean_items_df = clean_and_format_dataframe(df_items_tot[v_item_cols])
@@ -1890,11 +1811,10 @@ else:
                         hide_index=True,
                     )
 
-                    # Export includes all columns including Job Order
-                    full_export_df = clean_and_format_dataframe(df_items_tot)
+                    # Download EXCLUSIVELY the currently visible selected columns
                     st.download_button(
                         f"📥 Export {sel_order} Item Summary (.xlsx)",
-                        convert_df_to_excel_bytes(full_export_df),
+                        convert_df_to_excel_bytes(clean_items_df),
                         f"JobOrder_{sel_order}_Items.xlsx",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
@@ -2098,3 +2018,52 @@ else:
                         color_discrete_sequence=["#f59e0b", "#0f172a"],
                     )
                     st.plotly_chart(fig_shift, use_container_width=True)
+
+            # ============================================
+            # SECTION 12: MODULE 5 — MONTHLY MASTER EXPORT (DETAILS)
+            # ============================================
+            elif nav_choice == "📑 Monthly Master Export (Details)":
+                st.markdown("### 📑 Monthly Master Production Ledger (`Details.xlsx`)")
+                st.caption("Consolidated master production rows across all dates (1 to N) from both floors with standardized machine SL and chess family mold integration.")
+                st.divider()
+
+                # Filter strictly for active records (T-Good > 0)
+                df_details_export = df_curr[df_curr["T-Good"] > 0].copy()
+
+                # 16 standard master columns
+                master_columns = [
+                    "Date", "MC SL", "Order Name", "Acc Code", "Item Name",
+                    "Unit Wt", "Color", "Cavity", "CT", "STD Cap/Shift",
+                    "A Total", "A Good", "B Total", "B Good", "T-Good", "T-Bad"
+                ]
+
+                # Ensure machine SL is standardized to master position
+                df_details_export["MC SL"] = df_details_export["MC SL"].fillna(df_details_export["Machine"])
+
+                # Fill any missing columns with standard defaults
+                for col in master_columns:
+                    if col not in df_details_export.columns:
+                        df_details_export[col] = "-"
+
+                df_details_clean = df_details_export[master_columns].copy()
+                clean_master_view = clean_and_format_dataframe(df_details_clean)
+
+                col_d1, col_d2, col_d3 = st.columns(3)
+                col_d1.metric("Active Runs Logged", f"{len(df_details_clean):,} Records")
+                col_d2.metric("Total Monthly Good", f"{int(df_details_export['T-Good'].sum()):,} Pcs")
+                col_d3.metric("Total Monthly Tonnage", f"{df_details_export['Total Prod Ton'].sum():.2f} Tons")
+
+                st.divider()
+                st.dataframe(
+                    clean_master_view,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                st.download_button(
+                    "📥 Export Monthly Master Production (Details.xlsx)",
+                    convert_df_to_excel_bytes(clean_master_view),
+                    "Monthly_Master_Production_Details.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                )
