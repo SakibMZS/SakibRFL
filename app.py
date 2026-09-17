@@ -10,6 +10,10 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+
 from config import (
     MACHINE_MASTER,
     EXCEL_SIZES,
@@ -45,8 +49,7 @@ if "typo_overrides" not in st.session_state:
 def extract_date_from_sheet_name(sheet_name):
     """
     Ultra-resilient sheet date parser.
-    Excludes non-production tabs (Inventory, Handover, Utilization, etc.)
-    and enforces exact date patterns (DD-MM-YYYY or DD-MM-YY).
+    Quarantines non-production tabs and enforces exact date patterns.
     """
     if not isinstance(sheet_name, str):
         return None
@@ -54,7 +57,6 @@ def extract_date_from_sheet_name(sheet_name):
     s_clean = sheet_name.strip().replace("\xa0", " ")
     s_lower = s_clean.lower()
 
-    # Quarantine non-production tabs
     quarantine_keywords = [
         "util", "handover", "inventory", "inv", "pf", "rel",
         "sheet", "schedule", "need", "pet"
@@ -62,7 +64,6 @@ def extract_date_from_sheet_name(sheet_name):
     if any(k in s_lower for k in quarantine_keywords):
         return None
 
-    # Strict numeric date pattern (DD-MM-YYYY or DD-MM-YY)
     match = re.search(r"(\b\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4}\b)", s_clean)
     if match:
         d_str, m_str, y_str = match.group(1), match.group(2), match.group(3)
@@ -79,14 +80,13 @@ def extract_date_from_sheet_name(sheet_name):
 
 
 def extract_excel_mc_size(mc_sl, size_col_val=None):
-    """Extracts machine tonnage size class prioritizing exact machine registry over substrings."""
+    """Extracts machine tonnage size class prioritizing exact machine registry."""
     if pd.notna(size_col_val):
         try:
             return str(int(float(size_col_val)))
         except (ValueError, TypeError):
             pass
 
-    # Match against MACHINE_MASTER first
     match = resolve_machine_info(mc_sl)
     if match:
         pos = match["position"].upper()
@@ -121,10 +121,99 @@ def derive_line_group(floor_code, mc_sl):
 
 
 def convert_df_to_excel_bytes(df):
-    """Converts dataframe into clean Excel (.xlsx) file bytes for download."""
+    """
+    Exports DataFrame with standard company formatting:
+    - Yellow Header Fill (#FFFF00) with Bold Black Text
+    - Clear gridlines & number formatting (#,##0)
+    - Sub Total Row with Bold Red Text (#FF0000) & double bottom accounting underline
+    """
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Data")
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Report"
+
+    # Styling Elements
+    header_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="000000")
+
+    data_font = Font(name="Calibri", size=11, bold=False, color="000000")
+    total_font = Font(name="Calibri", size=11, bold=True, color="FF0000")
+
+    thin_border_side = Side(border_style="thin", color="BFBFBF")
+    cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+
+    double_bottom_side = Side(border_style="double", color="000000")
+    total_top_side = Side(border_style="thin", color="000000")
+    total_border = Border(left=thin_border_side, right=thin_border_side, top=total_top_side, bottom=double_bottom_side)
+
+    # Write Headers
+    for col_num, col_name in enumerate(df.columns, 1):
+        cell = ws.cell(row=1, column=col_num, value=col_name)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = cell_border
+
+    # Write Data
+    for row_idx, row in df.iterrows():
+        excel_row_num = row_idx + 2
+        is_total_row = any("sub total" in str(v).lower() for v in row.values)
+
+        for col_idx, (col_name, val) in enumerate(row.items(), 1):
+            cell = ws.cell(row=excel_row_num, column=col_idx)
+            col_lower = str(col_name).lower()
+            val_str = str(val).strip()
+
+            if is_total_row:
+                cell.font = total_font
+                cell.border = total_border
+            else:
+                cell.font = data_font
+                cell.border = cell_border
+
+            if isinstance(val, (int, float)) and pd.notna(val):
+                cell.value = val
+                if any(k in col_lower for k in ["qty", "pcs", "good", "due", "demand", "produced", "bad", "rej"]):
+                    cell.number_format = '#,##0'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                elif any(k in col_lower for k in ["%", "percent", "util", "fulfill", "ach"]):
+                    cell.number_format = '0.00%'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                else:
+                    cell.number_format = '#,##0.00'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+            else:
+                clean_num_str = val_str.replace(",", "").replace("%", "")
+                try:
+                    num_val = float(clean_num_str)
+                    if "%" in val_str:
+                        cell.value = num_val / 100.0
+                        cell.number_format = '0.00%'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    elif clean_num_str.isdigit():
+                        cell.value = int(clean_num_str)
+                        cell.number_format = '#,##0'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        cell.value = num_val
+                        cell.number_format = '#,##0.00'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                except ValueError:
+                    cell.value = val_str
+                    if is_total_row:
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                    elif col_lower in ["acc code", "status", "date", "mc sl"]:
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                    else:
+                        cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    # Dynamic Column Width Adjustment
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    wb.save(output)
     return output.getvalue()
 
 
@@ -154,7 +243,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
         latest_month = latest_date.month
         latest_year = latest_date.year
 
-        # Strictly enforce 1 primary sheet per calendar date to prevent 2x duplication
+        # Enforce 1 primary production sheet per date
         date_map = {}
         for s, dt in valid_sheets:
             if dt.month == latest_month and dt.year == latest_year:
@@ -190,23 +279,21 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
 
             order = str(row.get("Order Name")).strip()
             item = str(row.get("Item Name", "")).strip()
-            color = str(row.get("Color", "")).strip() if pd.notna(row.get("Color")) else str(row.get("Colo+G:AHr", "-")).strip()
+
+            # Dynamic Color Extraction to handle shifted or corrupted headers
+            color = "-"
+            for c_col in df.columns:
+                if "color" in str(c_col).lower() or "colo" in str(c_col).lower():
+                    if pd.notna(row.get(c_col)) and str(row.get(c_col)).strip() not in ["", "nan", "None"]:
+                        color = str(row.get(c_col)).strip()
+                        break
 
             acc_code_val = row.get("Acc Code")
             try:
-                acc_code = (
-                    str(int(float(acc_code_val)))
-                    if pd.notna(acc_code_val)
-                    else "-"
-                )
+                acc_code = str(int(float(acc_code_val))) if pd.notna(acc_code_val) else "-"
             except (ValueError, TypeError):
-                acc_code = (
-                    str(acc_code_val).strip()
-                    if pd.notna(acc_code_val)
-                    else "-"
-                )
+                acc_code = str(acc_code_val).strip() if pd.notna(acc_code_val) else "-"
 
-            # Typo override checking
             override_key = f"{dt_str_clean}_{floor_label}_{raw_mc_sl}_{order}_{idx}"
             if override_key in typo_overrides:
                 mc_sl = typo_overrides[override_key].get("mc_sl", raw_mc_sl)
@@ -234,7 +321,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             unit_wt_num = pd.to_numeric(row.get("Unit Wt"), errors="coerce")
             unit_wt_kg = 0.0 if pd.isna(unit_wt_num) else float(unit_wt_num)
 
-            # Raw Shot Totals & Good Piece Counts
             a_tot_val = row.get("T Counter", row.get("Counter", row.get("A Total", 0)))
             a_tot = 0.0 if pd.isna(pd.to_numeric(a_tot_val, errors="coerce")) else float(a_tot_val)
 
@@ -256,7 +342,6 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             b_rej_num = pd.to_numeric(b_rej_val, errors="coerce")
             b_rej = 0.0 if pd.isna(b_rej_num) else float(b_rej_num)
 
-            # Audit conditions
             is_size_typo = mc_size not in EXCEL_SIZES
             is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
 
@@ -299,7 +384,7 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
             last_day_col_num = pd.to_numeric(row.get("Last Day Prod"), errors="coerce")
             last_day_prod_col = 0.0 if pd.isna(last_day_col_num) else float(last_day_col_num)
 
-            # Robust Present Due Extraction (GF uses 'Due Prod.1', FF uses '\nDue Prod' or 'Due Prod.1')
+            # Robust extraction of present due balance
             due_present_val = row.get("Due Prod.1")
             if pd.isna(due_present_val):
                 due_present_val = row.get("\nDue Prod", row.get("Due Prod", 0))
@@ -371,12 +456,10 @@ def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
     if df_res.empty:
         return df_res, df_audit
 
-    # Deduplicate in case of duplicate entry rows in source sheets
     df_res = df_res.drop_duplicates(
         subset=["Floor", "Date", "Machine", "Order Name", "Item Name", "Acc Code", "Cavity", "CT", "Total Good"]
     ).reset_index(drop=True)
 
-    # Shift-isolated capacity calculation
     df_res["Helper"] = df_res["Floor"].astype(str) + "|" + df_res["Machine"].astype(str) + "|" + df_res["Date"].astype(str)
 
     s_col = df_res["Shift A Runtime"].fillna(0)
@@ -510,7 +593,7 @@ def compute_line_summary(df_subset):
 
 
 def compute_line_summary_mtd(df_subset):
-    """Computes MTD Line Summary summing daily active machine counts (Cumulative Machine-Days)."""
+    """Computes MTD Line Summary summing daily active machine counts."""
     records = []
     for lg, grp in df_subset.groupby("Line Group"):
         active_grp = grp[(grp["Total Good"] > 0) | (grp["Total Runtime (Hrs)"] > 0)]
@@ -971,7 +1054,6 @@ else:
 
                         st.divider()
 
-                        # 1-CLICK BATCH AUTO-CORRECT ALL TYPOS AT BOTTOM OF LIST
                         if st.button(
                             f"⚡ Auto-Correct All Typos ({len(df_typo_audit)})",
                             type="primary",
@@ -1682,7 +1764,6 @@ else:
                 st.caption("Inspect order demand completion milestones, item-wise daily machine allocations, and cumulative outputs.")
                 st.divider()
 
-                # Always use df_curr so unstarted items with 0 production remain visible
                 all_unique_orders = sorted([str(o).strip() for o in df_curr["Order Name"].dropna().unique() if str(o).strip()])
 
                 if not all_unique_orders:
@@ -1696,7 +1777,6 @@ else:
                             key="sel_job_analysis_order",
                         )
 
-                    # Query full parsed orders
                     df_ord_raw = df_curr[df_curr["Order Name"] == sel_order].copy()
                     df_ord_raw = df_ord_raw.sort_values("DateObj")
 
@@ -1726,7 +1806,6 @@ else:
                         i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
                         i_color = latest_item_entry.get("Color", "-")
 
-                        # Determine Completion Milestone
                         if i_due <= 0 and i_demand > 0:
                             i_status = f"✅ Done on {latest_item_entry['Date']}"
                         elif i_good_cum > 0:
@@ -1757,7 +1836,6 @@ else:
 
                     df_items_sum = pd.DataFrame(item_summary_records)
 
-                    # Top KPI Cards for Selected Order
                     tot_ord_demand = df_items_sum["Demand Qty"].sum()
                     tot_ord_prod = df_items_sum["Total Produced (Pcs)"].sum()
                     tot_ord_ton = df_items_sum["Total Produced (Ton)"].sum()
@@ -1811,7 +1889,7 @@ else:
                         hide_index=True,
                     )
 
-                    # Download EXCLUSIVELY the currently visible selected columns
+                    # Export ONLY currently visible columns
                     st.download_button(
                         f"📥 Export {sel_order} Item Summary (.xlsx)",
                         convert_df_to_excel_bytes(clean_items_df),
@@ -2027,20 +2105,16 @@ else:
                 st.caption("Consolidated master production rows across all dates (1 to N) from both floors with standardized machine SL and chess family mold integration.")
                 st.divider()
 
-                # Filter strictly for active records (T-Good > 0)
                 df_details_export = df_curr[df_curr["T-Good"] > 0].copy()
 
-                # 16 standard master columns
                 master_columns = [
                     "Date", "MC SL", "Order Name", "Acc Code", "Item Name",
                     "Unit Wt", "Color", "Cavity", "CT", "STD Cap/Shift",
                     "A Total", "A Good", "B Total", "B Good", "T-Good", "T-Bad"
                 ]
 
-                # Ensure machine SL is standardized to master position
                 df_details_export["MC SL"] = df_details_export["MC SL"].fillna(df_details_export["Machine"])
 
-                # Fill any missing columns with standard defaults
                 for col in master_columns:
                     if col not in df_details_export.columns:
                         df_details_export[col] = "-"
