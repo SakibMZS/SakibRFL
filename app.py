@@ -945,7 +945,7 @@ else:
                     "📊 As of Data (MTD)",
                     "📦 Job Order Analysis",
                     "🌗 Shiftwise Data",
-                    "📑 Monthly Master Export (Details)",
+                    "📑 Monthly Master Export",
                 ],
             )
 
