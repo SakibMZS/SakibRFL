@@ -2098,9 +2098,9 @@ else:
                     st.plotly_chart(fig_shift, use_container_width=True)
 
             # ============================================
-            # SECTION 12: MODULE 5 — MONTHLY MASTER EXPORT (DETAILS)
+            # SECTION 12: MODULE 5 — MONTHLY MASTER EXPORT
             # ============================================
-            elif nav_choice == "📑 Monthly Master Export (Details)":
+            elif nav_choice == "📑 Monthly Master Export":
                 st.markdown("### 📑 Monthly Master Production Ledger (`Details.xlsx`)")
                 st.caption("Consolidated master production rows across all dates (1 to N) from both floors with standardized machine SL and chess family mold integration.")
                 st.divider()
