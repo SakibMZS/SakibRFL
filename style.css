@@ -1,1300 +1,1480 @@
-/* =========================================================
-   PLASTIC-3 CONSOLE
-   Operations Console UI
-   CSS-only visual layer — no application logic changed
-   ========================================================= */
-
-/* =========================================================
-   1. DESIGN TOKENS
-   ========================================================= */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&family=Space+Grotesk:wght@500;600;700&display=swap');
-
-:root {
-    /* Surfaces */
-    --bg: #f3f6f9;
-    --surface: #ffffff;
-    --surface-alt: #f8fafc;
-    --surface-hover: #f1f5f9;
-    --surface-selected: #eef4ff;
-
-    /* Text */
-    --text: #172033;
-    --text-strong: #0f172a;
-    --text-soft: #475569;
-    --text-muted: #64748b;
-
-    /* Borders */
-    --border: #d9e1ea;
-    --border-soft: #e7edf3;
-    --border-strong: #c5d0dc;
-
-    /* Primary */
-    --primary: #155eef;
-    --primary-dark: #1049bd;
-    --primary-soft: #eaf1ff;
-
-    /* Semantic */
-    --success: #087f5b;
-    --success-soft: #e8f7f1;
-    --warning: #b45309;
-    --warning-soft: #fff7e6;
-    --danger: #c2413b;
-    --danger-soft: #fff0ef;
-
-    /* Geometry */
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 10px;
-
-    /* Shadows */
-    --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.055);
-    --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.075);
-
-    /* Motion */
-    --ease: 160ms ease;
-}
-
-
-/* =========================================================
-   2. GLOBAL APP
-   ========================================================= */
-
-.stApp {
-    background:
-        linear-gradient(
-            180deg,
-            #f8fafc 0%,
-            var(--bg) 100%
-        ) !important;
-
-    color: var(--text) !important;
-
-    font-family:
-        'Inter',
-        -apple-system,
-        BlinkMacSystemFont,
-        'Segoe UI',
-        sans-serif !important;
-}
-
-.stApp,
-.stApp * {
-    box-sizing: border-box;
-}
-
-.stApp * {
-    font-family:
-        'Inter',
-        -apple-system,
-        BlinkMacSystemFont,
-        'Segoe UI',
-        sans-serif !important;
-}
-
-
-/* Preserve Streamlit / Material icons */
-
-.stApp [data-testid="stIconMaterial"],
-.stApp i.material-icons,
-.stApp span[class*="icon"],
-.stApp [class*="material-icons"] {
-    font-family:
-        'Material Icons',
-        'Material Symbols Outlined',
-        'Material Symbols Rounded' !important;
-}
-
-
-/* =========================================================
-   3. STREAMLIT HEADER
-   ========================================================= */
-
-header[data-testid="stHeader"] {
-    display: none !important;
-}
-
-
-/* =========================================================
-   4. TYPOGRAPHY
-   ========================================================= */
-
-.stApp h1,
-.stApp h2,
-.stApp h3 {
-    font-family:
-        'Space Grotesk',
-        'Inter',
-        sans-serif !important;
-
-    letter-spacing: 0 !important;
-}
-
-.stApp h1 {
-    font-size: 1.65rem !important;
-    font-weight: 700 !important;
-    line-height: 1.2 !important;
-}
-
-.stApp h2 {
-    font-size: 1.3rem !important;
-    font-weight: 700 !important;
-    line-height: 1.25 !important;
-}
-
-.stApp h3 {
-    font-size: 1.05rem !important;
-    font-weight: 700 !important;
-    line-height: 1.3 !important;
-}
-
-.stApp h4,
-.stApp h5,
-.stApp h6 {
-    font-weight: 650 !important;
-    letter-spacing: 0 !important;
-}
-
-.stApp p,
-.stApp label,
-.stApp span,
-.stApp th,
-.stApp td,
-.stApp small {
-    color: var(--text) !important;
-}
-
-.stApp [data-testid="stCaptionContainer"],
-.stApp [data-testid="stCaptionContainer"] * {
-    color: var(--text-muted) !important;
-}
-
-
-/* =========================================================
-   5. MAIN CONTENT
-   ========================================================= */
-
-.block-container {
-    max-width: 1580px !important;
-
-    padding-top: 0.75rem !important;
-    padding-bottom: 2rem !important;
-
-    padding-left: 1.75rem !important;
-    padding-right: 1.75rem !important;
-}
-
-
-/* Main horizontal separators */
-
-.stApp hr {
-    border: 0 !important;
-    border-top: 1px solid var(--border) !important;
-
-    margin: 0.7rem 0 !important;
-}
-
-
-/* =========================================================
-6. SIDEBAR
-========================================================= */
-
-/*
-Dashboard:
-    Keep the native sidebar visible because the application
-    explicitly renders its own controls through st.sidebar.
-
-Landing:
-    Completely remove the native sidebar so there is no:
-    - gray sidebar
-    - blank sidebar
-    - sidebar border
-    - reserved sidebar area
-*/
-
-/* ---------------------------------------------------------
-Native sidebar visual styling
---------------------------------------------------------- */
-
-section[data-testid="stSidebar"] {
-    background:
-        linear-gradient(
-            180deg,
-            #f9fbfd 0%,
-            #f3f6f9 100%
-        ) !important;
-
-    border-right: 1px solid var(--border) !important;
-
-    box-shadow:
-        5px 0 18px rgba(15, 23, 42, 0.045) !important;
-}
-
-/* ---------------------------------------------------------
-LANDING PAGE — COMPLETELY REMOVE SIDEBAR
---------------------------------------------------------- */
-
-body:has(.landing-page-marker)
-section[data-testid="stSidebar"] {
-    display: none !important;
-}
-
-/* Remove the collapsed-sidebar control as well. */
-body:has(.landing-page-marker)
-[data-testid="stSidebarCollapsedControl"] {
-    display: none !important;
-}
-
-/* Prevent residual horizontal space reserved for sidebar. */
-body:has(.landing-page-marker)
-[data-testid="stAppViewContainer"] {
-    margin-left: 0 !important;
-    width: 100% !important;
-}
-
-body:has(.landing-page-marker)
-[data-testid="stMain"] {
-    margin-left: 0 !important;
-    width: 100% !important;
-}
-
-/* ---------------------------------------------------------
-AUTOMATIC MULTIPAGE NAVIGATION
----------------------------------------------------------
-
-The project contains:
-
-    pages/sms.py
-
-Streamlit therefore creates its own automatic page-navigation
-area inside the native sidebar.
-
-We do not need that navigation because the application already
-has its own sidebar controls and its own SMS launch button.
-
-This hides ONLY Streamlit's automatic page navigation.
-It does NOT hide the sidebar itself.
-*/
-
-section[data-testid="stSidebar"]
-[data-testid="stSidebarNav"] {
-    display: none !important;
-}
-
-/* ---------------------------------------------------------
-Sidebar content positioning
---------------------------------------------------------- */
-
-section[data-testid="stSidebar"]
-[data-testid="stSidebarContent"] {
-    padding-top: 0 !important;
-}
-
-section[data-testid="stSidebar"] > div:first-child {
-    padding-top: 0 !important;
-}
-
-/* ---------------------------------------------------------
-Sidebar text
---------------------------------------------------------- */
-
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3,
-section[data-testid="stSidebar"] h4,
-section[data-testid="stSidebar"] h5,
-section[data-testid="stSidebar"] h6 {
-    color: var(--text) !important;
-}
-
-section[data-testid="stSidebar"] label {
-    color: var(--text-soft) !important;
-    font-weight: 600 !important;
-}
-
-/* ---------------------------------------------------------
-Sidebar branding
---------------------------------------------------------- */
-
-section[data-testid="stSidebar"] [data-testid="stColumn"] {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stImage"] {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stImage"] img {
-    width: auto !important;
-    max-height: 48px !important;
-
-    object-fit: contain !important;
-
-    margin: 0 !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stColumn"] h3 {
-    font-family:
-        'Space Grotesk',
-        'Inter',
-        sans-serif !important;
-
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-
-    letter-spacing: 0 !important;
-    line-height: 1.15 !important;
-
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stColumn"] p {
-    font-size: 0.72rem !important;
-    line-height: 1.2 !important;
-
-    margin: 0.1rem 0 0 !important;
-    padding: 0 !important;
-
-    color: var(--text-muted) !important;
-}
-
-/* ---------------------------------------------------------
-Sidebar separators
---------------------------------------------------------- */
-
-section[data-testid="stSidebar"] hr {
-    border-top-color: var(--border) !important;
-    margin: 0.65rem 0 !important;
-}
-
-/* =========================================================
-   7. SIDEBAR RADIO / NAVIGATION
-   ========================================================= */
-
-/* Radio group container */
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"] > div[role="radiogroup"] {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 3px !important;
-
-    padding: 3px !important;
-
-    background: transparent !important;
-    border: 0 !important;
-}
-
-
-/* Individual navigation item */
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label {
-    width: 100% !important;
-
-    min-height: 38px !important;
-
-    display: flex !important;
-    align-items: center !important;
-
-    padding: 0.5rem 0.7rem !important;
-
-    border-radius: var(--radius-md) !important;
-
-    border: 1px solid transparent !important;
-
-    background: transparent !important;
-
-    transition:
-        background var(--ease),
-        border-color var(--ease),
-        box-shadow var(--ease),
-        transform var(--ease) !important;
-}
-
-
-/* Hide native radio indicator */
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label
-input {
-    position: absolute !important;
-    opacity: 0 !important;
-}
-
-
-/* Navigation text */
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label p,
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label span {
-    color: var(--text-soft) !important;
-
-    font-size: 0.84rem !important;
-    font-weight: 600 !important;
-
-    transition:
-        color var(--ease) !important;
-}
-
-
-/* Hover */
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:hover {
-    background: #edf2f7 !important;
-    border-color: var(--border-soft) !important;
-}
-
-
-/* Selected */
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:has(input:checked) {
-    background: var(--primary-soft) !important;
-
-    border-color: #c9d9ff !important;
-
-    box-shadow:
-        inset 3px 0 0 var(--primary),
-        0 1px 2px rgba(15, 23, 42, 0.035) !important;
-}
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:has(input:checked) p,
-section[data-testid="stSidebar"]
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:has(input:checked) span {
-    color: var(--primary-dark) !important;
-    font-weight: 700 !important;
-}
-
-
-/* =========================================================
-   8. FLOOR SELECTOR
-   ========================================================= */
-
-section[data-testid="stSidebar"]
-[data-testid="stRadio"] + div {
-    margin-top: 0 !important;
-}
-
-
-/* Horizontal radio groups */
-
-[data-testid="stRadio"] > div[role="radiogroup"] {
-    display: flex !important;
-    align-items: center !important;
-
-    gap: 3px !important;
-
-    padding: 3px !important;
-
-    background: #e9eef4 !important;
-
-    border: 1px solid #d7e0e8 !important;
-
-    border-radius: var(--radius-md) !important;
-}
-
-
-/* Horizontal radio labels */
-
-[data-testid="stRadio"] > div[role="radiogroup"] > label {
-    border-radius: 6px !important;
-
-    padding: 0.42rem 0.72rem !important;
-
-    min-height: 34px !important;
-
-    transition:
-        background var(--ease),
-        box-shadow var(--ease),
-        color var(--ease) !important;
-}
-
-
-/* Hide native radio */
-
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label
-input {
-    position: absolute !important;
-    opacity: 0 !important;
-}
-
-
-/* Label text */
-
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label p,
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label span {
-    color: var(--text-soft) !important;
-
-    font-size: 0.8rem !important;
-    font-weight: 600 !important;
-}
-
-
-/* Hover */
-
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:hover {
-    background: rgba(255, 255, 255, 0.72) !important;
-}
-
-
-/* Active */
-
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:has(input:checked) {
-    background: #ffffff !important;
-
-    box-shadow:
-        0 1px 4px rgba(15, 23, 42, 0.10) !important;
-}
-
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:has(input:checked) p,
-[data-testid="stRadio"]
-> div[role="radiogroup"]
-> label:has(input:checked) span {
-    color: var(--text-strong) !important;
-    font-weight: 700 !important;
-}
-
-
-/* =========================================================
-   9. TOGGLE
-   ========================================================= */
-
-[data-testid="stToggle"] label {
-    font-size: 0.8rem !important;
-    font-weight: 600 !important;
-}
-
-
-/* =========================================================
-   10. BUTTONS
-   ========================================================= */
-
-.stButton > button,
-.stDownloadButton > button,
-[data-testid="stDownloadButton"] button {
-    min-height: 2.4rem !important;
-
-    padding:
-        0.45rem
-        0.85rem !important;
-
-    border-radius: var(--radius-md) !important;
-
-    border: 1px solid var(--border-strong) !important;
-
-    background: #ffffff !important;
-
-    color: var(--text-strong) !important;
-
-    font-size: 0.82rem !important;
-    font-weight: 650 !important;
-
-    box-shadow: var(--shadow-xs) !important;
-
-    transition:
-        background var(--ease),
-        border-color var(--ease),
-        box-shadow var(--ease),
-        transform var(--ease) !important;
-}
-
-
-/* Button text */
-
-.stButton > button *,
-.stDownloadButton > button *,
-[data-testid="stDownloadButton"] button * {
-    color: inherit !important;
-}
-
-
-/* Hover */
-
-.stButton > button:hover,
-.stDownloadButton > button:hover,
-[data-testid="stDownloadButton"] button:hover {
-    background: var(--surface-hover) !important;
-
-    border-color: #aebdcb !important;
-
-    box-shadow:
-        0 3px 9px rgba(15, 23, 42, 0.09) !important;
-
-    transform: translateY(-1px);
-}
-
-
-/* Focus */
-
-.stButton > button:focus-visible,
-.stDownloadButton > button:focus-visible,
-[data-testid="stDownloadButton"] button:focus-visible {
-    outline: 2px solid rgba(21, 94, 239, 0.35) !important;
-    outline-offset: 2px !important;
-}
-
-
-/* Primary */
-
-.stButton > button[kind="primary"],
-.stButton > button[data-testid="baseButton-primary"] {
-    background: var(--primary) !important;
-
-    border-color: var(--primary) !important;
-
-    color: #ffffff !important;
-
-    box-shadow:
-        0 3px 9px rgba(21, 94, 239, 0.20) !important;
-}
-
-.stButton > button[kind="primary"]:hover,
-.stButton > button[data-testid="baseButton-primary"]:hover {
-    background: var(--primary-dark) !important;
-
-    border-color: var(--primary-dark) !important;
-
-    box-shadow:
-        0 5px 13px rgba(21, 94, 239, 0.24) !important;
-}
-
-.stButton > button[kind="primary"] *,
-.stButton > button[data-testid="baseButton-primary"] * {
-    color: #ffffff !important;
-}
-
-
-/* =========================================================
-   11. POPOVERS
-   ========================================================= */
-
-[data-testid="stPopover"] {
-    display: inline-block !important;
-    width: auto !important;
-}
-
-
-/* Popover trigger */
-
-[data-testid="stPopover"] > button {
-    display: inline-flex !important;
-
-    align-items: center !important;
-    justify-content: center !important;
-
-    width: auto !important;
-    min-width: 128px !important;
-
-    min-height: 2.4rem !important;
-
-    padding:
-        0.42rem
-        0.85rem !important;
-
-    white-space: nowrap !important;
-
-    border-radius: var(--radius-md) !important;
-
-    border: 1px solid var(--border-strong) !important;
-
-    background: #ffffff !important;
-
-    color: var(--text-soft) !important;
-
-    font-size: 0.8rem !important;
-
-    font-weight: 650 !important;
-
-    transition:
-        background var(--ease),
-        border-color var(--ease),
-        box-shadow var(--ease) !important;
-}
-
-[data-testid="stPopover"] > button:hover {
-    background: var(--surface-hover) !important;
-
-    border-color: #aebdcb !important;
-
-    box-shadow: var(--shadow-sm) !important;
-}
-
-[data-testid="stPopover"] > button * {
-    color: var(--text-soft) !important;
-}
-
-
-/* =========================================================
-   12. INPUTS / SELECTBOX
-   ========================================================= */
-
-[data-baseweb="select"] > div,
-[data-testid="stTextInput"] input,
-[data-testid="stNumberInput"] input,
-[data-testid="stDateInput"] input {
-    background: #ffffff !important;
-
-    color: var(--text-strong) !important;
-
-    border: 1px solid var(--border-strong) !important;
-
-    border-radius: var(--radius-md) !important;
-
-    box-shadow: none !important;
-
-    transition:
-        border-color var(--ease),
-        box-shadow var(--ease) !important;
-}
-
-
-/* Input focus */
-
-[data-testid="stTextInput"] input:focus,
-[data-testid="stNumberInput"] input:focus,
-[data-testid="stDateInput"] input:focus {
-    border-color: var(--primary) !important;
-
-    box-shadow:
-        0 0 0 2px rgba(21, 94, 239, 0.12) !important;
-}
-
-
-/* Select text */
-
-[data-baseweb="select"] input,
-[data-baseweb="select"] span,
-[data-baseweb="select"] div {
-    color: var(--text-strong) !important;
-}
-
-
-/* =========================================================
-   13. FILE UPLOADER
-   ========================================================= */
-
-[data-testid="stFileUploader"] {
-    background: var(--surface) !important;
-
-    border: 1px dashed #aebdcb !important;
-
-    border-radius: var(--radius-lg) !important;
-
-    padding: 0.9rem !important;
-
-    transition:
-        border-color var(--ease),
-        background var(--ease),
-        box-shadow var(--ease) !important;
-}
-
-[data-testid="stFileUploader"]:hover {
-    background: #fbfdff !important;
-
-    border-color: var(--primary) !important;
-
-    box-shadow:
-        0 0 0 2px rgba(21, 94, 239, 0.06) !important;
-}
-
-[data-testid="stFileUploader"] * {
-    color: var(--text) !important;
-}
-
-
-/* =========================================================
-   14. SETUP CARDS
-   ========================================================= */
-
-.setup-card {
-    position: relative;
-
-    overflow: hidden;
-
-    background: #ffffff !important;
-
-    padding: 1.15rem 1.25rem !important;
-
-    border-radius: var(--radius-lg) !important;
-
-    border: 1px solid var(--border) !important;
-
-    box-shadow: var(--shadow-sm) !important;
-
-    margin-bottom: 0.8rem !important;
-}
-
-
-/* Accent edge */
-
-.setup-card.ff {
-    border-left: 4px solid var(--primary) !important;
-    border-top: 1px solid var(--border) !important;
-}
-
-.setup-card.gf {
-    border-left: 4px solid var(--success) !important;
-    border-top: 1px solid var(--border) !important;
-}
-
-
-/* =========================================================
-   15. METRICS / KPI STRIP
-   ========================================================= */
-
-[data-testid="stMetric"] {
-    position: relative;
-
-    background: #ffffff !important;
-
-    border: 1px solid var(--border) !important;
-
-    border-radius: var(--radius-lg) !important;
-
-    padding:
-        0.72rem
-        0.9rem !important;
-
-    min-height: 92px !important;
-
-    overflow: hidden !important;
-
-    box-shadow: var(--shadow-xs) !important;
-
-    transition:
-        border-color var(--ease),
-        box-shadow var(--ease),
-        transform var(--ease) !important;
-}
-
-
-/* Subtle top accent */
-
-[data-testid="stMetric"]::before {
-    content: "";
-
-    position: absolute;
-
-    top: 0;
-    left: 0;
-    right: 0;
-
-    height: 2px;
-
-    background: #d7e2ef;
-}
-
-
-/* KPI hover */
-
-[data-testid="stMetric"]:hover {
-    border-color: #c7d4e0 !important;
-
-    box-shadow: var(--shadow-sm) !important;
-
-    transform: translateY(-1px);
-}
-
-
-/* Metric label */
-
-[data-testid="stMetricLabel"] {
-    color: var(--text-muted) !important;
-
-    font-size: 0.72rem !important;
-
-    font-weight: 650 !important;
-
-    text-transform: uppercase;
-
-    letter-spacing: 0.035em !important;
-}
-
-
-/* Metric value */
-
-[data-testid="stMetricValue"] {
-    color: var(--text-strong) !important;
-
-    font-family:
-        'Space Grotesk',
-        'Inter',
-        sans-serif !important;
-
-    font-size: 1.48rem !important;
-
-    font-weight: 700 !important;
-
-    letter-spacing: 0 !important;
-
-    line-height: 1.15 !important;
-
-    white-space: nowrap !important;
-
-    overflow: visible !important;
-}
-
-
-/* Metric delta */
-
-[data-testid="stMetricDelta"] {
-    font-size: 0.72rem !important;
-}
-
-
-/* =========================================================
-   16. DATAFRAME / DATA TABLE
-   ========================================================= */
-
-[data-testid="stDataFrame"] {
-    display: flex !important;
-
-    width: 100% !important;
-
-    justify-content: center !important;
-
-    background: #ffffff !important;
-
-    border: 1px solid var(--border) !important;
-
-    border-radius: var(--radius-lg) !important;
-
-    overflow: hidden !important;
-
-    box-shadow: var(--shadow-xs) !important;
-}
-
-
-/* Table text */
-
-[data-testid="stDataFrame"] * {
-    font-size: 0.76rem !important;
-}
-
-
-/* Column headers */
-
-[data-testid="stDataFrame"]
-div[role="columnheader"] {
-    background: #f4f7fa !important;
-
-    border-bottom: 1px solid var(--border) !important;
-}
-
-[data-testid="stDataFrame"]
-div[role="columnheader"],
-[data-testid="stDataFrame"]
-div[role="columnheader"] * {
-    text-align: center !important;
-
-    justify-content: center !important;
-
-    color: #334155 !important;
-
-    font-weight: 700 !important;
-}
-
-
-/* Table cells */
-
-[data-testid="stDataFrame"]
-div[role="gridcell"] {
-    color: var(--text) !important;
-}
-
-
-/* =========================================================
-   17. ALERTS
-   ========================================================= */
-
-[data-testid="stAlert"] {
-    border-radius: var(--radius-md) !important;
-
-    border: 1px solid var(--border) !important;
-
-    box-shadow: var(--shadow-xs) !important;
-
-    padding: 0.7rem 0.85rem !important;
-}
-
-
-/* =========================================================
-   18. EXPANDERS
-   ========================================================= */
-
-[data-testid="stExpander"] {
-    background: #ffffff !important;
-
-    border: 1px solid var(--border) !important;
-
-    border-radius: var(--radius-md) !important;
-
-    box-shadow: var(--shadow-xs) !important;
-
-    overflow: hidden !important;
-}
-
-[data-testid="stExpander"]:hover {
-    border-color: var(--border-strong) !important;
-}
-
-
-/* =========================================================
-   19. PLOTLY CHARTS
-   ========================================================= */
-
-.stPlotlyChart {
-    background: #ffffff !important;
-
-    border: 1px solid var(--border) !important;
-
-    border-radius: var(--radius-lg) !important;
-
-    padding: 0.25rem !important;
-
-    box-shadow: var(--shadow-xs) !important;
-
-    overflow: hidden !important;
-}
-
-
-/* =========================================================
-   20. WIDGET LABELS
-   ========================================================= */
-
-[data-testid="stWidgetLabel"] p,
-[data-testid="stWidgetLabel"] label {
-    color: var(--text-soft) !important;
-
-    font-size: 0.78rem !important;
-
-    font-weight: 650 !important;
-
-    letter-spacing: 0 !important;
-}
-
-
-/* =========================================================
-   21. CHECKBOXES
-   ========================================================= */
-
-[data-testid="stCheckbox"] label {
-    font-size: 0.8rem !important;
-
-    font-weight: 600 !important;
-
-    color: var(--text-soft) !important;
-}
-
-
-/* =========================================================
-   22. NUMBER INPUT BUTTONS
-   ========================================================= */
-
-[data-testid="stNumberInput"] button {
-    border-color: var(--border) !important;
-
-    background: #f8fafc !important;
-
-    color: var(--text-soft) !important;
-
-    transition:
-        background var(--ease),
-        color var(--ease) !important;
-}
-
-[data-testid="stNumberInput"] button:hover {
-    background: #eaf0f5 !important;
-
-    color: var(--text-strong) !important;
-}
-
-
-/* =========================================================
-   23. SELECTBOX / POPOVER MENUS
-   ========================================================= */
-
-[data-baseweb="popover"] {
-    border-radius: var(--radius-md) !important;
-
-    border: 1px solid var(--border) !important;
-
-    box-shadow:
-        0 12px 30px rgba(15, 23, 42, 0.13) !important;
-}
-
-
-/* =========================================================
-   24. FOCUS STATES
-   ========================================================= */
-
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-    outline: 2px solid rgba(21, 94, 239, 0.38) !important;
-
-    outline-offset: 2px !important;
-}
-
-
-/* =========================================================
-   25. SCROLLBARS
-   ========================================================= */
-
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #edf1f5;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #bcc8d4;
-
-    border-radius: 8px;
-
-    border: 2px solid #edf1f5;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #98a9b9;
-}
-
-
-/* =========================================================
-   26. RESPONSIVE — TABLET
-   ========================================================= */
-
-@media (max-width: 1100px) {
-
-    .block-container {
-        padding-left: 1.15rem !important;
-        padding-right: 1.15rem !important;
-    }
-
-    [data-testid="stMetric"] {
-        min-height: 86px !important;
-
-        padding:
-            0.65rem
-            0.75rem !important;
-    }
-
-    [data-testid="stMetricValue"] {
-        font-size: 1.3rem !important;
-    }
-}
-
-
-/* =========================================================
-   27. RESPONSIVE — MOBILE
-   ========================================================= */
-
-@media (max-width: 900px) {
-
-    .block-container {
-        padding-left: 0.85rem !important;
-        padding-right: 0.85rem !important;
-
-        padding-top: 0.55rem !important;
-    }
-
-    .stApp h1 {
-        font-size: 1.4rem !important;
-    }
-
-    .stApp h2 {
-        font-size: 1.18rem !important;
-    }
-
-    [data-testid="stRadio"] > div[role="radiogroup"] {
-        width: 100% !important;
-
-        overflow-x: auto !important;
-
-        scrollbar-width: thin !important;
-    }
-
-    [data-testid="stRadio"]
-    > div[role="radiogroup"]
-    > label {
-        flex: 0 0 auto !important;
-
-        white-space: nowrap !important;
-    }
-
-    [data-testid="stMetric"] {
-        min-height: 80px !important;
-    }
-
-    [data-testid="stMetricValue"] {
-        font-size: 1.18rem !important;
-    }
-
-    [data-testid="stDataFrame"] * {
-        font-size: 0.72rem !important;
-    }
-}
-
-
-/* =========================================================
-   28. REDUCE MOTION FOR ACCESSIBILITY
-   ========================================================= */
-
-@media (prefers-reduced-motion: reduce) {
-
-    *,
-    *::before,
-    *::after {
-        transition: none !important;
-        animation: none !important;
-        scroll-behavior: auto !important;
-    }
-}
+# ============================================
+# SECTION 1: IMPORTS & STREAMLIT SETUP
+# ============================================
+import io
+import os
+import re
+from datetime import datetime
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+
+from config import (
+    MACHINE_MASTER,
+    EXCEL_SIZES,
+    SORTED_SIZES,
+    MC_COUNT_BY_SIZE,
+    resolve_machine_info,
+)
+from chess import consolidate_chess_family_mold
+
+st.set_page_config(
+    page_title="Plastic-3 Operations Console | FF & GF",
+    page_icon="🏭",
+    layout="wide",
+    initial_sidebar_state="locked",
+)
+
+
+def load_css(file_name="style.css"):
+    if os.path.exists(file_name):
+        with open(file_name) as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+
+load_css("style.css")
+
+if "typo_overrides" not in st.session_state:
+    st.session_state["typo_overrides"] = {}
+
+
+# ============================================
+# SECTION 2: PARSING HELPERS & DATE PARSER
+# ============================================
+def extract_date_from_sheet_name(sheet_name):
+    """
+    Ultra-resilient sheet date parser.
+    Quarantines non-production tabs and enforces exact date patterns.
+    """
+    if not isinstance(sheet_name, str):
+        return None
+
+    s_clean = sheet_name.strip().replace("\xa0", " ")
+    s_lower = s_clean.lower()
+
+    quarantine_keywords = [
+        "util", "handover", "inventory", "inv", "pf", "rel",
+        "sheet", "schedule", "need", "pet"
+    ]
+    if any(k in s_lower for k in quarantine_keywords):
+        return None
+
+    match = re.search(r"(\b\d{1,2})[-/\._\s](\d{1,2})[-/\._\s](\d{2,4}\b)", s_clean)
+    if match:
+        d_str, m_str, y_str = match.group(1), match.group(2), match.group(3)
+        try:
+            d, m, y = int(d_str), int(m_str), int(y_str)
+            if y < 100:
+                y += 2000
+            if 1 <= d <= 31 and 1 <= m <= 12 and 2000 <= y <= 2099:
+                return datetime(y, m, d)
+        except Exception:
+            pass
+
+    return None
+
+
+def extract_excel_mc_size(mc_sl, size_col_val=None):
+    """Extracts machine tonnage size class prioritizing exact machine registry."""
+    if pd.notna(size_col_val):
+        try:
+            return str(int(float(size_col_val)))
+        except (ValueError, TypeError):
+            pass
+
+    match = resolve_machine_info(mc_sl)
+    if match:
+        pos = match["position"].upper()
+        for sz in SORTED_SIZES:
+            if sz in pos:
+                return sz
+
+    mc_str = str(mc_sl).strip().upper()
+    if "119" in mc_str:
+        return "120"
+
+    for sz in SORTED_SIZES:
+        if sz in mc_str:
+            return sz
+    return "Other"
+
+
+def derive_line_group(floor_code, mc_sl):
+    mc_str = str(mc_sl).strip().upper()
+    prefix = mc_str[0] if len(mc_str) > 0 else ""
+
+    if prefix in ["A", "B"]:
+        line_code = "Line A-B"
+    elif prefix in ["C", "D"]:
+        line_code = "Line C-D"
+    elif prefix in ["E", "F"]:
+        line_code = "Line E-F"
+    else:
+        line_code = "Line Other"
+
+    return f"{floor_code} {line_code}"
+
+
+def convert_df_to_excel_bytes(df):
+    """
+    Exports DataFrame with standard company formatting:
+    - Yellow Header Fill (#FFFF00) with Bold Black Text
+    - Clear gridlines & number formatting (#,##0)
+    - Sub Total Row with Bold Red Text (#FF0000) & double bottom accounting underline
+    """
+    output = io.BytesIO()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Report"
+
+    header_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="000000")
+
+    data_font = Font(name="Calibri", size=11, bold=False, color="000000")
+    total_font = Font(name="Calibri", size=11, bold=True, color="FF0000")
+
+    thin_border_side = Side(border_style="thin", color="BFBFBF")
+    cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+
+    double_bottom_side = Side(border_style="double", color="000000")
+    total_top_side = Side(border_style="thin", color="000000")
+    total_border = Border(left=thin_border_side, right=thin_border_side, top=total_top_side, bottom=double_bottom_side)
+
+    for col_num, col_name in enumerate(df.columns, 1):
+        cell = ws.cell(row=1, column=col_num, value=col_name)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = cell_border
+
+    for row_idx, row in df.iterrows():
+        excel_row_num = row_idx + 2
+        is_total_row = any("sub total" in str(v).lower() for v in row.values)
+
+        for col_idx, (col_name, val) in enumerate(row.items(), 1):
+            cell = ws.cell(row=excel_row_num, column=col_idx)
+            col_lower = str(col_name).lower()
+            val_str = str(val).strip()
+
+            if is_total_row:
+                cell.font = total_font
+                cell.border = total_border
+            else:
+                cell.font = data_font
+                cell.border = cell_border
+
+            if isinstance(val, (int, float)) and pd.notna(val):
+                cell.value = val
+                if any(k in col_lower for k in ["qty", "pcs", "good", "due", "demand", "produced", "bad", "rej"]):
+                    cell.number_format = '#,##0'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                elif any(k in col_lower for k in ["%", "percent", "util", "fulfill", "ach"]):
+                    cell.number_format = '0.00%'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                else:
+                    cell.number_format = '#,##0.00'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+            else:
+                clean_num_str = val_str.replace(",", "").replace("%", "")
+                try:
+                    num_val = float(clean_num_str)
+                    if "%" in val_str:
+                        cell.value = num_val / 100.0
+                        cell.number_format = '0.00%'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    elif clean_num_str.isdigit():
+                        cell.value = int(clean_num_str)
+                        cell.number_format = '#,##0'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        cell.value = num_val
+                        cell.number_format = '#,##0.00'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                except ValueError:
+                    cell.value = val_str
+                    if is_total_row:
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                    elif col_lower in ["acc code", "status", "date", "mc sl"]:
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                    else:
+                        cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    wb.save(output)
+    return output.getvalue()
+
+
+# ============================================
+# SECTION 3: DATA PARSING & SHIFT-ISOLATED ENGINE
+# ============================================
+@st.cache_data
+def load_and_parse_floor_data(file_bytes, floor_label, typo_overrides=None):
+    """Parses raw Excel floor production sheets safely, bypassing corrupt auto-filters."""
+    if typo_overrides is None:
+        typo_overrides = {}
+
+    file_stream = io.BytesIO(file_bytes)
+    xls = pd.ExcelFile(file_stream)
+
+    valid_sheets = []
+    all_parsed_dates = []
+
+    for s in xls.sheet_names:
+        dt = extract_date_from_sheet_name(s)
+        if dt:
+            valid_sheets.append((s, dt))
+            all_parsed_dates.append(dt)
+
+    if all_parsed_dates:
+        latest_date = max(all_parsed_dates)
+        latest_month = latest_date.month
+        latest_year = latest_date.year
+
+        date_map = {}
+        for s, dt in valid_sheets:
+            if dt.month == latest_month and dt.year == latest_year:
+                date_key = dt.strftime("%Y-%m-%d")
+                if date_key not in date_map:
+                    date_map[date_key] = (s, dt)
+
+        date_sheets = sorted(list(date_map.values()), key=lambda x: x[1])
+    else:
+        date_sheets = []
+
+    all_records = []
+    typo_logs = []
+
+    for sheet, dt_val in date_sheets:
+        dt_str_clean = dt_val.strftime("%d-%m-%Y")
+        try:
+            df = pd.read_excel(xls, sheet_name=sheet).dropna(how="all").reset_index(drop=True)
+        except Exception:
+            continue
+
+        if "MC SL" not in df.columns or "Order Name" not in df.columns:
+            continue
+
+        df = df[df["Order Name"].notna()].copy()
+        df["Order Name"] = df["Order Name"].astype(str).str.strip()
+        df = df[~df["Order Name"].isin(["", "nan", "None", "-", "0", "Order Name"])]
+
+        if df.empty:
+            continue
+
+        df = consolidate_chess_family_mold(df)
+
+        for idx, row in df.iterrows():
+            raw_val = row.get("MC SL")
+            if isinstance(raw_val, float) and raw_val.is_integer():
+                raw_mc_sl = str(int(raw_val)).strip()
+            else:
+                raw_mc_sl = str(raw_val).strip() if pd.notna(raw_val) else "Unassigned"
+
+            order = str(row.get("Order Name")).strip()
+            item = str(row.get("Item Name", "")).strip()
+
+            color = "-"
+            for c_col in df.columns:
+                if "color" in str(c_col).lower() or "colo" in str(c_col).lower():
+                    if pd.notna(row.get(c_col)) and str(row.get(c_col)).strip() not in ["", "nan", "None"]:
+                        color = str(row.get(c_col)).strip()
+                        break
+
+            acc_code_val = row.get("Acc Code")
+            try:
+                acc_code = str(int(float(acc_code_val))) if pd.notna(acc_code_val) else "-"
+            except (ValueError, TypeError):
+                acc_code = str(acc_code_val).strip() if pd.notna(acc_code_val) else "-"
+
+            override_key = f"{dt_str_clean}_{floor_label}_{raw_mc_sl}_{order}_{idx}"
+            if override_key in typo_overrides:
+                mc_sl = typo_overrides[override_key].get("mc_sl", raw_mc_sl)
+                ct_override = typo_overrides[override_key].get("ct", None)
+                cavity_override = typo_overrides[override_key].get("cavity", None)
+            else:
+                mc_sl = raw_mc_sl
+                ct_override = None
+                cavity_override = None
+
+            cust_prefix = (
+                order.split("-")[0].strip().upper() if "-" in order else order
+            )
+            mc_size = extract_excel_mc_size(mc_sl, row.get("Size"))
+            line_group = derive_line_group(floor_label, mc_sl)
+
+            ct_raw = ct_override if ct_override is not None else row.get("CT")
+            ct_num = pd.to_numeric(ct_raw, errors="coerce")
+            ct = 0.0 if pd.isna(ct_num) else float(ct_num)
+
+            cavity_raw = cavity_override if cavity_override is not None else row.get("Cavity")
+            cavity_num = pd.to_numeric(cavity_raw, errors="coerce")
+            cavity = 0.0 if pd.isna(cavity_num) else float(cavity_num)
+
+            unit_wt_num = pd.to_numeric(row.get("Unit Wt"), errors="coerce")
+            unit_wt_kg = 0.0 if pd.isna(unit_wt_num) else float(unit_wt_num)
+
+            a_tot_val = row.get("T Counter", row.get("Counter", row.get("A Total", 0)))
+            a_tot = 0.0 if pd.isna(pd.to_numeric(a_tot_val, errors="coerce")) else float(a_tot_val)
+
+            b_tot_val = row.get("Total Counter B", row.get("Counter B", row.get("B Total", 0)))
+            b_tot = 0.0 if pd.isna(pd.to_numeric(b_tot_val, errors="coerce")) else float(b_tot_val)
+
+            a_good_num = pd.to_numeric(row.get("A-Good"), errors="coerce")
+            a_good = 0.0 if pd.isna(a_good_num) else float(a_good_num)
+
+            a_rej_num = pd.to_numeric(row.get("A-Rejec"), errors="coerce")
+            a_rej = 0.0 if pd.isna(a_rej_num) else float(a_rej_num)
+
+            b_good_num = pd.to_numeric(row.get("B-Good"), errors="coerce")
+            b_good = 0.0 if pd.isna(b_good_num) else float(b_good_num)
+
+            b_rej_val = row.get("B-Reject")
+            if pd.isna(b_rej_val):
+                b_rej_val = row.get("B-Reject Cause of Less Prod")
+            b_rej_num = pd.to_numeric(b_rej_val, errors="coerce")
+            b_rej = 0.0 if pd.isna(b_rej_num) else float(b_rej_num)
+
+            is_size_typo = mc_size not in EXCEL_SIZES
+            is_missing_params = (a_good > 0 or b_good > 0) and (ct <= 0 or cavity <= 0)
+
+            master_match = resolve_machine_info(raw_mc_sl, floor_label)
+            suggested_mc = master_match["position"] if master_match else raw_mc_sl
+
+            if is_size_typo or is_missing_params:
+                issue_msg = (
+                    f"Invalid Machine SL / Size '{mc_sl}' (Extracted Size: '{mc_size}')"
+                    if is_size_typo
+                    else f"Missing CT/Cavity (CT: {ct}, Cavity: {cavity}) on active run"
+                )
+                typo_logs.append({
+                    "Key": override_key,
+                    "Date": dt_str_clean,
+                    "Floor": floor_label,
+                    "Machine SL": raw_mc_sl,
+                    "Order Name": order,
+                    "Acc Code": acc_code,
+                    "Issue Detected": issue_msg,
+                    "Suggested MC SL": suggested_mc,
+                    "Current MC SL": mc_sl,
+                    "Current CT": ct,
+                    "Current Cavity": cavity,
+                })
+
+            std_cap_shift = (
+                (43200.0 / ct) * cavity if ct > 0 and cavity > 0 else 0.0
+            )
+
+            demand_num = pd.to_numeric(row.get("Demand"), errors="coerce")
+            demand_qty = 0.0 if pd.isna(demand_num) else float(demand_num)
+
+            up_to_prod_num = pd.to_numeric(row.get("Up to Prod"), errors="coerce")
+            up_to_prod = 0.0 if pd.isna(up_to_prod_num) else float(up_to_prod_num)
+
+            due_prev_num = pd.to_numeric(row.get("Due Prod"), errors="coerce")
+            due_prod_prev = 0.0 if pd.isna(due_prev_num) else float(due_prev_num)
+
+            last_day_col_num = pd.to_numeric(row.get("Last Day Prod"), errors="coerce")
+            last_day_prod_col = 0.0 if pd.isna(last_day_col_num) else float(last_day_col_num)
+
+            due_present_val = row.get("Due Prod.1")
+            if pd.isna(due_present_val):
+                due_present_val = row.get("\nDue Prod", row.get("Due Prod", 0))
+            due_present_num = pd.to_numeric(due_present_val, errors="coerce")
+            due_prod_present = 0.0 if pd.isna(due_present_num) else float(due_present_num)
+
+            a_runtime = (
+                (a_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
+            )
+            a_prod_ton = (a_good * unit_wt_kg) / 1000.0
+
+            b_runtime = (
+                (b_good * 12.0) / std_cap_shift if std_cap_shift > 0 else 0.0
+            )
+            b_prod_ton = (b_good * unit_wt_kg) / 1000.0
+
+            total_good = a_good + b_good
+            total_rej = a_rej + b_rej
+            total_bad = (a_tot + b_tot) - total_good if (a_tot + b_tot) > total_good else total_rej
+            total_runtime = a_runtime + b_runtime
+            total_prod_ton = a_prod_ton + b_prod_ton
+
+            all_records.append({
+                "Floor": floor_label,
+                "Line Group": line_group,
+                "Date": dt_str_clean,
+                "DateObj": dt_val,
+                "Machine": mc_sl,
+                "MC SL": suggested_mc,
+                "MC Size": mc_size,
+                "Customer": cust_prefix,
+                "Order Name": order,
+                "Acc Code": acc_code,
+                "Item Name": item,
+                "Color": color,
+                "Demand Qty": demand_qty,
+                "Up to Prod": up_to_prod,
+                "Due Prod Prev": due_prod_prev,
+                "Last Day Prod Col": last_day_prod_col,
+                "Due Prod Present": due_prod_present,
+                "Cavity": cavity,
+                "CT": ct,
+                "Unit Wt (kg)": unit_wt_kg,
+                "Unit Wt": unit_wt_kg,
+                "STD Cap/Shift": std_cap_shift,
+                "A Total": a_tot,
+                "A Good": a_good,
+                "Shift A Good": a_good,
+                "Shift A Rej": a_rej,
+                "Shift A Runtime": a_runtime,
+                "Shift A Prod Ton": a_prod_ton,
+                "B Total": b_tot,
+                "B Good": b_good,
+                "Shift B Good": b_good,
+                "Shift B Rej": b_rej,
+                "Shift B Runtime": b_runtime,
+                "Shift B Prod Ton": b_prod_ton,
+                "Total Good": total_good,
+                "T-Good": total_good,
+                "T-Bad": total_bad,
+                "Total Rejections": total_rej,
+                "Total Runtime (Hrs)": total_runtime,
+                "Total Prod Ton": total_prod_ton,
+            })
+
+    df_res = pd.DataFrame(all_records)
+    df_audit = pd.DataFrame(typo_logs)
+
+    if df_res.empty:
+        return df_res, df_audit
+
+    df_res = df_res.drop_duplicates(
+        subset=["Floor", "Date", "Machine", "Order Name", "Item Name", "Acc Code", "Cavity", "CT", "Total Good"]
+    ).reset_index(drop=True)
+
+    df_res["Helper"] = df_res["Floor"].astype(str) + "|" + df_res["Machine"].astype(str) + "|" + df_res["Date"].astype(str)
+
+    s_col = df_res["Shift A Runtime"].fillna(0)
+    t_col = df_res["Shift B Runtime"].fillna(0)
+    k_col = df_res["STD Cap/Shift"].fillna(0)
+
+    sum_s_map = df_res.groupby("Helper")["Shift A Runtime"].transform("sum")
+    sum_t_map = df_res.groupby("Helper")["Shift B Runtime"].transform("sum")
+
+    cap_a = np.where(
+        sum_s_map > 0,
+        np.where(sum_s_map > 12.01, k_col * (s_col > 0).astype(float), k_col * (s_col / sum_s_map)),
+        0.0
+    )
+    cap_b = np.where(
+        sum_t_map > 0,
+        np.where(sum_t_map > 12.01, k_col * (t_col > 0).astype(float), k_col * (t_col / sum_t_map)),
+        0.0
+    )
+
+    df_res["Weighted Cap Pcs"] = cap_a + cap_b
+    df_res["Weighted Cap Ton"] = (df_res["Weighted Cap Pcs"] * df_res["Unit Wt (kg)"]) / 1000.0
+    df_res["Daily Cap Pcs"] = df_res["Weighted Cap Pcs"]
+    df_res["Daily Cap Ton"] = df_res["Weighted Cap Ton"]
+
+    return df_res, df_audit
+
+
+def consolidate_daily_machines(df_day):
+    """Consolidates machine performance per day with runtime-weighted CT and cavity averages."""
+    records = []
+    for (floor_val, mc), group in df_day.groupby(["Floor", "Machine"]):
+        orders = group["Order Name"].unique()
+        items = group["Item Name"].unique()
+
+        ord_name = orders[0] if len(orders) == 1 else "Mixed"
+        item_name = items[0] if len(items) == 1 else "Mixed"
+
+        mc_tot_runtime = group["Total Runtime (Hrs)"].sum()
+
+        if mc_tot_runtime > 0:
+            weighted_ct = (
+                group["CT"] * group["Total Runtime (Hrs)"]
+            ).sum() / mc_tot_runtime
+            weighted_cavity = (
+                group["Cavity"] * group["Total Runtime (Hrs)"]
+            ).sum() / mc_tot_runtime
+        else:
+            weighted_ct = group["CT"].mean()
+            weighted_cavity = group["Cavity"].mean()
+
+        tot_a_good = group["Shift A Good"].sum()
+        tot_b_good = group["Shift B Good"].sum()
+        tot_good = group["Total Good"].sum()
+        tot_bad = group["Total Rejections"].sum()
+        a_runtime = group["Shift A Runtime"].sum()
+        b_runtime = group["Shift B Runtime"].sum()
+
+        cap_pcs = group["Weighted Cap Pcs"].sum()
+        cap_ton = group["Weighted Cap Ton"].sum()
+        prod_ton = group["Total Prod Ton"].sum()
+
+        mc_size = group["MC Size"].iloc[0]
+        line_grp = group["Line Group"].iloc[0]
+        cust_name = (
+            group["Customer"].iloc[0]
+            if len(group["Customer"].unique()) == 1
+            else "Mixed"
+        )
+
+        records.append({
+            "Floor": floor_val,
+            "Line Group": line_grp,
+            "Machine": mc,
+            "MC Size": mc_size,
+            "Customer": cust_name,
+            "Order Name": ord_name,
+            "Item Name": item_name,
+            "Is Mixed": len(group) > 1,
+            "Entry Count": len(group),
+            "Cavity": round(weighted_cavity, 2),
+            "CT": round(weighted_ct, 2),
+            "Shift A Good": round(tot_a_good, 2),
+            "Shift B Good": round(tot_b_good, 2),
+            "Total Good": round(tot_good, 2),
+            "Total Rejections": round(tot_bad, 2),
+            "Shift A Runtime": round(a_runtime, 2),
+            "Shift B Runtime": round(b_runtime, 2),
+            "Total Runtime (Hrs)": round(mc_tot_runtime, 2),
+            "Weighted Cap Pcs": round(cap_pcs, 2),
+            "Weighted Cap Ton": round(cap_ton, 2),
+            "Total Prod Ton": round(prod_ton, 2),
+            "Ach Pcs %": f"{(tot_good / cap_pcs * 100):.2f}%"
+            if cap_pcs > 0
+            else "0.00%",
+            "Ach Ton %": f"{(prod_ton / cap_ton * 100):.2f}%"
+            if cap_ton > 0
+            else "0.00%",
+        })
+    return pd.DataFrame(records)
+
+
+def compute_line_summary(df_subset):
+    records = []
+    for lg, grp in df_subset.groupby("Line Group"):
+        active_grp = grp[(grp["Total Good"] > 0) | (grp["Total Runtime (Hrs)"] > 0)]
+        mc_qty = active_grp["Machine"].nunique()
+        tot_runtime = active_grp["Total Runtime (Hrs)"].sum()
+
+        tot_cap_pcs = active_grp["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = active_grp["Total Good"].sum()
+        tot_cap_ton = active_grp["Weighted Cap Ton"].sum()
+        tot_prod_ton = active_grp["Total Prod Ton"].sum()
+
+        ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
+        ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+
+        records.append({
+            "Line Group": lg,
+            "Running MC Qty": mc_qty,
+            "Runtime (Hrs)": round(tot_runtime, 2),
+            "Cap (Pcs)": round(tot_cap_pcs, 2),
+            "Prod (Pcs)": round(tot_prod_pcs, 2),
+            "Pcs Ach %": f"{ach_pcs:.2f}%",
+            "Cap (Ton)": round(tot_cap_ton, 2),
+            "Prod (Ton)": round(tot_prod_ton, 2),
+            "Ton Ach %": f"{ach_ton:.2f}%",
+        })
+    return pd.DataFrame(records)
+
+
+def compute_line_summary_mtd(df_subset):
+    records = []
+    for lg, grp in df_subset.groupby("Line Group"):
+        active_grp = grp[(grp["Total Good"] > 0) | (grp["Total Runtime (Hrs)"] > 0)]
+        cum_mc_days = active_grp.groupby("Date")["Machine"].nunique().sum()
+        tot_runtime = active_grp["Total Runtime (Hrs)"].sum()
+
+        tot_cap_pcs = active_grp["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = active_grp["Total Good"].sum()
+        tot_cap_ton = active_grp["Weighted Cap Ton"].sum()
+        tot_prod_ton = active_grp["Total Prod Ton"].sum()
+
+        ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
+        ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+
+        records.append({
+            "Line Group": lg,
+            "Running MC Qty": cum_mc_days,
+            "Runtime (Hrs)": round(tot_runtime, 2),
+            "Cap (Pcs)": round(tot_cap_pcs, 2),
+            "Prod (Pcs)": round(tot_prod_pcs, 2),
+            "Pcs Ach %": f"{ach_pcs:.2f}%",
+            "Cap (Ton)": round(tot_cap_ton, 2),
+            "Prod (Ton)": round(tot_prod_ton, 2),
+            "Ton Ach %": f"{ach_ton:.2f}%",
+        })
+    return pd.DataFrame(records)
+
+
+def compute_size_summary(df_subset, mode="daily"):
+    records = []
+    for sz in EXCEL_SIZES:
+        grp = df_subset[df_subset["MC Size"] == sz]
+        active_grp = grp[(grp["Total Good"] > 0) | (grp["Total Runtime (Hrs)"] > 0)]
+
+        if active_grp.empty:
+            records.append({
+                "MC Size": sz,
+                "MC QTY": 0,
+                "CT Average": 0.00,
+                "Run Hour Average": 0.00,
+                "Total Cap (Pcs)": 0.00,
+                "Total Prod (Pcs)": 0.00,
+                "% OF Ach Pcs": "0.00%",
+                "Cap (Ton)": 0.00,
+                "Prod (Ton)": 0.00,
+                "% OF Ach Ton": "0.00%",
+            })
+            continue
+
+        tot_runtime = active_grp["Total Runtime (Hrs)"].sum()
+        if mode == "as_of":
+            mc_qty = active_grp.groupby("Date")["Machine"].nunique().sum()
+        else:
+            mc_qty = active_grp["Machine"].nunique()
+
+        run_hr_avg = tot_runtime / mc_qty if mc_qty > 0 else 0.0
+        if tot_runtime > 0:
+            avg_ct = (
+                active_grp["CT"] * active_grp["Total Runtime (Hrs)"]
+            ).sum() / tot_runtime
+        else:
+            avg_ct = active_grp["CT"].mean()
+
+        tot_cap_pcs = active_grp["Weighted Cap Pcs"].sum()
+        tot_prod_pcs = active_grp["Total Good"].sum()
+        tot_cap_ton = active_grp["Weighted Cap Ton"].sum()
+        tot_prod_ton = active_grp["Total Prod Ton"].sum()
+
+        ach_pcs = (tot_prod_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
+        ach_ton = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+
+        records.append({
+            "MC Size": sz,
+            "MC QTY": mc_qty,
+            "CT Average": round(avg_ct, 2),
+            "Run Hour Average": round(run_hr_avg, 2),
+            "Total Cap (Pcs)": round(tot_cap_pcs, 2),
+            "Total Prod (Pcs)": round(tot_prod_pcs, 2),
+            "% OF Ach Pcs": f"{ach_pcs:.2f}%",
+            "Cap (Ton)": round(tot_cap_ton, 2),
+            "Prod (Ton)": round(tot_prod_ton, 2),
+            "% OF Ach Ton": f"{ach_ton:.2f}%",
+        })
+
+    return pd.DataFrame(records)
+
+
+def add_total_row(df, label_col, sum_cols, avg_cols):
+    if df.empty:
+        return df
+
+    res_df = df.copy()
+    tot_row = {}
+
+    for c in df.columns:
+        if c == label_col:
+            tot_row[c] = "Sub Total"
+        elif c in sum_cols:
+            val = pd.to_numeric(df[c], errors="coerce").sum()
+            tot_row[c] = round(val, 2) if isinstance(val, float) else val
+        elif c in avg_cols:
+            non_zero = pd.to_numeric(df[df[c] > 0][c], errors="coerce")
+            tot_row[c] = round(non_zero.mean(), 2) if not non_zero.empty else 0.0
+        else:
+            tot_row[c] = "-"
+
+    if "Total Cap (Pcs)" in df.columns and "Total Prod (Pcs)" in df.columns:
+        tc_p = pd.to_numeric(df["Total Cap (Pcs)"], errors="coerce").sum()
+        tp_p = pd.to_numeric(df["Total Prod (Pcs)"], errors="coerce").sum()
+        ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
+        if "% OF Ach Pcs" in df.columns:
+            tot_row["% OF Ach Pcs"] = f"{ach:.2f}%"
+
+    if "Cap (Pcs)" in df.columns and "Prod (Pcs)" in df.columns:
+        tc_p = pd.to_numeric(df["Cap (Pcs)"], errors="coerce").sum()
+        tp_p = pd.to_numeric(df["Prod (Pcs)"], errors="coerce").sum()
+        ach = (tp_p / tc_p * 100) if tc_p > 0 else 0.0
+        if "Pcs Ach %" in df.columns:
+            tot_row["Pcs Ach %"] = f"{ach:.2f}%"
+
+    if "Cap (Ton)" in df.columns and "Prod (Ton)" in df.columns:
+        tc_t = pd.to_numeric(df["Cap (Ton)"], errors="coerce").sum()
+        tp_t = pd.to_numeric(df["Prod (Ton)"], errors="coerce").sum()
+        ach = (tp_t / tc_t * 100) if tc_t > 0 else 0.0
+        if "% OF Ach Ton" in df.columns:
+            tot_row["% OF Ach Ton"] = f"{ach:.2f}%"
+        if "Ton Ach %" in df.columns:
+            tot_row["Ton Ach %"] = f"{ach:.2f}%"
+
+    if "Demand Qty" in df.columns and "Total Produced (Pcs)" in df.columns:
+        dem = pd.to_numeric(df["Demand Qty"], errors="coerce").sum()
+        prod_pcs = pd.to_numeric(df["Total Produced (Pcs)"], errors="coerce").sum()
+        ach = (prod_pcs / dem * 100) if dem > 0 else 0.0
+        if "Fulfillment %" in df.columns:
+            tot_row["Fulfillment %"] = f"{ach:.2f}%"
+
+    tot_df = pd.DataFrame([tot_row])
+    return pd.concat([res_df, tot_df], ignore_index=True)
+
+
+def clean_and_format_dataframe(df):
+    df_clean = df.copy()
+
+    for col in df_clean.columns:
+        col_lower = col.lower()
+        if df_clean[col].dtype in ["float64", "float32"]:
+            if any(k in col_lower for k in ["good", "rej", "pcs", "qty", "production", "due", "output", "cap"]):
+                df_clean[col] = df_clean[col].apply(
+                    lambda x: f"{int(round(x)):,}" if pd.notna(x) and str(x) != "-" else "-"
+                )
+            else:
+                df_clean[col] = df_clean[col].apply(
+                    lambda x: f"{x:.2f}" if pd.notna(x) and str(x) != "-" else "-"
+                )
+        elif df_clean[col].dtype in ["int64", "int32"]:
+            df_clean[col] = df_clean[col].apply(
+                lambda x: f"{x:,}" if pd.notna(x) and str(x) != "-" else "-"
+            )
+
+    return df_clean
+
+
+def column_visibility_selector(df, key_prefix="", default_visible_cols=None):
+    all_cols = df.columns.tolist()
+
+    if default_visible_cols:
+        initial_cols = [c for c in default_visible_cols if c in all_cols]
+    else:
+        excluded_defaults = ["Entry Count", "Is Mixed", "Is Completed"]
+        initial_cols = [c for c in all_cols if c not in excluded_defaults]
+
+    if f"{key_prefix}_visible_cols" not in st.session_state:
+        st.session_state[f"{key_prefix}_visible_cols"] = initial_cols
+
+    with st.popover("👁️ Columns"):
+        st.caption("Check or uncheck columns to customize active table view:")
+        visible = []
+        for col in all_cols:
+            checked = st.checkbox(
+                col,
+                value=col in st.session_state[f"{key_prefix}_visible_cols"],
+                key=f"{key_prefix}_col_{col}",
+            )
+            if checked:
+                visible.append(col)
+        if st.button("Apply View", key=f"{key_prefix}_apply", use_container_width=True):
+            st.session_state[f"{key_prefix}_visible_cols"] = visible
+            st.rerun()
+
+    selected = st.session_state[f"{key_prefix}_visible_cols"]
+    return [c for c in selected if c in df.columns]
+
+
+# ============================================
+# SECTION 5: SESSION STATE INITIALIZATION
+# ============================================
+if "app_launched" not in st.session_state:
+    st.session_state["app_launched"] = False
+
+# ============================================
+# SECTION 6: LANDING SETUP SCREEN
+# ============================================
+if not st.session_state["app_launched"]:
+    st.markdown(
+        '<div class="landing-page-marker"></div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("## 🏭 **PLASTIC-3 CONSOLE SETUP**")
+    st.markdown("##### Upload your production entry files to launch.")
+    st.divider()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(
+            '<div class="setup-card ff"><h3>🏢 First Floor (FF)</h3><p style="color:#64748b !important;">Select the FF Excel production file</p></div>',
+            unsafe_allow_html=True,
+        )
+        ff_file = st.file_uploader(
+            "Upload First Floor File (.xlsx)",
+            type=["xlsx", "xls"],
+            key="init_ff",
+        )
+
+    with col2:
+        st.markdown(
+            '<div class="setup-card gf"><h3>🏬 Ground Floor (GF)</h3><p style="color:#64748b !important;">Select the GF Excel production file</p></div>',
+            unsafe_allow_html=True,
+        )
+        gf_file = st.file_uploader(
+            "Upload Ground Floor File (.xlsx)",
+            type=["xlsx", "xls"],
+            key="init_gf",
+        )
+
+    st.divider()
+
+    if st.button(
+        "🚀 Launch Dashboard",
+        type="primary",
+        use_container_width=True,
+    ):
+        if ff_file is None and gf_file is None:
+            st.error("Please upload at least one floor file to launch.")
+        else:
+            if ff_file is not None:
+                st.session_state["ff_bytes"] = ff_file.getvalue()
+            if gf_file is not None:
+                st.session_state["gf_bytes"] = gf_file.getvalue()
+
+            st.session_state["app_launched"] = True
+            st.rerun()
+
+# ============================================
+# SECTION 7: MAIN DASHBOARD CONSOLE & SIDEBAR
+# ============================================
+else:
+    st.markdown(
+        '<div class="dashboard-page-marker"></div>',
+        unsafe_allow_html=True,
+    )
+
+    all_parsed_dfs = []
+    all_audit_dfs = []
+
+    typo_overrides = st.session_state.get("typo_overrides", {})
+
+    if "ff_bytes" in st.session_state:
+        df_ff, df_ff_audit = load_and_parse_floor_data(
+            st.session_state["ff_bytes"], "FF", typo_overrides
+        )
+        if not df_ff.empty:
+            all_parsed_dfs.append(df_ff)
+        if not df_ff_audit.empty:
+            all_audit_dfs.append(df_ff_audit)
+
+    if "gf_bytes" in st.session_state:
+        df_gf, df_gf_audit = load_and_parse_floor_data(
+            st.session_state["gf_bytes"], "GF", typo_overrides
+        )
+        if not df_gf.empty:
+            all_parsed_dfs.append(df_gf)
+        if not df_gf_audit.empty:
+            all_audit_dfs.append(df_gf_audit)
+
+    if not all_parsed_dfs:
+        st.error("No valid data parsed. Click '⚙️ Change Uploaded Files' in sidebar.")
+    else:
+        df_data_raw = pd.concat(all_parsed_dfs, ignore_index=True)
+        df_typo_audit = (
+            pd.concat(all_audit_dfs, ignore_index=True)
+            if all_audit_dfs
+            else pd.DataFrame()
+        )
+
+        st.session_state["df_data_raw"] = df_data_raw
+        st.session_state["dashboard_ready"] = True
+
+        with st.sidebar:
+            col_logo, col_text = st.columns([1, 2.5], gap="small", vertical_alignment="center")
+            with col_logo:
+                if os.path.exists("logo.png"):
+                    st.image("logo.png", use_container_width=True)
+                else:
+                    st.markdown("🏭")
+            with col_text:
+                st.markdown("### **PLASTIC-3**")
+                st.caption("Operations Console")
+
+            st.divider()
+
+            nav_choice = st.radio(
+                "📍 **Select Module:**",
+                [
+                    "📅 Daily Data",
+                    "📊 As of Data (MTD)",
+                    "📦 Job Order Analysis",
+                    "🌗 Shiftwise Data",
+                    "📑 Monthly Export",
+                ],
+            )
+
+            st.divider()
+
+            floor_choice = st.radio(
+                "🏢 **Floor View:**",
+                ["ALL FLOORS", "FF", "GF"],
+                horizontal=True,
+                key="floor_toggle",
+            )
+
+            st.divider()
+
+            hide_zero_runs = st.toggle(
+                "🚫 Hide Non-Running Machines",
+                value=True,
+                help="Filters out idle machines with zero production on Floor View",
+            )
+
+            st.divider()
+
+            if st.button("📱 Launch SMS Module", use_container_width=True):
+                st.switch_page("pages/sms.py")
+
+            if st.button("⚙️ Change Uploaded Files", use_container_width=True):
+                st.session_state["app_launched"] = False
+                st.session_state.pop("ff_bytes", None)
+                st.session_state.pop("gf_bytes", None)
+                st.session_state.pop("typo_overrides", None)
+                st.session_state.pop("df_data_raw", None)
+                st.session_state.pop("dashboard_ready", None)
+                st.rerun()
+
+        if floor_choice == "FF" and "ff_bytes" not in st.session_state:
+            st.warning("⚠️ **First Floor (FF) file is not uploaded.**")
+        elif floor_choice == "GF" and "gf_bytes" not in st.session_state:
+            st.warning("⚠️ **Ground Floor (GF) file is not uploaded.**")
+        else:
+            if floor_choice != "ALL FLOORS":
+                df_curr = df_data_raw[df_data_raw["Floor"] == floor_choice].copy()
+            else:
+                df_curr = df_data_raw.copy()
+
+            if hide_zero_runs:
+                df_active = df_curr[
+                    (df_curr["Total Good"] > 0)
+                    | (df_curr["Total Runtime (Hrs)"] > 0)
+                ].copy()
+            else:
+                df_active = df_curr.copy()
+
+            def render_typo_popover():
+                if not df_typo_audit.empty:
+                    with st.popover(f"🚨 {len(df_typo_audit)} Typos Found"):
+                        st.markdown("#### 🔍 Data Quality & In-App Typo Correction")
+                        st.caption("Review flagged errors or edit individually below:")
+
+                        for idx_t, t_row in df_typo_audit.iterrows():
+                            t_key = t_row["Key"]
+                            with st.expander(
+                                f"📍 {t_row['Date']} | {t_row['Floor']} - {t_row['Machine SL']} ({t_row['Order Name']})"
+                            ):
+                                st.write(f"**Issue:** {t_row['Issue Detected']}")
+                                st.caption(f"Suggested Master Position: `{t_row['Suggested MC SL']}`")
+
+                                col_t1, col_t2, col_t3 = st.columns(3)
+                                with col_t1:
+                                    new_mc = st.text_input("Machine SL", value=str(t_row["Suggested MC SL"]), key=f"mc_{t_key}")
+                                with col_t2:
+                                    new_ct = st.number_input("CT (s)", value=float(t_row["Current CT"]), key=f"ct_{t_key}")
+                                with col_t3:
+                                    new_cav = st.number_input("Cavity", value=float(t_row["Current Cavity"]), key=f"cav_{t_key}")
+
+                                if st.button("💾 Apply Correction", key=f"btn_{t_key}"):
+                                    if "typo_overrides" not in st.session_state:
+                                        st.session_state["typo_overrides"] = {}
+                                    st.session_state["typo_overrides"][t_key] = {
+                                        "mc_sl": new_mc,
+                                        "ct": new_ct,
+                                        "cavity": new_cav,
+                                    }
+                                    st.success("Correction saved! Refreshing...")
+                                    st.rerun()
+
+                        st.divider()
+
+                        if st.button(f"⚡ Auto-Correct All Typos ({len(df_typo_audit)})", type="primary", use_container_width=True):
+                            if "typo_overrides" not in st.session_state:
+                                st.session_state["typo_overrides"] = {}
+                            for _, t_row in df_typo_audit.iterrows():
+                                t_key = t_row["Key"]
+                                st.session_state["typo_overrides"][t_key] = {
+                                    "mc_sl": t_row["Suggested MC SL"],
+                                    "ct": t_row["Current CT"],
+                                    "cavity": t_row["Current Cavity"],
+                                }
+                            st.success("All machine typos resolved! Refreshing...")
+                            st.rerun()
+
+                        if st.button("🔄 Reset All Corrections", use_container_width=True):
+                            st.session_state["typo_overrides"] = {}
+                            st.rerun()
+                else:
+                    st.button("🟢 All Data Valid", disabled=True)
+
+            # ============================================
+            # SECTION 8: MODULE 1 — DAILY DATA
+            # ============================================
+            if nav_choice == "📅 Daily Data":
+                all_dates = sorted(list(df_active["Date"].unique()))
+
+                col_nav1, col_nav2, col_nav3 = st.columns([3.5, 1.2, 1.3])
+
+                with col_nav1:
+                    daily_mode = st.radio(
+                        "Daily View Mode:",
+                        [
+                            "📊 Linewise",
+                            "🏭 MC Wise",
+                            "📏 Sizewise",
+                            "📦 Job-Order Wise",
+                        ],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                    )
+
+                with col_nav2:
+                    selected_date = st.selectbox(
+                        "Operational Date",
+                        all_dates,
+                        index=len(all_dates) - 1 if all_dates else 0,
+                        label_visibility="collapsed",
+                    )
+
+                with col_nav3:
+                    render_typo_popover()
+
+                st.divider()
+
+                df_daily_raw = df_active[
+                    df_active["Date"] == selected_date
+                ].copy()
+                df_daily = consolidate_daily_machines(df_daily_raw)
+
+                tot_prod_ton = df_daily["Total Prod Ton"].sum()
+                tot_cap_ton = df_daily["Weighted Cap Ton"].sum()
+                tot_good_pcs = df_daily["Total Good"].sum()
+                tot_cap_pcs = df_daily["Weighted Cap Pcs"].sum()
+                tot_rej = df_daily["Total Rejections"].sum()
+                tot_time = df_daily["Total Runtime (Hrs)"].sum()
+
+                ton_ach = (tot_prod_ton / tot_cap_ton * 100) if tot_cap_ton > 0 else 0.0
+                pcs_ach = (tot_good_pcs / tot_cap_pcs * 100) if tot_cap_pcs > 0 else 0.0
+
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Prod vs Cap (Tons)", f"{tot_prod_ton:.2f} / {tot_cap_ton:.2f} T", f"Ach: {ton_ach:.2f}%")
+                c2.metric("Prod vs Cap (Pieces)", f"{int(tot_good_pcs):,} Pcs", f"Ach: {pcs_ach:.2f}%")
+                c3.metric("Total Rejections", f"{int(tot_rej):,} Pcs", f"Quality Loss: {(tot_rej/tot_good_pcs*100):.2f}%" if tot_good_pcs > 0 else "0.00%")
+                c4.metric("Running Machines", f"{df_daily['Machine'].nunique()} MCs", f"Runtime: {tot_time:.2f} Hrs")
+
+                st.divider()
+
+                if daily_mode == "📊 Linewise":
+                    st.markdown("### 📈 Line-Wise Performance Summary")
+                    df_line_day = compute_line_summary(df_daily_raw)
+                    df_line_day_tot = add_total_row(
+                        df_line_day, "Line Group",
+                        ["Running MC Qty", "Runtime (Hrs)", "Cap (Pcs)", "Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"], []
+                    )
+
+                    v_cols = column_visibility_selector(df_line_day_tot, "daily_line")
+                    clean_line_df = clean_and_format_dataframe(df_line_day_tot[v_cols])
+                    st.dataframe(clean_line_df, use_container_width=True, hide_index=True)
+
+                    st.download_button(
+                        "📥 Export Daily Line Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_line_df),
+                        "Daily_Line_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+
+                elif daily_mode == "🏭 MC Wise":
+                    st.markdown("### 🏭 Consolidated Machine Performance")
+                    df_daily_totals = add_total_row(
+                        df_daily, "Machine",
+                        ["Shift A Good", "Shift B Good", "Total Good", "Total Rejections", "Shift A Runtime", "Shift B Runtime", "Total Runtime (Hrs)", "Weighted Cap Pcs", "Weighted Cap Ton", "Total Prod Ton"],
+                        ["CT", "Cavity"]
+                    )
+
+                    v_cols = column_visibility_selector(df_daily_totals, "daily_mc")
+                    clean_mc_df = clean_and_format_dataframe(df_daily_totals[v_cols])
+                    st.dataframe(clean_mc_df, use_container_width=True, hide_index=True)
+
+                    st.download_button(
+                        "📥 Export Daily Machine Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_mc_df),
+                        "Daily_Machine_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+
+                elif daily_mode == "📏 Sizewise":
+                    st.markdown("### 📏 Machine Size Summary")
+                    df_size_day = compute_size_summary(df_daily_raw, mode="daily")
+                    df_size_day_tot = add_total_row(
+                        df_size_day, "MC Size",
+                        ["MC QTY", "Total Cap (Pcs)", "Total Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"],
+                        ["CT Average", "Run Hour Average"]
+                    )
+
+                    v_cols = column_visibility_selector(df_size_day_tot, "daily_size")
+                    clean_size_df = clean_and_format_dataframe(df_size_day_tot[v_cols])
+                    st.dataframe(clean_size_df, use_container_width=True, hide_index=True)
+
+                    st.download_button(
+                        "📥 Export Daily Size Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_size_df),
+                        "Daily_Size_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+
+                elif daily_mode == "📦 Job-Order Wise":
+                    st.markdown("### 📦 Active Orders Run On Selected Date")
+                    records_job_day = []
+                    for (cust, ord_name, acc_cd), grp in df_daily_raw.groupby(["Customer", "Order Name", "Acc Code"]):
+                        itm_name = grp["Item Name"].iloc[0]
+                        merged_demand = grp["Demand Qty"].sum()
+                        tot_good_val = grp["Total Good"].sum()
+                        tot_prod_ton_val = grp["Total Prod Ton"].sum()
+                        cap_ton_val = grp["Weighted Cap Ton"].sum()
+                        cap_pcs_val = grp["Weighted Cap Pcs"].sum()
+                        tot_runtime_val = grp["Total Runtime (Hrs)"].sum()
+
+                        mc_count = grp["Machine"].nunique()
+                        mc_pos = ", ".join(sorted(grp["Machine"].unique()))
+
+                        ach_ton_val = (tot_prod_ton_val / cap_ton_val * 100) if cap_ton_val > 0 else 0.0
+                        ach_pcs_val = (tot_good_val / cap_pcs_val * 100) if cap_pcs_val > 0 else 0.0
+
+                        records_job_day.append({
+                            "Customer": cust,
+                            "Order Name": ord_name,
+                            "Acc Code": acc_cd,
+                            "Item Name": itm_name,
+                            "Demand Qty": merged_demand,
+                            "Total Good": tot_good_val,
+                            "Total Prod Ton": round(tot_prod_ton_val, 2),
+                            "Running Molds": mc_count,
+                            "MC Positions": mc_pos,
+                            "Daily Cap (Pcs)": round(cap_pcs_val, 2),
+                            "Daily Prod (Pcs)": round(tot_good_val, 2),
+                            "Daily Util (Pcs %)": f"{ach_pcs_val:.2f}%",
+                            "Daily Cap (Ton)": round(cap_ton_val, 2),
+                            "Daily Prod (Ton)": round(tot_prod_ton_val, 2),
+                            "Daily Util (Ton %)": f"{ach_ton_val:.2f}%",
+                            "Daily Runtime (Hrs)": round(tot_runtime_val, 2),
+                        })
+
+                    job_day = pd.DataFrame(records_job_day)
+                    search_term = st.text_input("Search Daily Orders", "", placeholder="🔍 Search...", label_visibility="collapsed", key="search_daily_job")
+
+                    if search_term.strip():
+                        term = search_term.strip().lower()
+                        job_day = job_day[
+                            job_day["Order Name"].str.lower().str.contains(term)
+                            | job_day["Item Name"].str.lower().str.contains(term)
+                            | job_day["Customer"].str.lower().str.contains(term)
+                        ]
+
+                    job_day_tot = add_total_row(job_day, "Order Name", ["Demand Qty", "Total Good", "Total Prod Ton", "Running Molds", "Daily Cap (Pcs)", "Daily Prod (Pcs)", "Daily Cap (Ton)", "Daily Prod (Ton)", "Daily Runtime (Hrs)"], [])
+                    v_cols = column_visibility_selector(job_day_tot, "daily_job")
+                    clean_job_day_df = clean_and_format_dataframe(job_day_tot[v_cols])
+                    st.dataframe(clean_job_day_df, use_container_width=True, hide_index=True)
+
+                    st.download_button(
+                        "📥 Export Daily Active Job Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_job_day_df),
+                        "Daily_Job_Summary.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+
+            # ============================================
+            # SECTION 9: MODULE 2 — AS OF DATA (MTD)
+            # ============================================
+            elif nav_choice == "📊 As of Data (MTD)":
+                all_dates = sorted(list(df_active["Date"].unique()))
+
+                col_mtd1, col_mtd2, col_mtd3 = st.columns([3.5, 1.2, 1.3])
+                with col_mtd1:
+                    mtd_mode = st.radio("As-Of View Mode:", ["📊 Linewise", "📏 Sizewise", "📦 Job-Order Wise"], horizontal=True, label_visibility="collapsed")
+                with col_mtd2:
+                    as_of_date = st.selectbox("As-Of Cutoff Date", all_dates, index=len(all_dates) - 1 if all_dates else 0, label_visibility="collapsed")
+                with col_mtd3:
+                    render_typo_popover()
+
+                st.divider()
+                df_mtd = df_active[df_active["Date"] <= as_of_date].copy()
+
+                tot_prod = df_mtd["Total Prod Ton"].sum()
+                tot_cap = df_mtd["Weighted Cap Ton"].sum()
+                tot_good = df_mtd["Total Good"].sum()
+                tot_cap_pcs = df_mtd["Weighted Cap Pcs"].sum()
+                tot_runtime = df_mtd["Total Runtime (Hrs)"].sum()
+                ach_rate = (tot_prod / tot_cap * 100) if tot_cap > 0 else 0.0
+                cum_mc_days = df_mtd[df_mtd["Total Good"] > 0].groupby("Date")["Machine"].nunique().sum()
+
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Cumulative Tonnage", f"{tot_prod:.2f} T", f"Cap: {tot_cap:.2f} T")
+                c2.metric("Cumulative Pieces", f"{int(tot_good):,} Pcs", f"Cap: {int(tot_cap_pcs):,} Pcs")
+                c3.metric("Achievement Rate", f"{ach_rate:.2f}%")
+                c4.metric("Cumulative MC-Days", f"{cum_mc_days} MC-Days", f"Runtime: {tot_runtime:.2f} Hrs")
+
+                st.divider()
+
+                if mtd_mode == "📊 Linewise":
+                    st.markdown(f"### 📈 Line-Wise Summary (As of {as_of_date})")
+                    df_line_mtd = compute_line_summary_mtd(df_mtd)
+                    df_line_mtd_tot = add_total_row(df_line_mtd, "Line Group", ["Running MC Qty", "Runtime (Hrs)", "Cap (Pcs)", "Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"], [])
+                    v_cols = column_visibility_selector(df_line_mtd_tot, "mtd_line")
+                    clean_line_mtd_df = clean_and_format_dataframe(df_line_mtd_tot[v_cols])
+                    st.dataframe(clean_line_mtd_df, use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export As-Of Line Summary (.xlsx)", convert_df_to_excel_bytes(clean_line_mtd_df), "AsOf_Line_Summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+                elif mtd_mode == "📏 Sizewise":
+                    st.markdown(f"### 📏 Machine Size Summary (As of {as_of_date})")
+                    df_size_mtd = compute_size_summary(df_mtd, mode="as_of")
+                    df_size_mtd_tot = add_total_row(df_size_mtd, "MC Size", ["MC QTY", "Total Cap (Pcs)", "Total Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"], ["CT Average", "Run Hour Average"])
+                    v_cols = column_visibility_selector(df_size_mtd_tot, "mtd_size")
+                    clean_size_mtd_df = clean_and_format_dataframe(df_size_mtd_tot[v_cols])
+                    st.dataframe(clean_size_mtd_df, use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export As-Of Size Summary (.xlsx)", convert_df_to_excel_bytes(clean_size_mtd_df), "AsOf_Size_Summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+                elif mtd_mode == "📦 Job-Order Wise":
+                    st.markdown(f"### 📦 Master Order Completion Summary (As of {as_of_date})")
+                    job_records = []
+                    for (cust, ord_name, acc_cd), grp in df_mtd.groupby(["Customer", "Order Name", "Acc Code"]):
+                        latest_run = grp.sort_values("DateObj").iloc[-1]
+                        last_run_date = latest_run["Date"]
+                        itm_name = latest_run["Item Name"]
+                        order_qty = latest_run["Demand Qty"] if latest_run["Demand Qty"] > 0 else grp["Demand Qty"].max()
+                        due_prod_present = latest_run["Due Prod Present"]
+                        as_of_prod = max(0.0, order_qty - due_prod_present) if order_qty > 0 else grp["Total Good"].sum()
+                        last_date_runs = grp[grp["Date"] == last_run_date]
+                        last_mcs = ", ".join(sorted(last_date_runs[last_date_runs["Total Good"] > 0]["Machine"].unique()))
+                        last_day_output = last_date_runs["Last Day Prod Col"].sum()
+                        last_day_cap = last_date_runs["Daily Cap Pcs"].sum()
+                        tot_prod_ton_cum = grp["Total Prod Ton"].sum()
+                        tot_runtime_cum = grp["Total Runtime (Hrs)"].sum()
+                        as_of_pct = (as_of_prod / order_qty * 100) if order_qty > 0 else 0.0
+                        last_day_util = (last_day_output / last_day_cap * 100) if last_day_cap > 0 else 0.0
+
+                        job_records.append({
+                            "Customer": cust,
+                            "Order Name": ord_name,
+                            "Acc Code": acc_cd,
+                            "Item Name": itm_name,
+                            "Order Qty": order_qty,
+                            "Due Production": round(due_prod_present, 2),
+                            "As of Production": round(as_of_prod, 2),
+                            "As of %": f"{as_of_pct:.2f}%",
+                            "Last Run Date": last_run_date,
+                            "Last MC Assigned": last_mcs,
+                            "Last Day Cap (Pcs)": round(last_day_cap, 2),
+                            "Last Day Output (Pcs)": round(last_day_output, 2),
+                            "Last Day Util %": f"{last_day_util:.2f}%",
+                            "Total Prod Ton": round(tot_prod_ton_cum, 2),
+                            "Total Runtime (Hrs)": round(tot_runtime_cum, 2),
+                            "Is Completed": due_prod_present <= 0 or as_of_pct >= 100.0,
+                        })
+
+                    df_job_mtd = pd.DataFrame(job_records)
+                    if not df_job_mtd.empty:
+                        st_tab1, st_tab2 = st.tabs([f"🔄 Active Orders ({len(df_job_mtd[~df_job_mtd['Is Completed']])})", f"✅ Completed Orders ({len(df_job_mtd[df_job_mtd['Is Completed']])})"])
+                        with st_tab1:
+                            df_active_jobs = df_job_mtd[~df_job_mtd["Is Completed"]].copy()
+                            df_active_tot = add_total_row(df_active_jobs, "Order Name", ["Order Qty", "Due Production", "As of Production", "Total Prod Ton", "Total Runtime (Hrs)", "Last Day Cap (Pcs)", "Last Day Output (Pcs)"], [])
+                            v_cols = column_visibility_selector(df_active_tot, "mtd_job_active")
+                            clean_job_act_df = clean_and_format_dataframe(df_active_tot[v_cols])
+                            st.dataframe(clean_job_act_df, use_container_width=True, hide_index=True)
+                            st.download_button("📥 Export Active MTD Job Summary (.xlsx)", convert_df_to_excel_bytes(clean_job_act_df), "Active_MTD_Job_Summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        with st_tab2:
+                            df_done_jobs = df_job_mtd[df_job_mtd["Is Completed"]].copy()
+                            df_done_tot = add_total_row(df_done_jobs, "Order Name", ["Order Qty", "Due Production", "As of Production", "Total Prod Ton", "Total Runtime (Hrs)", "Last Day Cap (Pcs)", "Last Day Output (Pcs)"], [])
+                            v_cols = column_visibility_selector(df_done_tot, "mtd_job_done")
+                            clean_job_done_df = clean_and_format_dataframe(df_done_tot[v_cols])
+                            st.dataframe(clean_job_done_df, use_container_width=True, hide_index=True)
+                            st.download_button("📥 Export Completed MTD Job Summary (.xlsx)", convert_df_to_excel_bytes(clean_job_done_df), "Completed_MTD_Job_Summary.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+            # ============================================
+            # SECTION 10: MODULE 3 — JOB ORDER ANALYSIS
+            # ============================================
+            elif nav_choice == "📦 Job Order Analysis":
+                st.markdown("### 📦 Job Order Lifecycle & Full Period Analysis")
+                st.caption("Inspect order demand completion milestones, item-wise daily machine allocations, and cumulative outputs.")
+                st.divider()
+
+                # Use df_curr so ALL orders (running or non-running) across ALL loaded sheets are visible
+                all_unique_orders = sorted([str(o).strip() for o in df_curr["Order Name"].dropna().unique() if str(o).strip() and str(o).strip() not in ["-", "nan", "None"]])
+
+                if not all_unique_orders:
+                    st.info("No Job Orders found in the active dataset.")
+                else:
+                    col_sel1, col_sel2 = st.columns([2.5, 1.5])
+                    with col_sel1:
+                        sel_order = st.selectbox("🔍 **Search & Select Job Order:**", all_unique_orders, key="sel_job_analysis_order")
+
+                    df_ord_raw = df_curr[df_curr["Order Name"] == sel_order].copy()
+                    df_ord_raw = df_ord_raw.sort_values("DateObj")
+
+                    cust_name = df_ord_raw["Customer"].iloc[0] if not df_ord_raw.empty else "-"
+                    acc_code_name = df_ord_raw["Acc Code"].iloc[0] if not df_ord_raw.empty else "-"
+
+                    with col_sel2:
+                        st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
+                        st.markdown(f"**Customer:** `{cust_name}` &nbsp;|&nbsp; **Acc Code:** `{acc_code_name}`")
+
+                    item_summary_records = []
+                    for item_name, i_grp in df_ord_raw.groupby("Item Name"):
+                        i_grp_sorted = i_grp.sort_values("DateObj")
+                        latest_item_entry = i_grp_sorted.iloc[-1]
+
+                        i_demand = latest_item_entry["Demand Qty"] if latest_item_entry["Demand Qty"] > 0 else i_grp["Demand Qty"].max()
+                        i_due = latest_item_entry["Due Prod Present"]
+
+                        if i_demand > 0:
+                            i_good_cum = max(0.0, i_demand - i_due)
+                        else:
+                            i_good_cum = latest_item_entry["Up to Prod"] + latest_item_entry["Total Good"]
+
+                        i_ton_cum = i_grp["Total Prod Ton"].sum()
+                        i_runtime_cum = i_grp["Total Runtime (Hrs)"].sum()
+                        i_color = latest_item_entry.get("Color", "-")
+
+                        if i_due <= 0 and i_demand > 0:
+                            i_status = f"✅ Done on {latest_item_entry['Date']}"
+                        elif i_good_cum > 0:
+                            i_status = "🔄 In Progress"
+                        else:
+                            i_status = "⏳ Not Started"
+
+                        i_pct = (i_good_cum / i_demand * 100) if i_demand > 0 else 0.0
+
+                        item_summary_records.append({
+                            "Job Order": sel_order,
+                            "Acc Code": latest_item_entry["Acc Code"],
+                            "Item Name": item_name,
+                            "Color": i_color,
+                            "Demand Qty": i_demand,
+                            "Total Produced (Pcs)": i_good_cum,
+                            "Remaining Due": round(i_due, 2),
+                            "Fulfillment %": f"{i_pct:.2f}%",
+                            "Status": i_status,
+                            "Last Run Date": latest_item_entry["Date"],
+                            "Last MC Run": latest_item_entry["Machine"],
+                            "Total Produced (Ton)": round(i_ton_cum, 2),
+                            "Total Runtime (Hrs)": round(i_runtime_cum, 2),
+                            "Unit Wt (kg)": latest_item_entry["Unit Wt (kg)"],
+                            "Cavity": latest_item_entry["Cavity"],
+                            "CT": latest_item_entry["CT"],
+                        })
+
+                    df_items_sum = pd.DataFrame(item_summary_records)
+
+                    tot_ord_demand = df_items_sum["Demand Qty"].sum()
+                    tot_ord_prod = df_items_sum["Total Produced (Pcs)"].sum()
+                    tot_ord_ton = df_items_sum["Total Produced (Ton)"].sum()
+                    tot_ord_due = df_items_sum["Remaining Due"].sum()
+                    ord_fulfill_pct = (tot_ord_prod / tot_ord_demand * 100) if tot_ord_demand > 0 else 0.0
+
+                    k1, k2, k3, k4 = st.columns(4)
+                    k1.metric("Total Order Demand", f"{int(tot_ord_demand):,} Pcs")
+                    k2.metric("Produced to Date", f"{int(tot_ord_prod):,} Pcs", f"{tot_ord_ton:.2f} Tons")
+                    k3.metric("Remaining Due Balance", f"{int(tot_ord_due):,} Pcs")
+                    k4.metric("Order Fulfillment", f"{ord_fulfill_pct:.2f}%", "Overall Progress")
+
+                    st.markdown("#### 📋 Items Under This Job Order")
+                    default_job_cols = ["Job Order", "Acc Code", "Item Name", "Color", "Demand Qty", "Total Produced (Pcs)", "Remaining Due", "Fulfillment %", "Status"]
+
+                    df_items_tot = add_total_row(df_items_sum, "Item Name", ["Demand Qty", "Total Produced (Pcs)", "Remaining Due", "Total Produced (Ton)", "Total Runtime (Hrs)"], [])
+                    v_item_cols = column_visibility_selector(df_items_tot, key_prefix="job_analysis_items", default_visible_cols=default_job_cols)
+
+                    clean_items_df = clean_and_format_dataframe(df_items_tot[v_item_cols])
+                    st.dataframe(clean_items_df, use_container_width=True, hide_index=True)
+
+                    st.download_button(
+                        f"📥 Export {sel_order} Item Summary (.xlsx)",
+                        convert_df_to_excel_bytes(clean_items_df),
+                        f"JobOrder_{sel_order}_Items.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+
+            # ============================================
+            # SECTION 11: MODULE 4 — SHIFTWISE DATA
+            # ============================================
+            elif nav_choice == "🌗 Shiftwise Data":
+                shift_mode = st.radio("Shiftwise Mode:", ["📅 Daily Shiftwise", "📊 As-Of Cumulative Shiftwise"], horizontal=True)
+
+                a_ton = df_active["Shift A Prod Ton"].sum()
+                a_good = df_active["Shift A Good"].sum()
+                a_rej = df_active["Shift A Rej"].sum()
+
+                b_ton = df_active["Shift B Prod Ton"].sum()
+                b_good = df_active["Shift B Good"].sum()
+                b_rej = df_active["Shift B Rej"].sum()
+
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown("#### ☀️ Shift A (Day Shift)")
+                    st.metric("Day Shift Tonnage", f"{a_ton:.2f} T")
+                    st.metric("Day Shift Output", f"{int(a_good):,} Pcs", f"Rejections: {int(a_rej):,}")
+                with c2:
+                    st.markdown("#### 🌙 Shift B (Night Shift)")
+                    st.metric("Night Shift Tonnage", f"{b_ton:.2f} T")
+                    st.metric("Night Shift Output", f"{int(b_good):,} Pcs", f"Rejections: {int(b_rej):,}")
+
+                st.divider()
+
+                if shift_mode == "📅 Daily Shiftwise":
+                    shift_daily = df_active.groupby("Date")[["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"]].sum().reset_index()
+                    shift_daily_tot = add_total_row(shift_daily, "Date", ["Shift A Good", "Shift B Good", "Shift A Prod Ton", "Shift B Prod Ton"], [])
+                    v_cols = column_visibility_selector(shift_daily_tot, "daily_shift")
+                    clean_shift_df = clean_and_format_dataframe(shift_daily_tot[v_cols])
+                    st.dataframe(clean_shift_df, use_container_width=True, hide_index=True)
+                    st.download_button("📥 Export Daily Shiftwise Log (.xlsx)", convert_df_to_excel_bytes(clean_shift_df), "Daily_Shiftwise_Log.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                elif shift_mode == "📊 As-Of Cumulative Shiftwise":
+                    fig_shift = px.bar(
+                        df_active.groupby("Date")[["Shift A Prod Ton", "Shift B Prod Ton"]].sum().reset_index(),
+                        x="Date", y=["Shift A Prod Ton", "Shift B Prod Ton"],
+                        title="Daily Shift Comparison (Tonnage)", barmode="group",
+                        color_discrete_sequence=["#f59e0b", "#0f172a"]
+                    )
+                    st.plotly_chart(fig_shift, use_container_width=True)
+
+            # ============================================
+            # SECTION 12: MODULE 5 — MONTHLY MASTER EXPORT
+            # ============================================
+            elif nav_choice == "📑 Monthly Export":
+                st.markdown("### 📑 Monthly Master Production Ledger (`Details.xlsx`)")
+                st.caption("Consolidated master production rows across all dates from both floors with standardized machine SL and chess family mold integration.")
+                st.divider()
+
+                df_details_export = df_curr[df_curr["T-Good"] > 0].copy()
+                master_columns = ["Date", "MC SL", "Order Name", "Acc Code", "Item Name", "Unit Wt", "Color", "Cavity", "CT", "STD Cap/Shift", "A Total", "A Good", "B Total", "B Good", "T-Good", "T-Bad"]
+
+                df_details_export["MC SL"] = df_details_export["MC SL"].fillna(df_details_export["Machine"])
+                for col in master_columns:
+                    if col not in df_details_export.columns:
+                        df_details_export[col] = "-"
+
+                df_details_clean = df_details_export[master_columns].copy()
+                clean_master_view = clean_and_format_dataframe(df_details_clean)
+
+                col_d1, col_d2, col_d3 = st.columns(3)
+                col_d1.metric("Active Runs Logged", f"{len(df_details_clean):,} Records")
+                col_d2.metric("Total Monthly Good", f"{int(df_details_export['T-Good'].sum()):,} Pcs")
+                col_d3.metric("Total Monthly Tonnage", f"{df_details_export['Total Prod Ton'].sum():.2f} Tons")
+
+                st.divider()
+                st.dataframe(clean_master_view, use_container_width=True, hide_index=True)
+
+                st.download_button(
+                    "📥 Export Monthly Master Production (Details.xlsx)",
+                    convert_df_to_excel_bytes(clean_master_view),
+                    "Monthly_Master_Production_Details.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                )
