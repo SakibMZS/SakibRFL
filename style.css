@@ -1298,3 +1298,265 @@ select:focus-visible {
         scroll-behavior: auto !important;
     }
 }
+
+
+/* =========================================================
+   PLASTIC-3 CONSOLE - STYLE PATCH v2
+   Paste this at the VERY END of style.css (it overrides earlier rules).
+   Fixes seen in the live screenshots + styles for the new screens.
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   A. SIDEBAR MENU: straight left-aligned list
+   (old rule `align-items:center` on a column flex staggered the items)
+   --------------------------------------------------------- */
+section[data-testid="stSidebar"] [data-testid="stRadio"] > div[role="radiogroup"] {
+    align-items: stretch !important;
+    background: transparent !important;
+    border: 0 !important;
+    padding: 2px !important;
+    gap: 2px !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] > div[role="radiogroup"] > label {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    min-height: 36px !important;
+    padding: 0.4rem 0.7rem !important;
+    margin: 0 !important;
+}
+
+/* the round radio dot is replaced by the highlighted pill */
+section[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] > div:first-child {
+    display: none !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] label > div[data-testid="stMarkdownContainer"] {
+    margin-left: 0 !important;
+}
+
+section[data-testid="stSidebar"] hr {
+    margin: 0.5rem 0 !important;
+}
+
+
+/* ---------------------------------------------------------
+   B. ALERTS: one clean box (removes the card-inside-a-card look)
+   --------------------------------------------------------- */
+[data-testid="stAlert"] {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+[data-testid="stAlert"] > div,
+[data-testid="stAlert"] [data-baseweb="notification"] {
+    border-radius: var(--radius-md) !important;
+    padding: 0.6rem 0.85rem !important;
+}
+
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] span {
+    font-size: 0.84rem !important;
+    line-height: 1.4 !important;
+}
+
+
+/* ---------------------------------------------------------
+   C. HEADING SIZES (sub-headings were as large as page titles)
+   --------------------------------------------------------- */
+.stApp h4 {
+    font-size: 1.02rem !important;
+    margin: 0.5rem 0 0.4rem !important;
+}
+
+.stApp h5 {
+    font-size: 0.92rem !important;
+    color: var(--text-soft) !important;
+    margin: 0.4rem 0 0.4rem !important;
+}
+
+
+/* ---------------------------------------------------------
+   D. TABS (Data Health, Active/Completed orders)
+   --------------------------------------------------------- */
+[data-baseweb="tab-list"] {
+    gap: 4px !important;
+    border-bottom: 1px solid var(--border) !important;
+    background: transparent !important;
+}
+
+button[data-baseweb="tab"] {
+    height: 40px !important;
+    padding: 0 0.95rem !important;
+    border-radius: 8px 8px 0 0 !important;
+    background: transparent !important;
+    transition: background var(--ease), color var(--ease) !important;
+}
+
+button[data-baseweb="tab"] p,
+button[data-baseweb="tab"] span {
+    color: var(--text-soft) !important;
+    font-size: 0.82rem !important;
+    font-weight: 650 !important;
+}
+
+button[data-baseweb="tab"]:hover {
+    background: var(--surface-hover) !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    background: var(--primary-soft) !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] p,
+button[data-baseweb="tab"][aria-selected="true"] span {
+    color: var(--primary-dark) !important;
+    font-weight: 700 !important;
+}
+
+[data-baseweb="tab-highlight"] {
+    background: var(--primary) !important;
+    height: 3px !important;
+}
+
+[data-baseweb="tab-border"] {
+    background: transparent !important;
+}
+
+
+/* ---------------------------------------------------------
+   E. KPI CARDS: neutral sub-line (no up/down arrow)
+   --------------------------------------------------------- */
+[data-testid="stMetricDelta"] {
+    background: transparent !important;
+    padding: 0 !important;
+    color: var(--text-muted) !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stMetricDelta"] svg {
+    display: none !important;
+}
+
+[data-testid="stMetricDelta"] * {
+    color: var(--text-muted) !important;
+}
+
+
+/* ---------------------------------------------------------
+   F. STATUS STRIP (chips) - used by the page banner and sidebar
+   --------------------------------------------------------- */
+.status-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0.15rem 0 0.35rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 650;
+    line-height: 1.2;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+
+.chip-period { background: var(--primary-soft); border-color: #c9d9ff; color: var(--primary-dark); }
+.chip-ok     { background: var(--success-soft); border-color: #b9e4d3; color: var(--success); }
+.chip-warn   { background: var(--warning-soft); border-color: #f3d9a4; color: var(--warning); }
+.chip-err    { background: var(--danger-soft);  border-color: #f4c7c3; color: var(--danger); }
+
+section[data-testid="stSidebar"] .status-strip { margin: 0.2rem 0 0.5rem; }
+
+
+/* ---------------------------------------------------------
+   G. SMALL POLISH
+   --------------------------------------------------------- */
+/* tables: keep the card look when a Sub Total row is highlighted */
+[data-testid="stDataFrame"],
+[data-testid="stDataEditor"] {
+    border-radius: var(--radius-lg) !important;
+}
+
+/* data editor wrapper (Fix Rows) */
+[data-testid="stDataEditor"] {
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow-xs) !important;
+    overflow: hidden !important;
+}
+
+/* download buttons read as secondary actions with a left accent */
+.stDownloadButton > button,
+[data-testid="stDownloadButton"] button {
+    border-left: 3px solid var(--primary) !important;
+}
+
+/* segmented radio (Daily View Mode etc.) never overflows */
+[data-testid="stMain"] [data-testid="stRadio"] > div[role="radiogroup"] {
+    flex-wrap: wrap !important;
+}
+
+
+/* ---------------------------------------------------------
+   H. LANDING PAGE: centred, calmer, roomier upload cards
+   --------------------------------------------------------- */
+body:has(.landing-page-marker) .block-container {
+    max-width: 1080px !important;
+    padding-top: 2.4rem !important;
+    margin: 0 auto !important;
+}
+
+body:has(.landing-page-marker) h2 {
+    font-size: 1.7rem !important;
+}
+
+body:has(.landing-page-marker) [data-testid="stFileUploader"] {
+    padding: 1.15rem !important;
+    min-height: 118px !important;
+}
+
+body:has(.landing-page-marker) .setup-card h3 {
+    margin: 0 0 0.3rem !important;
+}
+
+
+/* ---------------------------------------------------------
+   I. PRINT: clean page for managers who print a screen
+   --------------------------------------------------------- */
+@media print {
+    section[data-testid="stSidebar"],
+    [data-testid="stSidebarCollapsedControl"],
+    .stButton,
+    .stDownloadButton,
+    [data-testid="stPopover"],
+    [data-baseweb="tab-list"] {
+        display: none !important;
+    }
+
+    .block-container {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+
+    [data-testid="stMetric"],
+    [data-testid="stDataFrame"],
+    .stPlotlyChart {
+        break-inside: avoid;
+        box-shadow: none !important;
+    }
+
+    .stApp {
+        background: #ffffff !important;
+    }
+}
