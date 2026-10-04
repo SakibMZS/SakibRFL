@@ -98,7 +98,7 @@ def column_visibility_selector(df, key_prefix="", default_visible_cols=None):
     if skey not in st.session_state:
         st.session_state[skey] = initial
 
-    with st.popover("👁️ Columns"):
+    with st.popover("👁️️ Columns"):
         st.caption("Check or uncheck columns to customize active table view:")
         visible = []
         for col in all_cols:
@@ -171,7 +171,7 @@ if not st.session_state["app_launched"]:
                 try:
                     data = json.loads(corr_file.getvalue().decode("utf-8"))
                     st.session_state["corrections"] = {"rows": data.get("rows", {}), "reviewed": data.get("reviewed", {})}
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     st.error(f"Corrections file could not be read ({e}). Launching without it.")
             st.session_state["app_launched"] = True
             st.rerun()
@@ -203,7 +203,7 @@ scans, read_errors = {}, []
 for fl, b in floor_bytes.items():
     try:
         scans[fl] = cached_scan(b)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         read_errors.append(f"{fl}: the file could not be opened as an Excel workbook ({e})")
 
 for msg in read_errors:
@@ -222,7 +222,7 @@ results = {}
 for fl in scans:
     try:
         results[fl] = cached_parse(floor_bytes[fl], fl, period["year"], period["month"], period["last_day"], corr_rows_only())
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         st.error(f"❌ **{fl} file failed while reading:** {e}. None of its data is shown.")
 
 if not results:
@@ -655,9 +655,51 @@ elif nav_choice == HEALTH_NAV:
                          hide_index=True, use_container_width=True)
             st.caption("Final = Parsed − Excluded + Edited. 'Lost in parsing' must always be 0.")
 
-    # ---- fix rows
+    # ---- fix rows (includes Smart Unresolved Machine Suggestions)
     with t_fix:
         ri = health["row_issues"]
+        
+        st.markdown("##### 🛠️ Unresolved Machine Audit & Smart Suggestions")
+        st.caption("Rows with invalid or mistyped machine names appear in 'Line Other'. Review the system suggestions below and choose to Accept or Exclude.")
+
+        unresolved_issues = ri[(ri["Category"] == "Machine name") & (ri["Status"] == "Open")]
+        if unresolved_issues.empty:
+            st.success("🟢 No unresolved machine names found! 'Line Other' is clear.")
+        else:
+            for _, r in unresolved_issues.iterrows():
+                key = r["Key"]
+                row_matches = df_all[df_all["Row Key"] == key] if 'df_all' in globals() else pd.DataFrame()
+                if row_matches.empty:
+                    continue
+                row_data = row_matches.iloc[0]
+                
+                col_a, col_b, col_c = st.columns([2, 3, 2])
+                with col_a:
+                    st.markdown(f"**Date:** {r['Date']}\n\n**Excel Row:** {r['Src Row']}\n\n**Typed Name:** `{row_data['MC Used']}`")
+                with col_b:
+                    sugg_mc, conf, reason = ingest.suggest_machine_fix(df_all, key)
+                    st.markdown(f"**Order / Item:** {r['Order']} / {r['Item']}\n\n**Pieces:** {int(row_data['Total Good']):,} Pcs\n\n💡 **Suggestion:** `{sugg_mc}` (*{conf} Confidence*)\n*{reason}*")
+                with col_c:
+                    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                    if st.button(f"✅ Accept `{sugg_mc}`", key=f"acc_{key}", use_container_width=True):
+                        corr = st.session_state["corrections"]
+                        ov = dict(corr["rows"].get(key, {"sig": f"{r['Order']}|{r['Item']}"}))
+                        ov["mc_sl"] = sugg_mc
+                        corr["rows"][key] = ov
+                        st.session_state["corrections"] = corr
+                        st.success(f"Accepted {sugg_mc}!")
+                        st.rerun()
+                    if st.button("🗑️ Exclude Row", key=f"exc_{key}", use_container_width=True):
+                        corr = st.session_state["corrections"]
+                        ov = dict(corr["rows"].get(key, {"sig": f"{r['Order']}|{r['Item']}"}))
+                        ov["exclude"] = True
+                        corr["rows"][key] = ov
+                        st.session_state["corrections"] = corr.copy()
+                        st.warning("Row excluded.")
+                        st.rerun()
+                st.divider()
+
+        st.markdown("##### General Row Issue Edits")
         f1, f2, f3, f4 = st.columns([1.2, 1.2, 1.4, 1.2])
         with f1:
             show_status = st.selectbox("Show", ["Open", "Reviewed", "All"], key="hf_status")
@@ -750,7 +792,6 @@ elif nav_choice == HEALTH_NAV:
                 st.success(f"Saved {changed} change(s). Recalculating...")
                 st.rerun()
 
-        # undo exclusions
         excl = {k: v for k, v in st.session_state["corrections"]["rows"].items() if v.get("exclude")}
         if excl:
             st.divider()
@@ -796,7 +837,7 @@ elif nav_choice == HEALTH_NAV:
                 cur["rows"].update(data.get("rows", {}))
                 cur["reviewed"].update(data.get("reviewed", {}))
                 st.rerun()
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 st.error(f"Could not read that file: {e}")
         if st.button("🗑 Reset ALL corrections and reviews", key="corr_reset"):
             st.session_state["corrections"] = {"rows": {}, "reviewed": {}}
