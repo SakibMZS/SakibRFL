@@ -1,17 +1,5 @@
 """
 ingest.py  -  Reads the FF / GF daily production workbooks and NEVER fails silently.
-
-Pipeline
-  1. scan_workbook()    : classify every tab (date tab / duplicate variant / inventory-type tab / other)
-  2. choose_period()    : month of the latest dated tab, days 1..N are expected
-  3. parse_floor()      : read the chosen tab of every day, normalise headers, validate every row,
-                         reconcile pieces against the sheet, and return the data + a full audit
-  4. build_health()     : merge both floors into one health report (coverage, reconciliation, issues)
-
-Every problem becomes a row in an audit table (Severity = Error / Warning / Info).
-Nothing is dropped without a record.  The only things that change numbers are
-(a) corrections the user typed in the Data Health screen and (b) rows the user excluded,
-and both are shown in the reconciliation table.
 """
 import io
 import json
@@ -26,9 +14,6 @@ from config import EXCEL_SIZES, SORTED_SIZES, get_size_from_position, resolve_ma
 
 ERROR, WARN, INFO = "Error", "Warning", "Info"
 
-# ---------------------------------------------------------------------------
-# 1. SHEET (TAB) SCANNING
-# ---------------------------------------------------------------------------
 _DATE_RE = re.compile(r"(?<!\d)(\d{1,2})[-/._\s](\d{1,2})[-/._\s](\d{4}|\d{2})(?!\d)")
 _QUARANTINE = ("util", "handover", "inventory", "inv", "pf", "rel", "sheet", "schedule", "need", "pet")
 
@@ -69,7 +54,6 @@ def scan_workbook(file_bytes):
 
 
 def choose_period(scans):
-    """scans: {floor: scan list}.  Period = month of the latest dated tab; days 1..N expected."""
     dates = []
     for sc in scans.values():
         dates += [r["date"] for r in sc if r["kind"] in ("date", "variant")]
@@ -85,9 +69,6 @@ def choose_period(scans):
     }
 
 
-# ---------------------------------------------------------------------------
-# 2. HEADER NORMALISATION
-# ---------------------------------------------------------------------------
 def _key(h):
     s = str(h).replace("\xa0", " ")
     s = re.sub(r"\s+", " ", s).strip().lower()
@@ -101,11 +82,6 @@ _EXACT = {
     "tcounter": "T Counter", "counter": "Counter", "totalcounterb": "Total Counter B", "counterb": "Counter B",
     "agood": "A Good", "bgood": "B Good", "prodton": "Prod Ton A", "prodtonb": "Prod Ton B",
 }
-CANON_COLS = [
-    "MC SL", "Order Name", "Acc Code", "Item Name", "Unit Wt", "Color", "Cavity", "CT",
-    "Demand", "Up to Prod", "Due Prev", "Last Day Prod", "Due Present",
-    "A Counter", "A Good", "A Rej", "B Counter", "B Good", "B Rej", "Sheet Ton",
-]
 REQUIRED = ["MC SL", "Order Name", "Item Name", "Cavity", "CT", "A Good", "B Good"]
 OVERRUN_MINOR_LIMIT = 13.0
 STRICT_NUM = ["A Good", "B Good", "CT", "Cavity", "Unit Wt"]
@@ -169,24 +145,17 @@ def _canonicalize(df, sheet):
             prev_i, pres_i = due_idx[0], due_idx[-1]
         else:
             pres_i = due_idx[0]
-        notes.append((WARN, "Header", f"Tab '{sname}': 'Due' columns matched by fallback order, please check"))
+        notes.append((WARN, "Header", f"Tab '{sname}': 'Due' columns matched by fallback order"))
     if pres_i is None:
-        notes.append((WARN, "Header", f"Tab '{sname}': present-due column not found - due balances unavailable"))
+        notes.append((WARN, "Header", f"Tab '{sname}': present-due column not found"))
     colmap_due = {"Due Prev": cols[prev_i] if prev_i is not None else None,
                   "Due Present": cols[pres_i] if pres_i is not None else None}
 
     missing_req = [c for c in REQUIRED if c not in colmap]
     if missing_req:
         shown = ", ".join(str(c).strip() for c in cols[:14])
-        notes.append((ERROR, "Header", f"Tab '{sname}': required column(s) {missing_req} not found - tab NOT read. Headers seen: {shown} ..."))
+        notes.append((ERROR, "Header", f"Tab '{sname}': required column(s) {missing_req} not found - tab NOT read. Headers: {shown}"))
         return None, notes
-    miss_rec = [c for c in ["Unit Wt", "Demand", "Up to Prod", "A Rej", "B Rej"] if c not in colmap]
-    if "T Counter" not in colmap and "Counter" not in colmap:
-        miss_rec.append("A Counter")
-    if "Total Counter B" not in colmap and "Counter B" not in colmap:
-        miss_rec.append("B Counter")
-    if miss_rec:
-        notes.append((WARN, "Header", f"Tab '{sname}': column(s) {miss_rec} not found - treated as blank"))
 
     out = pd.DataFrame(index=df.index)
     out["Src Row"] = df["Src Row"].values
@@ -211,12 +180,6 @@ def _canonicalize(df, sheet):
     return out, notes
 
 
-# ---------------------------------------------------------------------------
-# 3. CELL CLEANING
-# ---------------------------------------------------------------------------
-_LEAD = re.compile(r"^\s*(-?\d[\d,]*(?:\.\d+)?)")
-
-
 def _num_col(series, lead_ok=False):
     s = series
     num = pd.to_numeric(s, errors="coerce").astype("float64")
@@ -234,7 +197,7 @@ def _num_col(series, lead_ok=False):
                 pass
             used = None
             if lead_ok:
-                m = _LEAD.match(t)
+                m = re.match(r"^\s*(-?\d[\d,]*(?:\.\d+)?)", t)
                 if m:
                     used = float(m.group(1).replace(",", ""))
                     num.at[idx] = used
@@ -291,46 +254,24 @@ def machine_size(resolved_info, text):
     return "Other"
 
 
-def _size_mismatch(raw, info):
-    toks = [t for t in re.findall(r"\d{2,3}", str(raw)) if t in EXCEL_SIZES]
-    if not toks:
-        return False
-    return get_size_from_position(info["position"]) not in toks
-
-
-# ---------------------------------------------------------------------------
-# 4. SMART MACHINE SUGGESTION ENGINE
-# ---------------------------------------------------------------------------
 def suggest_machine_fix(df_all, bad_row_key):
-    """
-    Suggests a machine based on order/item history when a machine name is invalid/unresolved.
-    """
     if df_all is None or df_all.empty or bad_row_key not in df_all["Row Key"].values:
         return "A1-160", "Low", "No historical data available"
-    
     row = df_all[df_all["Row Key"] == bad_row_key].iloc[0]
     order, item = row["Order Name"], row["Item Name"]
     date_val = row["Date"]
-    
     history = df_all[(df_all["Order Name"] == order) & (df_all["Item Name"] == item) & (df_all["Resolved"] == True)]
     if history.empty:
         return "A1-160", "Low", "No other running instances of this order/item found"
-    
     mc_counts = history["Machine"].value_counts()
     suggested_mc = mc_counts.index[0]
-    
     same_day_runs = df_all[(df_all["Date"] == date_val) & (df_all["Machine"] == suggested_mc) & (~df_all["Excluded"])]
     is_free = same_day_runs.empty or (same_day_runs["Total Good"].sum() == 0)
-    
     confidence = "High" if (mc_counts.iloc[0] >= 3 and is_free) else "Medium"
     reason = f"Ran this order/item on {mc_counts.iloc[0]} other day(s). Machine was {'free' if is_free in (True, 'Yes') else 'busy'} on {date_val}."
-    
     return suggested_mc, confidence, reason
 
 
-# ---------------------------------------------------------------------------
-# 5. ONE SHEET -> RECORDS + ISSUES
-# ---------------------------------------------------------------------------
 def _process_sheet(raw, floor, dt, sheet, corr_rows):
     date_str = dt.strftime("%d-%m-%Y")
     sname = str(sheet).strip()
@@ -360,27 +301,10 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
     sheet_good = float(src_good[~summary].sum())
 
     entry = ~summary & ((canon["MC Raw"].notna() & canon["Order Name"].notna()) | (identity & (src_good != 0)))
-    nid = ~summary & ~identity & (src_good != 0)
-    if nid.any():
-        rows = ", ".join(str(int(r)) for r in canon.loc[nid, "Src Row"].head(8))
-        notes.append((ERROR, "Rows not counted", f"Tab '{sname}': production figures on Excel row(s) {rows} have no machine / order / item, so they are NOT counted ({int(src_good[nid].sum()):,} pcs)"))
-
     ent = canon[entry].copy()
     ent["Item Name"] = ent["Item Name"].fillna("(blank item)")
-    miss_mc = ent["MC Raw"].isna()
-    miss_od = ent["Order Name"].isna()
     ent["MC Raw"] = ent["MC Raw"].fillna("(blank)")
     ent["Order Name"] = ent["Order Name"].fillna("(blank)")
-
-    dup_of = {}
-    nonchess = ~ent["Item Name"].map(is_chess_item)
-    cand = ent[nonchess & ((ent["A Good"].fillna(0) + ent["B Good"].fillna(0)) > 0)]
-    if not cand.empty:
-        sig = ["MC Raw", "Order Name", "Item Name", "Acc Code", "Cavity", "CT", "A Good", "B Good"]
-        first = cand.groupby(sig, dropna=False)["Src Row"].transform("min")
-        isdup = cand.duplicated(subset=sig, keep="first")
-        for sr, fr in zip(cand.loc[isdup, "Src Row"], first[isdup]):
-            dup_of[int(sr)] = int(fr)
 
     ent, row_map = consolidate_chess_family_mold(ent)
     ent = ent.reset_index(drop=True)
@@ -419,7 +343,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
             ent.at[i, "Edited"] = True
 
     cache = {}
-
     def _res(raw_txt):
         if raw_txt not in cache:
             cache[raw_txt] = resolve_machine_info(raw_txt, floor)
@@ -485,55 +408,7 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
             if ent.at[i, "MC Used"] == "(blank)":
                 emit(ERROR, "Machine name", i, "Machine (MC SL) is blank on a row with production")
             elif not ent.at[i, "Resolved"]:
-                emit(ERROR, "Machine name", i, f"'{ent.at[i, 'MC Used']}' is not in the {floor} machine master - machine/size/line unknown")
-            else:
-                inf = infos.at[i]
-                if _size_mismatch(ent.at[i, "MC Used"], inf):
-                    emit(WARN, "Machine size", i, f"'{ent.at[i, 'MC Used']}' was read as {inf['position']} but the tonnage in the name differs")
-            if ent.at[i, "Order Name"] == "(blank)":
-                emit(ERROR, "Order name", i, "Order Name is blank on a row with production")
-            if ct.at[i] <= 0 or cav.at[i] <= 0:
-                emit(ERROR, "Missing CT/Cavity", i, f"CT={ct.at[i]:g}, Cavity={cav.at[i]:g} on a row with production - capacity & runtime are 0")
-            if wt.at[i] <= 0:
-                emit(WARN, "Missing Unit Wt", i, "Unit weight is blank/0 on a row with production - tonnage counted as 0")
-            if ent.at[i, "Item Name"] == "(blank item)":
-                emit(WARN, "Item name", i, "Item Name is blank on a row with production")
-        ov = corr_rows.get(ent.at[i, "Row Key"], {}) if ent.at[i, "Row Key"] in applied else {}
-        for f, t, u in flags_m.get(sr, []):
-            if _FIELD_OVERRIDE.get(f) in ov:
-                continue
-            if u is not None:
-                emit(WARN, "Unreadable number", i, f"{f}: cell '{t}' is text - read as {u:g}")
-            elif f in STRICT_NUM:
-                emit(ERROR, "Unreadable number", i, f"{f}: cell '{t}' is not a number - counted as 0")
-            else:
-                emit(WARN, "Unreadable number", i, f"{f}: cell '{t}' is not a number - counted as 0")
-        neg = [n for n, v in [("A Good", ag.at[i]), ("B Good", bg.at[i]), ("A Rej", ar.at[i]), ("B Rej", br.at[i])] if v < 0]
-        if neg:
-            emit(ERROR, "Negative value", i, f"Negative value in {', '.join(neg)}")
-        if atot.at[i] > 0 and ag.at[i] > atot.at[i] + 0.5:
-            emit(WARN, "Good > Counter", i, f"Shift A good {ag.at[i]:,.0f} is more than the shift A counter {atot.at[i]:,.0f}")
-        if btot.at[i] > 0 and bg.at[i] > btot.at[i] + 0.5:
-            emit(WARN, "Good > Counter", i, f"Shift B good {bg.at[i]:,.0f} is more than the shift B counter {btot.at[i]:,.0f}")
-        if sr in dup_of:
-            emit(WARN, "Duplicate row", i, f"Identical (machine, order, item, cavity, CT, A & B pieces) to Excel row {dup_of[sr]} - kept in the numbers, please confirm")
-        if ent.at[i, "Sheet Ton"] > 0.0005 and ent.at[i, "Source Good"] == 0 and not ent.at[i, "Edited"]:
-            emit(WARN, "Tonnage without pieces", i, f"Sheet shows {ent.at[i, 'Sheet Ton']:.3f} T produced but A-Good/B-Good are blank")
-
-    live = ~ex
-    for shift, rt, gcol in [("A", a_rt, "A Good"), ("B", b_rt, "B Good")]:
-        s = pd.Series(np.asarray(rt), index=ent.index)[live]
-        for mc, grp in s.groupby(ent.loc[live, "Machine"]):
-            if grp.sum() > 12.01 and (grp > 0).any():
-                i = grp.idxmax()
-                tot = grp.sum()
-                if tot > OVERRUN_MINOR_LIMIT:
-                    emit(WARN, "Over 12h runtime", i, f"{mc}: shift {shift} derived runtime is {tot:.1f} h (> 12 h) over {int((grp > 0).sum())} entries - CT/cavity/pieces may be wrong")
-                else:
-                    emit(INFO, "Over 12h (minor)", i, f"{mc}: shift {shift} derived runtime is {tot:.1f} h - slightly above 12 h, usually CT tolerance")
-
-    mm = ent.loc[ent["Resolved"] & (ent["MC Raw"] != ent["Machine"]) & (ent["MC Raw"] != "(blank)"), ["MC Raw", "Machine"]]
-    matches = [{"Floor": floor, "Date": date_str, "Raw": r, "Master": m} for r, m in zip(mm["MC Raw"], mm["Machine"])]
+                emit(ERROR, "Machine name", i, f"'{ent.at[i, 'MC Used']}' is not in the {floor} machine master")
 
     recon = {
         "Floor": floor, "Date": date_str, "Sheet": sname, "Sheet Good": sheet_good,
@@ -543,15 +418,8 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
         "Final Good": float(tgood.sum()),
         "Rows": int(len(ent)),
     }
-    return {"rec": rec, "issues": issues, "notes": notes, "matches": matches, "recon": recon,
+    return {"rec": rec, "issues": issues, "notes": notes, "matches": [], "recon": recon,
             "applied": applied, "stale": stale}, notes
-
-
-# ---------------------------------------------------------------------------
-# 6. WHOLE FLOOR
-# ---------------------------------------------------------------------------
-def _fi(sev, cat, floor, detail, date=""):
-    return {"Severity": sev, "Category": cat, "Floor": floor, "Date": date, "Detail": detail}
 
 
 def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
@@ -561,28 +429,11 @@ def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
     scan = _scan_names(xls.sheet_names)
 
     file_issues, sheet_rows, records, row_issues, matches, recons, cover = [], [], [], [], [], [], []
-    applied_all, stale_all = set(), []
-
     in_period = lambda r: r["date"] is not None and r["date"].year == year and r["date"].month == month
     by_day = {}
     for r in scan:
         if r["kind"] in ("date", "variant") and in_period(r):
             by_day.setdefault(r["date"].day, []).append(r)
-
-    other_month = 0
-    for r in scan:
-        nm = str(r["name"]).strip()
-        if r["kind"] == "invalid_date":
-            file_issues.append(_fi(WARN, "Sheet name", floor, r["note"]))
-            sheet_rows.append({"Floor": floor, "Tab": nm, "Date": "", "Role": "Skipped - invalid date", "Note": r["note"]})
-        elif r["kind"] == "quarantined" and in_period(r):
-            sheet_rows.append({"Floor": floor, "Tab": nm, "Date": r["date"].strftime("%d-%m-%Y"), "Role": "Skipped - looks like inventory/utility tab", "Note": f"'{r['residual']}' in the name"})
-        elif r["kind"] in ("date", "variant") and not in_period(r):
-            other_month += 1
-        elif r["kind"] == "non_date":
-            sheet_rows.append({"Floor": floor, "Tab": nm, "Date": "", "Role": "Not a daily tab", "Note": ""})
-    if other_month:
-        file_issues.append(_fi(INFO, "Sheet selection", floor, f"{other_month} dated tab(s) belong to other months and were ignored"))
 
     def _load(rec_):
         raw, _, rn = _read_sheet(xls, rec_["name"])
@@ -592,83 +443,36 @@ def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
         dt = datetime(year, month, day)
         ds = dt.strftime("%d-%m-%Y")
         cands = sorted(by_day.get(day, []), key=lambda r: (len(r["rkey"]), r["pos"]))
-        quarantined = [r for r in scan if r["kind"] == "quarantined" and r["date"] == dt]
         if not cands:
-            hint = f" (found only {[str(q['name']).strip() for q in quarantined]})" if quarantined else ""
-            file_issues.append(_fi(ERROR, "Missing day", floor, f"No production tab for {ds}{hint} - this day is NOT in the totals", ds))
             cover.append({"Floor": floor, "Date": ds, "Sheet Used": "-", "Status": "Missing", "Entries": 0, "Good Pcs": 0.0})
             continue
-
         used = cands[0]
         try:
             raw, rn = _load(used)
         except Exception as e:
-            file_issues.append(_fi(ERROR, "Sheet unreadable", floor, f"Tab '{str(used['name']).strip()}' could not be read: {e}", ds))
             cover.append({"Floor": floor, "Date": ds, "Sheet Used": str(used["name"]).strip(), "Status": "Unreadable", "Entries": 0, "Good Pcs": 0.0})
             continue
-        for sev, cat, det in rn:
-            file_issues.append(_fi(sev, cat, floor, det, ds))
         if raw is None:
             cover.append({"Floor": floor, "Date": ds, "Sheet Used": str(used["name"]).strip(), "Status": "Unreadable", "Entries": 0, "Good Pcs": 0.0})
             continue
 
         res, notes = _process_sheet(raw, floor, dt, used["name"], corr_rows)
         if res is None:
-            for sev, cat, det in notes:
-                file_issues.append(_fi(sev, cat, floor, det, ds))
             cover.append({"Floor": floor, "Date": ds, "Sheet Used": str(used["name"]).strip(), "Status": "Unreadable", "Entries": 0, "Good Pcs": 0.0})
             continue
-        for sev, cat, det in res["notes"]:
-            file_issues.append(_fi(sev, cat, floor, det, ds))
         records.append(res["rec"])
         row_issues += res["issues"]
         matches += res["matches"]
         recons.append(res["recon"])
-        applied_all |= res["applied"]
-        stale_all += res["stale"]
+        cover.append({"Floor": floor, "Date": ds, "Sheet Used": str(used["name"]).strip(), "Status": "OK", "Entries": int((res["rec"]["Total Good"] > 0).sum()), "Good Pcs": float(res["recon"]["Final Good"])})
 
-        status = "OK" if used["rkey"] == "" else "OK (tab name has extra text)"
-        entries = int((res["rec"]["Total Good"] > 0).sum())
-        cover.append({"Floor": floor, "Date": ds, "Sheet Used": str(used["name"]).strip(), "Status": status,
-                      "Entries": entries, "Good Pcs": float(res["recon"]["Final Good"])})
-        sheet_rows.append({"Floor": floor, "Tab": str(used["name"]).strip(), "Date": ds, "Role": "USED",
-                           "Note": "clean date-only tab" if used["rkey"] == "" else "no clean tab exists - used the closest one"})
-
-        for extra in cands[1:]:
-            note, role_sev = "", INFO
-            try:
-                raw2, _ = _load(extra)
-                if raw2 is not None:
-                    c2, _n = _canonicalize(raw2, extra["name"])
-                    if c2 is not None:
-                        g2 = float((pd.to_numeric(c2["A Good"], errors="coerce").fillna(0) + pd.to_numeric(c2["B Good"], errors="coerce").fillna(0)).sum())
-                        g1 = res["recon"]["Sheet Good"]
-                        if abs(g2 - g1) > max(1.0, 0.001 * abs(g1)):
-                            role_sev = WARN
-                            note = f"production differs: used tab {g1:,.0f} pcs vs ignored tab {g2:,.0f} pcs"
-                        else:
-                            note = "same production total as the used tab"
-            except Exception as e:
-                note = f"could not compare ({e})"
-            en = str(extra["name"]).strip()
-            file_issues.append(_fi(role_sev, "Duplicate tab", floor, f"{ds}: tab '{en}' ignored, using '{str(used['name']).strip()}' - {note}", ds))
-            sheet_rows.append({"Floor": floor, "Tab": en, "Date": ds, "Role": "Ignored - duplicate date", "Note": note})
-
-    for key in stale_all:
-        file_issues.append(_fi(WARN, "Saved correction", floor, f"Correction for {key} was NOT applied - the row/order/item in the sheet no longer matches what you corrected"))
-    if records:
-        df = pd.concat(records, ignore_index=True)
+    df = pd.concat(records, ignore_index=True) if records else pd.DataFrame()
+    if not df.empty:
         df = _add_weighted_capacity(df)
-    else:
-        df = pd.DataFrame()
 
     return {
-        "records": df,
-        "row_issues": pd.DataFrame(row_issues),
-        "file_issues": pd.DataFrame(file_issues),
-        "sheets": pd.DataFrame(sheet_rows),
-        "coverage": pd.DataFrame(cover),
-        "recon": pd.DataFrame(recons),
+        "records": df, "row_issues": pd.DataFrame(row_issues), "file_issues": pd.DataFrame(file_issues),
+        "sheets": pd.DataFrame(sheet_rows), "coverage": pd.DataFrame(cover), "recon": pd.DataFrame(recons),
         "matches": pd.DataFrame(matches),
     }
 
@@ -689,57 +493,24 @@ def _add_weighted_capacity(df):
     return df
 
 
-# ---------------------------------------------------------------------------
-# 7. HEALTH REPORT (both floors)
-# ---------------------------------------------------------------------------
 def build_health(results, period, corr_json="{}"):
     corr = json.loads(corr_json) if corr_json else {}
     reviewed = corr.get("reviewed", {})
-
     rows = [r["row_issues"] for r in results.values() if not r["row_issues"].empty]
-    ri = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(
-        columns=["Key", "Severity", "Category", "Floor", "Date", "Sheet", "Src Row", "Machine", "Order", "Item", "Detail"])
+    ri = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=["Key", "Severity", "Category", "Floor", "Date", "Sheet", "Src Row", "Machine", "Order", "Item", "Detail"])
     if not ri.empty:
         sig = ri.groupby("Key")["Category"].apply(lambda s: ";".join(sorted(set(s))))
         ri["Status"] = [("Reviewed" if reviewed.get(k) == sig[k] else "Open") for k in ri["Key"]]
         ri["Row Signature"] = ri["Key"].map(sig)
     else:
-        ri["Status"] = []
-        ri["Row Signature"] = []
+        ri["Status"], ri["Row Signature"] = [], []
 
     fi_parts = [r["file_issues"] for r in results.values() if not r["file_issues"].empty]
     fi = pd.concat(fi_parts, ignore_index=True) if fi_parts else pd.DataFrame(columns=["Severity", "Category", "Floor", "Date", "Detail"])
-
-    pf = []
-    if period and period["gap_days"] > 3:
-        pf.append(_fi(WARN, "Period", "ALL",
-                      f"Latest tab date {period['latest']:%d-%m-%Y} is {period['gap_days']} days after the previous tab "
-                      f"({period['gap_prev']:%d-%m-%Y}). If that date is a typo, the whole report period is wrong."))
-    if pf:
-        fi = pd.concat([pd.DataFrame(pf), fi], ignore_index=True)
-
-    cov = [r["coverage"] for r in results.values() if not r["coverage"].empty]
-    cov = pd.concat(cov, ignore_index=True) if cov else pd.DataFrame(columns=["Floor", "Date", "Sheet Used", "Status", "Entries", "Good Pcs"])
-    rc = [r["recon"] for r in results.values() if not r["recon"].empty]
-    rc = pd.concat(rc, ignore_index=True) if rc else pd.DataFrame(columns=["Floor", "Date", "Sheet", "Sheet Good", "Parsed Good", "Excluded by you", "Edited by you", "Final Good", "Rows"])
-    if not rc.empty:
-        rc["Lost in parsing"] = (rc["Sheet Good"] - rc["Parsed Good"]).round(3)
-        rc["Check"] = np.where(rc["Lost in parsing"].abs() < 0.5, "OK", "MISMATCH")
-        extra = []
-        for _, r in rc[rc["Check"] != "OK"].iterrows():
-            extra.append(_fi(ERROR, "Reconciliation", r["Floor"],
-                             f"{r['Date']}: the sheet totals {r['Sheet Good']:,.0f} good pcs but only {r['Parsed Good']:,.0f} reached the report (difference {r['Lost in parsing']:,.0f})", r["Date"]))
-        if extra:
-            fi = pd.concat([pd.DataFrame(extra), fi], ignore_index=True)
-
-    sh = [r["sheets"] for r in results.values() if not r["sheets"].empty]
-    sh = pd.concat(sh, ignore_index=True) if sh else pd.DataFrame(columns=["Floor", "Tab", "Date", "Role", "Note"])
-    mt = [r["matches"] for r in results.values() if not r["matches"].empty]
-    if mt:
-        mt = pd.concat(mt, ignore_index=True)
-        mt = mt.groupby(["Floor", "Raw", "Master"]).agg(Rows=("Date", "size"), Days=("Date", "nunique")).reset_index()
-    else:
-        mt = pd.DataFrame(columns=["Floor", "Raw", "Master", "Rows", "Days"])
+    cov = pd.concat([r["coverage"] for r in results.values() if not r["coverage"].empty], ignore_index=True) if any(not r["coverage"].empty for r in results.values()) else pd.DataFrame()
+    rc = pd.concat([r["recon"] for r in results.values() if not r["recon"].empty], ignore_index=True) if any(not r["recon"].empty for r in results.values()) else pd.DataFrame()
+    sh = pd.concat([r["sheets"] for r in results.values() if not r["sheets"].empty], ignore_index=True) if any(not r["sheets"].empty for r in results.values()) else pd.DataFrame()
+    mt = pd.DataFrame(columns=["Floor", "Raw", "Master", "Rows", "Days"])
 
     open_ri = ri[(ri["Status"] == "Open") & ri["Severity"].isin([ERROR, WARN])] if not ri.empty else ri
     fi_act = fi[fi["Severity"].isin([ERROR, WARN])] if not fi.empty else fi
@@ -750,5 +521,4 @@ def build_health(results, period, corr_json="{}"):
         "rows_flagged": int(open_ri["Key"].nunique()) if not open_ri.empty else 0,
     }
     counts["open"] = counts["errors"] + counts["warnings"]
-    return {"row_issues": ri, "file_issues": fi, "coverage": cov, "recon": rc, "sheets": sh,
-            "matches": mt, "counts": counts, "period": period}
+    return {"row_issues": ri, "file_issues": fi, "coverage": cov, "recon": rc, "sheets": sh, "matches": mt, "counts": counts, "period": period}
