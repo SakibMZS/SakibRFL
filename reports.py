@@ -1,13 +1,12 @@
 """
-reports.py  -  Pure-pandas summary calculations (no Streamlit), so they can be tested on real files.
+reports.py  -  Pure-pandas summary calculations (no Streamlit).
 
 Consistent definitions used everywhere
   * a machine is "running" on a day when its Total Good > 0
   * CT / Cavity averages in Sub Total rows are runtime-weighted (same as the rows above them)
   * the Sizewise tables always include an 'Other' row if a running machine has no known size,
     so Sizewise totals always tie to Linewise totals
-  * an item's overall cavity is the MAX cavity used (a broken cavity that was later fixed
-    does not lower the figure); CT is the CT of the latest run
+  * an item's overall cavity is the MAX cavity used; CT is the CT of the latest run
 """
 import numpy as np
 import pandas as pd
@@ -103,7 +102,6 @@ def compute_line_summary_mtd(df_subset):
 
 
 def compute_size_summary(df_subset, mode="daily"):
-    """Machine-size summary (Excel 'Sheet2' layout). Adds an 'Other' row if needed."""
     records = []
     sizes = list(EXCEL_SIZES)
     other_active = running(df_subset[~df_subset["MC Size"].isin(EXCEL_SIZES)])
@@ -141,7 +139,7 @@ def compute_size_summary(df_subset, mode="daily"):
 # ---------------------------------------------------------------------------
 # Sub Total rows
 # ---------------------------------------------------------------------------
-_PCT_PAIRS = [  # (percent column, produced column, capacity column)
+_PCT_PAIRS = [
     ("% OF Ach Pcs", "Total Prod (Pcs)", "Total Cap (Pcs)"),
     ("% OF Ach Ton", "Prod (Ton)", "Cap (Ton)"),
     ("Pcs Ach %", "Prod (Pcs)", "Cap (Pcs)"),
@@ -161,10 +159,6 @@ def _num(df, c):
 
 
 def add_total_row(df, label_col, sum_cols, avg_cols, weight_col=None):
-    """
-    Adds a Sub Total row.  Sums for sum_cols; percentage columns are recomputed from their own
-    totals; avg_cols are averaged over rows with a value > 0, weighted by weight_col when given.
-    """
     if df.empty:
         return df
     tot = {}
@@ -191,7 +185,6 @@ def add_total_row(df, label_col, sum_cols, avg_cols, weight_col=None):
 
 
 def add_size_total_row(df):
-    """Sizewise Sub Total with correctly weighted CT average and run-hour average."""
     sums = ["MC QTY", "Total Cap (Pcs)", "Total Prod (Pcs)", "Cap (Ton)", "Prod (Ton)"]
     out = add_total_row(df, "MC Size", sums, [])
     if df.empty:
@@ -229,7 +222,7 @@ def build_job_daily(df_day_raw):
 
 
 # ---------------------------------------------------------------------------
-# As-of job-order view (one row per order + item, ledger = LAST available date)
+# As-of job-order view (grouped by Item Name AND Color)
 # ---------------------------------------------------------------------------
 def _latest_sorted(grp):
     return grp.sort_values(["DateObj", "Floor", "Src Row"], kind="stable")
@@ -245,7 +238,7 @@ def _ledger_note(grp, last_date):
 
 def build_job_mtd(df_mtd):
     records = []
-    for (cust, ord_name, acc, item), grp in df_mtd.groupby(["Customer", "Order Name", "Acc Code", "Item Name"]):
+    for (cust, ord_name, acc, item, color), grp in df_mtd.groupby(["Customer", "Order Name", "Acc Code", "Item Name", "Color"]):
         g = _latest_sorted(grp)
         latest = g.iloc[-1]
         last_date = latest["Date"]
@@ -258,7 +251,7 @@ def build_job_mtd(df_mtd):
         last_cap = last_runs["Daily Cap Pcs"].sum()
         pct = _pct(as_of_prod, qty)
         records.append({
-            "Customer": cust, "Order Name": ord_name, "Acc Code": acc, "Item Name": item,
+            "Customer": cust, "Order Name": ord_name, "Acc Code": acc, "Item Name": item, "Color": color if pd.notna(color) else "-",
             "Order Qty": qty, "Due Production": round(due, 2), "As of Production": round(as_of_prod, 2),
             "As of %": f"{pct:.2f}%", "Last Run Date": last_date, "Last MC Assigned": last_mcs,
             "Last Day Cap (Pcs)": round(last_cap, 2), "Last Day Output (Pcs)": round(last_out, 2),
@@ -272,11 +265,11 @@ def build_job_mtd(df_mtd):
 
 
 # ---------------------------------------------------------------------------
-# Job Order Analysis (one order -> its items -> daily timeline)
+# Job Order Analysis items (grouped by Item Name AND Color)
 # ---------------------------------------------------------------------------
 def build_order_items(df_order, order_name):
     records = []
-    for item, grp in df_order.groupby("Item Name"):
+    for (item, color), grp in df_order.groupby(["Item Name", "Color"]):
         g = _latest_sorted(grp)
         latest = g.iloc[-1]
         demand = latest["Demand Qty"] if latest["Demand Qty"] > 0 else g["Demand Qty"].max()
@@ -289,15 +282,15 @@ def build_order_items(df_order, order_name):
         else:
             status = "Not Started"
         records.append({
-            "Job Order": order_name, "Acc Code": latest["Acc Code"], "Item Name": item, "Color": latest.get("Color", "-"),
+            "Job Order": order_name, "Acc Code": latest["Acc Code"], "Item Name": item, "Color": color if pd.notna(color) else "-",
             "Demand Qty": demand, "Total Produced (Pcs)": produced, "Remaining Due": round(due, 2),
             "Fulfillment %": f"{_pct(produced, demand):.2f}%", "Status": status,
             "Last Run Date": latest["Date"], "Last MC Run": latest["Machine"],
             "Total Produced (Ton)": round(g["Total Prod Ton"].sum(), 2),
             "Total Runtime (Hrs)": round(g["Total Runtime (Hrs)"].sum(), 2),
             "Unit Wt (kg)": latest["Unit Wt (kg)"],
-            "Cavity": g["Cavity"].max(),            # max cavity ever used for this item
-            "CT": latest["CT"],                       # CT of the latest run
+            "Cavity": g["Cavity"].max(),
+            "CT": latest["CT"],
             "Ledger Note": _ledger_note(g, latest["Date"]),
         })
     return pd.DataFrame(records)
@@ -331,7 +324,7 @@ def build_item_timeline(df_item_runs, target_demand):
 
 
 # ---------------------------------------------------------------------------
-# Display formatting (unchanged behaviour)
+# Display formatting
 # ---------------------------------------------------------------------------
 _INT_KEYS = ("good", "rej", "pcs", "qty", "production", "due", "output", "cap")
 
