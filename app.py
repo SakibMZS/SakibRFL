@@ -1,9 +1,9 @@
 # ============================================
 # PLASTIC-3 OPERATIONS CONSOLE  (FF + GF)
 # app.py  - screens only. Logic lives in:
-#   ingest.py   (read + validate + reconcile the Excel files)
-#   reports.py  (summary calculations)
-#   exporter.py (Excel exports)
+#    ingest.py   (read + validate + reconcile the Excel files)
+#    reports.py  (summary calculations)
+#    exporter.py (Excel exports)
 # ============================================
 import io
 import json
@@ -441,7 +441,7 @@ elif nav_choice == "📊 As of Data (MTD)":
 
     elif mtd_mode == "📦 Job-Order Wise":
         st.markdown(f"### 📦 Master Order Completion Summary (As of {as_of_date})")
-        st.caption("One row per order + item. Due balance is taken from the item's LAST available run date.")
+        st.caption("One row per order + item + color. Due balance is taken from the item's LAST available run date.")
         df_job = reports.build_job_mtd(df_mtd)
         if df_job.empty:
             st.info("No active or completed job orders logged up to the selected cutoff date.")
@@ -502,23 +502,29 @@ elif nav_choice == "📦 Job Order Analysis":
     render_table(t, "job_analysis_items", f"📥 Export {sel_order} Item Summary (.xlsx)", f"JobOrder_{sel_order}_Items.xlsx", default_cols=default_cols)
 
     st.divider()
-    st.markdown("#### 🔬 Item Daily Run Lifecycle & Machine Allocations")
-    sel_item = st.selectbox("Select Item to Inspect Daily Production Timeline:", items["Item Name"].tolist(), key="sel_job_item_inspect")
-    meta = items[items["Item Name"] == sel_item].iloc[0]
+    st.markdown("#### 🔬 Item & Color Daily Run Lifecycle & Machine Allocations")
+    
+    items["Display Label"] = items["Item Name"] + " [" + items["Color"] + "]"
+    sel_item_label = st.selectbox("Select Item & Color to Inspect Daily Production Timeline:", items["Display Label"].tolist(), key="sel_job_item_inspect")
+    
+    meta = items[items["Display Label"] == sel_item_label].iloc[0]
+    sel_item = meta["Item Name"]
+    sel_color = meta["Color"]
+    
     m1, m2, m3, m4 = st.columns(4)
     m1.caption(f"**Item Demand:** {int(meta['Demand Qty']):,} Pcs")
     m2.caption(f"**Unit Weight:** {meta['Unit Wt (kg)']:.4f} kg")
     m3.caption(f"**Max Cavity / Latest CT:** {meta['Cavity']:g} Cav / {meta['CT']:g} s")
     m4.caption(f"**Status:** {meta['Status']}")
 
-    tl = reports.build_item_timeline(df_ord[df_ord["Item Name"] == sel_item], meta["Demand Qty"])
+    tl = reports.build_item_timeline(df_ord[(df_ord["Item Name"] == sel_item) & (df_ord["Color"] == sel_color)], meta["Demand Qty"])
     if tl.empty:
-        st.info("No active production runs found for this item.")
+        st.info("No active production runs found for this item and color.")
     else:
         tl_tot = reports.add_total_row(tl, "Date", ["Shift A Good (Pcs)", "Shift B Good (Pcs)", "Day Output (Pcs)", "Rejections (Pcs)", "Day Output (Ton)", "Runtime (Hrs)"], [])
         clean = reports.clean_and_format_dataframe(tl_tot)
         st.dataframe(clean, use_container_width=True, hide_index=True)
-        st.download_button(f"📥 Export {sel_order} - {sel_item} Timeline (.xlsx)", xl(clean), f"JobOrder_{sel_order}_{sel_item}_Timeline.xlsx", XLSX_MIME)
+        st.download_button(f"📥 Export {sel_order} - {sel_item} [{sel_color}] Timeline (.xlsx)", xl(clean), f"JobOrder_{sel_order}_{sel_item}_{sel_color}_Timeline.xlsx", XLSX_MIME)
 
 # ============================================
 # MODULE: SHIFTWISE
