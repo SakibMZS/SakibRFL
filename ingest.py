@@ -2,11 +2,11 @@
 ingest.py  -  Reads the FF / GF daily production workbooks and NEVER fails silently.
 
 Pipeline
-  1. scan_workbook()   : classify every tab (date tab / duplicate variant / inventory-type tab / other)
-  2. choose_period()   : month of the latest dated tab, days 1..N are expected
-  3. parse_floor()     : read the chosen tab of every day, normalise headers, validate every row,
+  1. scan_workbook()    : classify every tab (date tab / duplicate variant / inventory-type tab / other)
+  2. choose_period()    : month of the latest dated tab, days 1..N are expected
+  3. parse_floor()      : read the chosen tab of every day, normalise headers, validate every row,
                          reconcile pieces against the sheet, and return the data + a full audit
-  4. build_health()    : merge both floors into one health report (coverage, reconciliation, issues)
+  4. build_health()     : merge both floors into one health report (coverage, reconciliation, issues)
 
 Every problem becomes a row in an audit table (Severity = Error / Warning / Info).
 Nothing is dropped without a record.  The only things that change numbers are
@@ -107,7 +107,7 @@ CANON_COLS = [
     "A Counter", "A Good", "A Rej", "B Counter", "B Good", "B Rej", "Sheet Ton",
 ]
 REQUIRED = ["MC SL", "Order Name", "Item Name", "Cavity", "CT", "A Good", "B Good"]
-OVERRUN_MINOR_LIMIT = 13.0  # derived shift runtime between 12 and this = minor note, above = warning
+OVERRUN_MINOR_LIMIT = 13.0
 STRICT_NUM = ["A Good", "B Good", "CT", "Cavity", "Unit Wt"]
 SOFT_NUM = ["A Rej", "B Rej", "A Counter", "B Counter"]
 LEDGER_NUM = ["Demand", "Up to Prod", "Due Prev", "Due Present", "Last Day Prod"]
@@ -115,7 +115,6 @@ _FIELD_OVERRIDE = {"A Good": "a_good", "B Good": "b_good", "CT": "ct", "Cavity":
 
 
 def _read_sheet(xls, name):
-    """Returns (raw_df or None, header_row_index, notes). Finds the header row if it is not row 1."""
     notes = []
     df = pd.read_excel(xls, sheet_name=name)
     hdr = 0
@@ -133,12 +132,11 @@ def _read_sheet(xls, name):
         hdr = found
         notes.append((INFO, "Header", f"Tab '{str(name).strip()}': header found on Excel row {found + 1}"))
     df = df.copy()
-    df["Src Row"] = np.arange(len(df)) + hdr + 2  # Excel row number
+    df["Src Row"] = np.arange(len(df)) + hdr + 2
     return df, hdr, notes
 
 
 def _canonicalize(df, sheet):
-    """Map raw headers -> canonical names. Returns (canon_df or None, notes)."""
     notes = []
     sname = str(sheet).strip()
     cols = [c for c in df.columns if c != "Src Row"]
@@ -151,14 +149,12 @@ def _canonicalize(df, sheet):
                 canon = "A Rej"
             elif k.startswith("breject"):
                 canon = "B Rej"
-            elif k.startswith("colo"):  # 'Color' and the corrupted 'Colo+G:AHr'
+            elif k.startswith("colo"):
                 color_cols.append(orig)
                 continue
         if canon and canon not in colmap:
             colmap[canon] = orig
 
-    # Due columns are matched by POSITION (header text changes day to day):
-    #   between 'Up to Prod' and 'Last Day Prod' = previous due ; after 'Last Day Prod' = present due
     up_i = keys.index("uptoprod") if "uptoprod" in keys else None
     ld_i = keys.index("lastdayprod") if "lastdayprod" in keys else None
     due_idx = [i for i, k in enumerate(keys) if "due" in k]
@@ -222,7 +218,6 @@ _LEAD = re.compile(r"^\s*(-?\d[\d,]*(?:\.\d+)?)")
 
 
 def _num_col(series, lead_ok=False):
-    """to_numeric that remembers every cell that could not be read. Returns (values, {idx: (text, used)})."""
     s = series
     num = pd.to_numeric(s, errors="coerce").astype("float64")
     bad = s.notna() & num.isna()
@@ -297,7 +292,6 @@ def machine_size(resolved_info, text):
 
 
 def _size_mismatch(raw, info):
-    """Raw text carries a tonnage (e.g. 'A7-120') that differs from the master machine's tonnage."""
     toks = [t for t in re.findall(r"\d{2,3}", str(raw)) if t in EXCEL_SIZES]
     if not toks:
         return False
@@ -305,7 +299,37 @@ def _size_mismatch(raw, info):
 
 
 # ---------------------------------------------------------------------------
-# 4. ONE SHEET -> RECORDS + ISSUES
+# 4. SMART MACHINE SUGGESTION ENGINE
+# ---------------------------------------------------------------------------
+def suggest_machine_fix(df_all, bad_row_key):
+    """
+    Suggests a machine based on order/item history when a machine name is invalid/unresolved.
+    """
+    if df_all is None or df_all.empty or bad_row_key not in df_all["Row Key"].values:
+        return "A1-160", "Low", "No historical data available"
+    
+    row = df_all[df_all["Row Key"] == bad_row_key].iloc[0]
+    order, item = row["Order Name"], row["Item Name"]
+    date_val = row["Date"]
+    
+    history = df_all[(df_all["Order Name"] == order) & (df_all["Item Name"] == item) & (df_all["Resolved"] == True)]
+    if history.empty:
+        return "A1-160", "Low", "No other running instances of this order/item found"
+    
+    mc_counts = history["Machine"].value_counts()
+    suggested_mc = mc_counts.index[0]
+    
+    same_day_runs = df_all[(df_all["Date"] == date_val) & (df_all["Machine"] == suggested_mc) & (~df_all["Excluded"])]
+    is_free = same_day_runs.empty or (same_day_runs["Total Good"].sum() == 0)
+    
+    confidence = "High" if (mc_counts.iloc[0] >= 3 and is_free) else "Medium"
+    reason = f"Ran this order/item on {mc_counts.iloc[0]} other day(s). Machine was {'free' if is_free in (True, 'Yes') else 'busy'} on {date_val}."
+    
+    return suggested_mc, confidence, reason
+
+
+# ---------------------------------------------------------------------------
+# 5. ONE SHEET -> RECORDS + ISSUES
 # ---------------------------------------------------------------------------
 def _process_sheet(raw, floor, dt, sheet, corr_rows):
     date_str = dt.strftime("%d-%m-%Y")
@@ -316,7 +340,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
     if canon is None:
         return None, notes
 
-    # ---- numbers (remember unreadable cells)
     flags = {}
     for f in STRICT_NUM + SOFT_NUM + LEDGER_NUM:
         vals, fl = _num_col(canon[f], lead_ok=(f in LEDGER_NUM))
@@ -324,7 +347,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
         for idx, (t, u) in fl.items():
             flags.setdefault(int(canon.at[idx, "Src Row"]), []).append((f, t, u))
 
-    # ---- text
     canon["MC Raw"] = canon["MC SL"].map(_clean_mc)
     canon["Order Name"] = canon["Order Name"].map(_clean_txt)
     canon["Item Name"] = canon["Item Name"].map(_clean_txt)
@@ -350,7 +372,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
     ent["MC Raw"] = ent["MC Raw"].fillna("(blank)")
     ent["Order Name"] = ent["Order Name"].fillna("(blank)")
 
-    # ---- suspected duplicates (before chess merge; chess rows excluded)
     dup_of = {}
     nonchess = ~ent["Item Name"].map(is_chess_item)
     cand = ent[nonchess & ((ent["A Good"].fillna(0) + ent["B Good"].fillna(0)) > 0)]
@@ -361,7 +382,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
         for sr, fr in zip(cand.loc[isdup, "Src Row"], first[isdup]):
             dup_of[int(sr)] = int(fr)
 
-    # ---- chess family molds
     ent, row_map = consolidate_chess_family_mold(ent)
     ent = ent.reset_index(drop=True)
     flags_m = {}
@@ -373,7 +393,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
     ent["Excluded"] = False
     ent["Edited"] = False
 
-    # ---- user corrections (validated against order|item so a shifted sheet can never mis-apply)
     applied, stale = set(), []
     prefix = f"{floor}|{date_str}|"
     by_row = {int(r): i for i, r in zip(ent.index, ent["Src Row"])}
@@ -399,7 +418,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
             ent.at[i, "MC Used"] = str(ov["mc_sl"]).strip()
             ent.at[i, "Edited"] = True
 
-    # ---- machine identity
     cache = {}
 
     def _res(raw_txt):
@@ -413,7 +431,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
     ent["MC Size"] = [machine_size(inf, mu) for inf, mu in zip(infos, ent["MC Used"])]
     ent["Line Group"] = [derive_line_group(floor, m) for m in ent["Machine"]]
 
-    # ---- calculations (same formulas as before)
     ex = ent["Excluded"]
     ct = ent["CT"].fillna(0)
     cav = ent["Cavity"].fillna(0)
@@ -449,10 +466,9 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
         "Total Runtime (Hrs)": a_rt + b_rt, "Total Prod Ton": (ag + bg) * wt / 1000.0,
         "Src Row": ent["Src Row"].astype(int), "Sheet": sname, "Row Key": ent["Row Key"],
         "Source Good": ent["Source Good"], "Excluded": ex, "Edited": ent["Edited"],
-        "Sheet Ton": ent["Sheet Ton"],
+        "Sheet Ton": ent["Sheet Ton"], "Resolved": ent["Resolved"],
     })
 
-    # ---- row-level issues
     def emit(sev, cat, i, detail):
         issues.append({
             "Key": ent.at[i, "Row Key"], "Severity": sev, "Category": cat, "Floor": floor, "Date": date_str,
@@ -504,7 +520,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
         if ent.at[i, "Sheet Ton"] > 0.0005 and ent.at[i, "Source Good"] == 0 and not ent.at[i, "Edited"]:
             emit(WARN, "Tonnage without pieces", i, f"Sheet shows {ent.at[i, 'Sheet Ton']:.3f} T produced but A-Good/B-Good are blank")
 
-    # ---- runtime above 12 h per shift on one machine
     live = ~ex
     for shift, rt, gcol in [("A", a_rt, "A Good"), ("B", b_rt, "B Good")]:
         s = pd.Series(np.asarray(rt), index=ent.index)[live]
@@ -517,7 +532,6 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
                 else:
                     emit(INFO, "Over 12h (minor)", i, f"{mc}: shift {shift} derived runtime is {tot:.1f} h - slightly above 12 h, usually CT tolerance")
 
-    # ---- machine auto-matches (info only, aggregated later)
     mm = ent.loc[ent["Resolved"] & (ent["MC Raw"] != ent["Machine"]) & (ent["MC Raw"] != "(blank)"), ["MC Raw", "Machine"]]
     matches = [{"Floor": floor, "Date": date_str, "Raw": r, "Master": m} for r, m in zip(mm["MC Raw"], mm["Machine"])]
 
@@ -534,7 +548,7 @@ def _process_sheet(raw, floor, dt, sheet, corr_rows):
 
 
 # ---------------------------------------------------------------------------
-# 5. WHOLE FLOOR
+# 6. WHOLE FLOOR
 # ---------------------------------------------------------------------------
 def _fi(sev, cat, floor, detail, date=""):
     return {"Severity": sev, "Category": cat, "Floor": floor, "Date": date, "Detail": detail}
@@ -555,7 +569,6 @@ def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
         if r["kind"] in ("date", "variant") and in_period(r):
             by_day.setdefault(r["date"].day, []).append(r)
 
-    # tab roles for the report
     other_month = 0
     for r in scan:
         nm = str(r["name"]).strip()
@@ -589,7 +602,7 @@ def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
         used = cands[0]
         try:
             raw, rn = _load(used)
-        except Exception as e:  # noqa: BLE001 - we report every read failure
+        except Exception as e:
             file_issues.append(_fi(ERROR, "Sheet unreadable", floor, f"Tab '{str(used['name']).strip()}' could not be read: {e}", ds))
             cover.append({"Floor": floor, "Date": ds, "Sheet Used": str(used["name"]).strip(), "Status": "Unreadable", "Entries": 0, "Good Pcs": 0.0})
             continue
@@ -621,7 +634,6 @@ def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
         sheet_rows.append({"Floor": floor, "Tab": str(used["name"]).strip(), "Date": ds, "Role": "USED",
                            "Note": "clean date-only tab" if used["rkey"] == "" else "no clean tab exists - used the closest one"})
 
-        # duplicate tabs for the same date: never pick them, but compare totals and tell the user
         for extra in cands[1:]:
             note, role_sev = "", INFO
             try:
@@ -636,13 +648,12 @@ def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
                             note = f"production differs: used tab {g1:,.0f} pcs vs ignored tab {g2:,.0f} pcs"
                         else:
                             note = "same production total as the used tab"
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 note = f"could not compare ({e})"
             en = str(extra["name"]).strip()
             file_issues.append(_fi(role_sev, "Duplicate tab", floor, f"{ds}: tab '{en}' ignored, using '{str(used['name']).strip()}' - {note}", ds))
             sheet_rows.append({"Floor": floor, "Tab": en, "Date": ds, "Role": "Ignored - duplicate date", "Note": note})
 
-    # saved corrections that no longer match the sheet
     for key in stale_all:
         file_issues.append(_fi(WARN, "Saved correction", floor, f"Correction for {key} was NOT applied - the row/order/item in the sheet no longer matches what you corrected"))
     if records:
@@ -663,7 +674,6 @@ def parse_floor(file_bytes, floor, year, month, last_day, corr_json="{}"):
 
 
 def _add_weighted_capacity(df):
-    """Same weighted-capacity rule as before, per Floor|Machine|Date."""
     df["Helper"] = df["Floor"].astype(str) + "|" + df["Machine"].astype(str) + "|" + df["Date"].astype(str)
     s_col = df["Shift A Runtime"].fillna(0)
     t_col = df["Shift B Runtime"].fillna(0)
@@ -680,10 +690,9 @@ def _add_weighted_capacity(df):
 
 
 # ---------------------------------------------------------------------------
-# 6. HEALTH REPORT (both floors)
+# 7. HEALTH REPORT (both floors)
 # ---------------------------------------------------------------------------
 def build_health(results, period, corr_json="{}"):
-    """results: {floor: parse_floor() dict}. Returns one health dict used by the UI and the Excel exports."""
     corr = json.loads(corr_json) if corr_json else {}
     reviewed = corr.get("reviewed", {})
 
@@ -701,7 +710,6 @@ def build_health(results, period, corr_json="{}"):
     fi_parts = [r["file_issues"] for r in results.values() if not r["file_issues"].empty]
     fi = pd.concat(fi_parts, ignore_index=True) if fi_parts else pd.DataFrame(columns=["Severity", "Category", "Floor", "Date", "Detail"])
 
-    # period level checks
     pf = []
     if period and period["gap_days"] > 3:
         pf.append(_fi(WARN, "Period", "ALL",
