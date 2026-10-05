@@ -121,10 +121,6 @@ def render_table(df_tot, key, dl_label, dl_name, default_cols=None, selector_slo
     versioned_dl_name = f"Plastic3_{floor_choice}_{date_tag}_{dl_name}"
     
     st.download_button(dl_label, xl(clean), versioned_dl_name, XLSX_MIME)
-    
-    # Direct copy-paste text area for quick text extraction without downloading
-    with st.expander("📋 Quick Copy View (Select & Copy Table Data)"):
-        st.text_area("Copy-paste table text below:", clean.to_string(index=False), height=150, key=f"txt_copy_{key}")
     return clean
 
 
@@ -331,7 +327,7 @@ if nav_choice == "📅 Daily Data":
 
     col_nav1, col_nav2, col_nav3 = st.columns([3.5, 1.2, 1.3])
     with col_nav1:
-        daily_mode = st.radio("Daily View Mode:", ["📊 Linewise", "🏭 MC Wise", "📏 Sizewise", "📦 Job-Order Wise", "🗺️ Plant Matrix"], horizontal=True, label_visibility="collapsed")
+        daily_mode = st.radio("Daily View Mode:", ["📊 Linewise", "🏭 MC Wise", "📏 Sizewise", "📦 Job-Order Wise", "🗺️️ Plant Matrix"], horizontal=True, label_visibility="collapsed")
     with col_nav2:
         selected_date = st.selectbox("Operational Date", all_dates, index=len(all_dates) - 1, label_visibility="collapsed")
     with col_nav3:
